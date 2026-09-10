@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Chem, Kind, PlayerInput, SkillTables } from "./lib/engine";
 import { calcPlayer, flagDefaults } from "./lib/engine";
 import { PlayerTable } from "./components/PlayerTable";
+import { LineupView } from "./components/LineupView";
 import { DeckPanel } from "./components/DeckPanel";
 import { SkillPanel } from "./components/SkillPanel";
 import { ResultPanel } from "./components/ResultPanel";
@@ -70,7 +71,7 @@ function load(): State {
   }
 }
 
-type Tab = "batter" | "pitcher" | "deck" | "skills" | "result";
+type Tab = "lineup" | "batter" | "pitcher" | "deck" | "skills" | "result";
 
 export default function App() {
   const [boot] = useState(load);
@@ -79,7 +80,7 @@ export default function App() {
   const [flags, setFlags] = useState(boot.flags);
   const [yearInputs, setYearInputs] = useState(boot.yearInputs);
   const [tables, setTables] = useState(boot.tables);
-  const [tab, setTab] = useState<Tab>("batter");
+  const [tab, setTab] = useState<Tab>("lineup");
 
   useEffect(() => {
     localStorage.setItem(KEY, JSON.stringify({ players, chem, flags, yearInputs, tables }));
@@ -123,12 +124,15 @@ export default function App() {
     <div className="wrap">
       <h1>Rivals Deck <span className="muted">— 9이닝스 라이벌즈 덱관리 (랭대 공격 기준)</span></h1>
       <div className="tabs">
-        {(["batter", "pitcher", "deck", "skills", "result"] as Tab[]).map((t) => (
+        {(["lineup", "batter", "pitcher", "deck", "skills", "result"] as Tab[]).map((t) => (
           <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>
-            {{ batter: "타자", pitcher: "투수", deck: "케미·덱코", skills: "스킬점수", result: "결과" }[t]}
+            {{ lineup: "라인업", batter: "타자입력", pitcher: "투수입력", deck: "케미·덱코", skills: "스킬점수", result: "결과" }[t]}
           </button>
         ))}
       </div>
+      {tab === "lineup" && (
+        <LineupView batters={batters} pitchers={pitchers} bRes={bRes} pRes={pRes} gotoInput={setTab} />
+      )}
       {tab === "batter" && (
         <PlayerTable title="타자 (최종 육성값: 파워·정확·선구)" kind="batter" rows={batters} results={bRes} update={update} customNames={customNames.batter} />
       )}
