@@ -14,9 +14,10 @@ const allowedHosts = [
 
 export default defineConfig({
   plugins: [react()],
+  base: process.env.VITE_BASE || "/",
   server: {
     host: process.env.WEB_HOST || "127.0.0.1",
-    port: Number(process.env.WEB_PORT || 5174),
+    port: Number(process.env.WEB_PORT || 5176),
     allowedHosts,
   },
   preview: {
