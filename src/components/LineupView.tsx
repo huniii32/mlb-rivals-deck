@@ -154,7 +154,8 @@ export function LineupView({
             filled={!!p.name.trim()} photo={photos[p.excelRow]} onClick={() => onSelect(p.excelRow)} />
         ))}
       </div>
-      <p className="muted">사진: Wikimedia Commons (CC 라이선스, 클릭 시 출처 페이지로 이동)</p>
+      <p className="muted">사진: Wikimedia Commons (CC 라이선스, 클릭 시 출처 페이지로 이동) ·
+        구장 배경: <a href="https://commons.wikimedia.org/wiki/File:Fifth_Third_Park_night_view_from_left_field.jpg" target="_blank" rel="noreferrer">Fifth Third Park</a> (CC BY-SA 4.0)</p>
     </div>
   );
 }

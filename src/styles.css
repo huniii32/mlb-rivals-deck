@@ -54,7 +54,14 @@ h3 { margin: 4px 0 8px; }
 h4 { margin: 8px 0 4px; }
 details.card summary { cursor: pointer; }
 /* 라인업 */
-.stadium { background: var(--stadium); }
+.stadium { background:
+  linear-gradient(rgba(8, 13, 24, 0.62), rgba(8, 13, 24, 0.72)),
+  url("https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1b/Fifth_Third_Park_night_view_from_left_field.jpg/1920px-Fifth_Third_Park_night_view_from_left_field.jpg")
+  center 30% / cover no-repeat, var(--panel); }
+[data-theme="light"] .stadium { background:
+  linear-gradient(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.65)),
+  url("https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1b/Fifth_Third_Park_night_view_from_left_field.jpg/1920px-Fifth_Third_Park_night_view_from_left_field.jpg")
+  center 30% / cover no-repeat, var(--panel); }
 .diamond { position: relative; width: 100%; aspect-ratio: 100/72; margin: 4px 0 8px; }
 .diamond svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .dslot { position: absolute; transform: translate(-50%, -50%); }
