@@ -281,14 +281,20 @@ export default function App() {
 
   return (
     <div className="wrap">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <h1>Rivals Deck <span className="muted">— 9이닝스 라이벌즈 덱관리</span></h1>
-        <button onClick={() => setTheme(theme === "dark" ? "light" : "dark")} title="테마 전환">
+      <header className="topbar">
+        <div className="brand">
+          <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
+            <circle cx="13" cy="13" r="11" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1.5" />
+            <path d="M6 4.5c3 3.5 3 13.5 0 17M20 4.5c-3 3.5-3 13.5 0 17" fill="none" stroke="#dc2626" strokeWidth="1.6" strokeDasharray="2.5 1.8" />
+          </svg>
+          Rivals Deck <small>9이닝스 라이벌즈 덱관리</small>
+        </div>
+        <button className="theme-btn" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} title="테마 전환">
           {theme === "dark" ? "☀️ 라이트" : "🌙 다크"}
         </button>
-      </div>
+      </header>
 
-      <div className="card">
+      <div className="card toolbar">
         <div className="row">
           <label>내 덱{" "}
             <select value={deck.id} onChange={(e) => { setActiveId(e.target.value); setSelected(null); }}>

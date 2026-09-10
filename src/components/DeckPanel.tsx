@@ -35,16 +35,17 @@ export function DeckPanel({  chem, setChem, flags, toggleFlag, yearInputs, setYe
         {(["L", "R"] as const).map((side) => (
           <div key={side}>
             <div className="muted">{side === "L" ? "좌" : "우"}</div>
+            <div className="deck-check">
             {list.filter((f) => f.side === side).map((f) => {
               const key = `${f.row}-${f.region}-${f.side}`;
               const label = POS_LABEL[f.row] ?? (f.row === 10 ? "전체(헤더)" : `행${f.row}`);
               return (
-                <label key={key} style={{ display: "block", margin: "2px 0" }}>
+                <label key={key}>
                   <input type="checkbox" checked={!!flags[key]} onChange={() => toggleFlag(key)} /> {label}
-                  <span className="muted"> ({f.row})</span>
                 </label>
               );
             })}
+            </div>
           </div>
         ))}
       </div>

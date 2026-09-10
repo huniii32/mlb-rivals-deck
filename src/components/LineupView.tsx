@@ -110,11 +110,13 @@ export function LineupView({
 
   return (
     <div className="card stadium">
-      <div className="row" style={{ justifyContent: "space-between" }}>
+      <div className="stadium-hd">
         <h3>라인업</h3>
-        <div>
-          <span className="muted">선발 {dSP.toFixed(0)} · 계투 {dRP.toFixed(0)} · 타자 {dBT.toFixed(0)} · </span>
-          <b className="score-sm">총점 {total.toFixed(1)}</b>
+        <div className="scoreboard">
+          <div className="sb-total"><span>총점</span><b>{total.toFixed(0)}</b></div>
+          <div><span>선발</span><b>{dSP.toFixed(0)}</b></div>
+          <div><span>계투</span><b>{dRP.toFixed(0)}</b></div>
+          <div><span>타자</span><b>{dBT.toFixed(0)}</b></div>
         </div>
       </div>
       <div className="diamond">
