@@ -62,6 +62,7 @@ export interface PlayerInput {
   order: number | "";
   card: string;
   name: string;
+  team: string; // 도감식 카드 팀 뱃지용 (예: LAD, NYY)
   year: number | "";
   enName: string; // Wikimedia Commons 검색용 영문명
   photoUrl: string; // 수동 사진 URL (직접 지정 시 우선)

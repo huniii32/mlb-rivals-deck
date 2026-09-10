@@ -66,6 +66,8 @@ export function PlayerEditor({
           </select>
         </label>
         <label>선수명<input value={p.name} onChange={(e) => update({ name: e.target.value })} /></label>
+        <label>팀<input value={p.team} style={{ textTransform: "uppercase" }} placeholder="LAD"
+          onChange={(e) => update({ team: e.target.value.toUpperCase() })} /></label>
         <label>연도<Num value={p.year} onChange={(v) => update({ year: v })} /></label>
         <label>초월Lv<Num value={p.transLv} onChange={(v) => update({ transLv: v })} /></label>
         <label>강화Lv<Num value={p.enhLv} onChange={(v) => update({ enhLv: v })} /></label>

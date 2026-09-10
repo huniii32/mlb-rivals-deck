@@ -27,7 +27,7 @@ const PITCHER_DEF: [number, string][] = [
 function blankPlayer(excelRow: number, kind: Kind, pos: string, order: number | ""): PlayerInput {
   return {
     excelRow, kind, pos, order,
-    card: "", name: "", year: "", enName: "", photoUrl: "",
+    card: "", name: "", team: "", year: "", enName: "", photoUrl: "",
     base: ["", "", ""], train: ["", "", ""], spec: ["", "", ""],
     transLv: "", enhLv: "", pohLv: "",
     extra: ["", "", ""],
@@ -76,6 +76,7 @@ function loadDecks(): { decks: Deck[]; activeId: string } {
             ...p,
             enName: p.enName ?? "",
             photoUrl: p.photoUrl ?? "",
+            team: p.team ?? "",
             synergy: p.synergy ?? ["", "", ""],
             locker: p.locker ?? ["", "", ""],
           });
@@ -286,6 +287,7 @@ export default function App() {
             ...p,
             enName: p.enName ?? "",
             photoUrl: p.photoUrl ?? "",
+            team: p.team ?? "",
             synergy: p.synergy ?? ["", "", ""],
             locker: p.locker ?? ["", "", ""],
           })),

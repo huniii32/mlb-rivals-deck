@@ -176,6 +176,25 @@ details.card summary { cursor: pointer; font-size: 14px; }
 .pcard-img { width: calc(100% + 6px); height: 58px; object-fit: cover; object-position: top; margin: -5px -3px 1px; }
 .pcard a { color: inherit; text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .pcard-edit { position: absolute; bottom: 3px; right: 3px; font-size: 10px; padding: 2px 6px; z-index: 1; }
+/* 도감식 카드 */
+.dcard { width: 92px; min-height: 128px; padding: 0; justify-content: flex-start; }
+.dcard.empty { min-height: 70px; justify-content: center; }
+.dc-top { display: flex; width: 100%; align-items: flex-start; justify-content: space-between; padding: 3px 5px 0; z-index: 1; }
+.dc-ovr { font-size: 21px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6); }
+.dc-pos { font-size: 10px; font-weight: 800; background: rgba(0, 0, 0, 0.55); border-radius: 4px; padding: 1px 5px; color: #7dd3fc; }
+.dc-pos.alone { font-size: 12px; }
+.dc-team { font-size: 10px; font-weight: 800; letter-spacing: 0.05em; color: var(--muted);
+  align-self: flex-start; padding: 0 6px; z-index: 1; }
+.dc-img { width: 100%; height: 62px; object-fit: cover; object-position: top; margin-top: -14px; }
+.dc-noimg { width: 100%; height: 62px; display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 800; letter-spacing: 0.1em; color: var(--muted);
+  background: rgba(0, 0, 0, 0.25); margin-top: -14px; }
+.dc-name { font-size: 12px; font-weight: 800; background: rgba(0, 0, 0, 0.55); width: 100%;
+  padding: 2px 4px; margin-top: auto; }
+[data-theme="light"] .dc-name { background: rgba(15, 23, 42, 0.72); color: #f8fafc; }
+.dc-grade { font-size: 9.5px; color: var(--muted); padding-bottom: 3px; }
+.dcard a { width: 100%; }
 .prow { display: flex; gap: 10px; flex-wrap: wrap; }
 
 /* 팝업 */

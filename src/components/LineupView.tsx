@@ -48,40 +48,44 @@ function shortCard(card: string): string {
 }
 
 function Card({
-  pos, name, card, score, filled, photo, onClick,
+  pos, name, team, card, score, filled, photo, onClick,
 }: {
-  pos: string; name: string; card: string; score: number; filled: boolean;
+  pos: string; name: string; team: string; card: string; score: number; filled: boolean;
   photo?: PhotoInfo; onClick: () => void;
 }) {
-  const inner = (
+  const inner = filled ? (
     <>
-      <span className="pcard-pos">{pos}</span>
-      {filled ? (
-        <>
-          {photo && <img className="pcard-img" src={photo.src} alt={name} />}
-          <span className="pcard-score">{score.toFixed(0)}</span>
-          <span className="pcard-name">{name}</span>
-          <span className="pcard-grade">{shortCard(card)}</span>
-        </>
-      ) : (
-        <span className="pcard-name muted">+ 등록</span>
-      )}
+      <span className="dc-top">
+        <span className="dc-ovr">{score.toFixed(0)}</span>
+        <span className="dc-pos">{pos}</span>
+      </span>
+      {team && <span className="dc-team">{team}</span>}
+      {photo
+        ? <img className="dc-img" src={photo.src} alt={name} />
+        : <span className="dc-noimg">NO PHOTO</span>}
+      <span className="dc-name">{name}</span>
+      <span className="dc-grade">{shortCard(card)}</span>
+    </>
+  ) : (
+    <>
+      <span className="dc-pos alone">{pos}</span>
+      <span className="dc-name muted">+ 등록</span>
     </>
   );
   if (filled && photo) {
     return (
-      <span className="pcard" style={{ borderColor: gradeColor(card), boxShadow: `0 0 10px ${gradeColor(card)}55` }}>
+      <span className="pcard dcard" style={{ borderColor: gradeColor(card), boxShadow: `0 0 12px ${gradeColor(card)}66` }}>
         <a href={photo.page} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{inner}</a>
-        <button className="pcard-edit" onClick={onClick} title="입력 탭으로">✎</button>
+        <button className="pcard-edit" onClick={onClick} title="입력 팝업">✎</button>
       </span>
     );
   }
   return (
     <button
-      className={`pcard ${filled ? "" : "empty"}`}
-      style={filled ? { borderColor: gradeColor(card), boxShadow: `0 0 10px ${gradeColor(card)}55` } : undefined}
+      className={`pcard dcard ${filled ? "" : "empty"}`}
+      style={filled ? { borderColor: gradeColor(card), boxShadow: `0 0 12px ${gradeColor(card)}66` } : undefined}
       onClick={onClick}
-      title={filled ? `${name} — 클릭하면 입력 탭으로` : `${pos} 비어있음 — 클릭하면 입력 탭으로`}
+      title={filled ? `${name} — 클릭하면 입력 팝업` : `${pos} 비어있음 — 클릭하면 입력 팝업`}
     >
       {inner}
     </button>
@@ -160,6 +164,7 @@ export function LineupView({
               <Card
                 pos={pos}
                 name={hit?.p.name ?? ""}
+                team={hit?.p.team ?? ""}
                 card={hit?.p.card ?? ""}
                 score={hit?.r.total ?? 0}
                 filled={!!hit?.p.name.trim()}
@@ -173,14 +178,14 @@ export function LineupView({
       <h4>선발</h4>
       <div className="prow">
         {pitchers.slice(0, 5).map((p, i) => (
-          <Card key={p.excelRow} pos={p.pos} name={p.name} card={p.card} score={pRes[i].total}
+          <Card key={p.excelRow} pos={p.pos} name={p.name} team={p.team} card={p.card} score={pRes[i].total}
             filled={!!p.name.trim()} photo={photos[p.excelRow]} onClick={() => onSelect(p.excelRow)} />
         ))}
       </div>
       <h4>불펜</h4>
       <div className="prow">
         {pitchers.slice(5).map((p, i) => (
-          <Card key={p.excelRow} pos={p.pos} name={p.name} card={p.card} score={pRes[i + 5].total}
+          <Card key={p.excelRow} pos={p.pos} name={p.name} team={p.team} card={p.card} score={pRes[i + 5].total}
             filled={!!p.name.trim()} photo={photos[p.excelRow]} onClick={() => onSelect(p.excelRow)} />
         ))}
       </div>
