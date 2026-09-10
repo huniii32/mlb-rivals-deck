@@ -133,6 +133,7 @@ export default function App() {
   const [activeId, setActiveId] = useState(boot.activeId);
   const [tables, setTables] = useState<SkillTables>(loadTables);
   const [selected, setSelected] = useState<number | null>(null);
+  const [tab, setTab] = useState<"lineup" | "news" | "ranking" | "skills">("lineup");
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "dark");
   const [photoCache, setPhotoCache] = useState<Record<string, PhotoInfo | null>>(() => {
     try {
@@ -376,22 +377,52 @@ export default function App() {
         <p className="muted">덱은 이 브라우저에만 저장됩니다 — 남이 내 덱을 볼 수 없고, 나도 남 덱을 못 봅니다. 기기 이동은 내보내기→가져오기로.</p>
       </div>
 
-      <div className="lineup-layout">
-        <div>
-          <LineupView
-            batters={batters} pitchers={pitchers} bRes={bRes} pRes={pRes}
-            onSelect={setSelected} photos={photosByRow}
-          />
-        </div>
-        <aside>
-          <h2>케미 · 팀덱코 · 스덱코</h2>
-          <DeckPanel
-            chem={chem} setChem={(c) => patchDeck({ chem: c })}
-            flags={flags} toggleFlag={(k) => patchDeck({ flags: { ...flags, [k]: !flags[k] } })}
-            yearInputs={yearInputs} setYearInput={(r, v) => patchDeck({ yearInputs: { ...yearInputs, [r]: v } })}
-          />
-        </aside>
+      <div className="tabs">
+        {(["lineup", "news", "ranking", "skills"] as const).map((t) => (
+          <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>
+            {{ lineup: "라인업", news: "정보", ranking: "랭킹 · 공유", skills: "스킬점수" }[t]}
+          </button>
+        ))}
       </div>
+
+      {tab === "lineup" && (
+        <div className="lineup-layout">
+          <div>
+            <LineupView
+              batters={batters} pitchers={pitchers} bRes={bRes} pRes={pRes}
+              onSelect={setSelected} photos={photosByRow}
+            />
+          </div>
+          <aside>
+            <h2>케미 · 팀덱코 · 스덱코</h2>
+            <DeckPanel
+              chem={chem} setChem={(c) => patchDeck({ chem: c })}
+              flags={flags} toggleFlag={(k) => patchDeck({ flags: { ...flags, [k]: !flags[k] } })}
+              yearInputs={yearInputs} setYearInput={(r, v) => patchDeck({ yearInputs: { ...yearInputs, [r]: v } })}
+            />
+          </aside>
+        </div>
+      )}
+
+      {tab === "news" && <NewsTab />}
+
+      {tab === "ranking" && (
+        <>
+          <SharePanel
+            decks={decks} tables={tables} activeId={deck.id}
+            onSelectDeck={(id) => { setActiveId(id); setSelected(null); }}
+            onImportDeck={(d) => addDeckData(d, "공유받은 덱")}
+          />
+          <h2>선수 랭킹 · 스킬 비교</h2>
+          <ResultPanel batters={batters} pitchers={pitchers} bRes={bRes} pRes={pRes} tables={tables} customNames={customNames} />
+        </>
+      )}
+
+      {tab === "skills" && (
+        <div className="card">
+          <SkillPanel tables={tables} setTables={setTables} />
+        </div>
+      )}
 
       {selPlayer && selRes && (
         <div className="modal-overlay" onClick={() => setSelected(null)}>
@@ -421,23 +452,6 @@ export default function App() {
         </div>
       )}
 
-      <h2>소식</h2>
-      <NewsTab />
-
-      <h2>공유 · 랭킹</h2>
-      <SharePanel
-        decks={decks} tables={tables} activeId={deck.id}
-        onSelectDeck={(id) => { setActiveId(id); setSelected(null); }}
-        onImportDeck={(d) => addDeckData(d, "공유받은 덱")}
-      />
-
-      <h2>상세 결과</h2>
-      <ResultPanel batters={batters} pitchers={pitchers} bRes={bRes} pRes={pRes} tables={tables} customNames={customNames} />
-
-      <details className="card">
-        <summary><b>스킬점수 관리 (점수 수정·신규 추가)</b></summary>
-        <SkillPanel tables={tables} setTables={setTables} />
-      </details>
       <p className="muted">사진: Wikimedia Commons (CC 라이선스) · 점수는 랭대 공격 기준</p>
     </div>
   );
