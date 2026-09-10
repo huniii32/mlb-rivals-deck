@@ -321,6 +321,7 @@ export default function App() {
               close={() => setSelected(null)}
               customNames={customNames[selPlayer.kind]}
               photo={photosByRow[selPlayer.excelRow]}
+              tables={tables}
             />
           </div>
         </div>
