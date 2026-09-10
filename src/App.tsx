@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Chem, Kind, PlayerInput, SkillTables } from "./lib/engine";
 import { calcPlayer, flagDefaults } from "./lib/engine";
 import type { PhotoInfo } from "./lib/photos";
@@ -10,8 +10,10 @@ import { SkillPanel } from "./components/SkillPanel";
 import { ResultPanel } from "./components/ResultPanel";
 import "./styles.css";
 
-const KEY = "rivals-deck-v2";
+const DECKS_KEY = "rivals-decks-v1";
+const TABLES_KEY = "rivals-tables-v1";
 const THEME_KEY = "rivals-theme";
+const LEGACY_KEY = "rivals-deck-v2";
 
 const BATTER_DEF: [number, string, number][] = [
   [11, "C", 9], [12, "1B", 5], [13, "2B", 2], [14, "3B", 6], [15, "SS", 7],
@@ -35,16 +37,21 @@ function blankPlayer(excelRow: number, kind: Kind, pos: string, order: number | 
   };
 }
 
-interface State {
+export interface Deck {
+  id: string;
+  name: string;
+  updatedAt: number;
   players: PlayerInput[];
   chem: Chem;
   flags: Record<string, boolean>;
   yearInputs: Record<number, number | "">;
-  tables: SkillTables;
 }
 
-function defaultState(): State {
+function blankDeck(name: string): Deck {
   return {
+    id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+    name,
+    updatedAt: Date.now(),
     players: [
       ...BATTER_DEF.map(([r, pos, o]) => blankPlayer(r, "batter", pos, o)),
       ...PITCHER_DEF.map(([r, pos]) => blankPlayer(r, "pitcher", pos, "")),
@@ -52,37 +59,62 @@ function defaultState(): State {
     chem: { commander: "S", catcher: "S", pitchChem: "S", batChem: "S", wbcP: "S", wbcB: "S1" },
     flags: flagDefaults(),
     yearInputs: { 33: "", 35: "", 37: "" },
-    tables: { overrides: {}, customs: [] },
   };
 }
 
-function load(): State {
+function loadDecks(): { decks: Deck[]; activeId: string } {
   try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return defaultState();
-    const s = JSON.parse(raw) as State;
-    const d = defaultState();
-    return {
-      players: Array.isArray(s.players) && s.players.length === 18
-        ? s.players.map((p) => ({ ...p, enName: p.enName ?? "", photoUrl: p.photoUrl ?? "" }))
-        : d.players,
-      chem: { ...d.chem, ...(s.chem || {}) },
-      flags: { ...d.flags, ...(s.flags || {}) },
-      yearInputs: { ...d.yearInputs, ...(s.yearInputs || {}) },
-      tables: s.tables || d.tables,
-    };
+    const raw = localStorage.getItem(DECKS_KEY);
+    if (raw) {
+      const s = JSON.parse(raw) as { decks: Deck[]; activeId: string };
+      if (Array.isArray(s.decks) && s.decks.length) {
+        const decks = s.decks.map((d) => ({
+          ...blankDeck(d.name || "내 덱"),
+          ...d,
+          players: Array.isArray(d.players) && d.players.length === 18 ? d.players : blankDeck("x").players,
+        }));
+        const activeId = decks.some((d) => d.id === s.activeId) ? s.activeId : decks[0].id;
+        return { decks, activeId };
+      }
+    }
+    // 구버전(v2 단일 덱) 이전
+    const legacy = localStorage.getItem(LEGACY_KEY);
+    if (legacy) {
+      const s = JSON.parse(legacy) as Partial<Deck>;
+      const d = blankDeck("내 덱 1");
+      if (Array.isArray(s.players) && s.players.length === 18) d.players = s.players as PlayerInput[];
+      if (s.chem) d.chem = { ...d.chem, ...s.chem };
+      if (s.flags) d.flags = { ...d.flags, ...s.flags };
+      if (s.yearInputs) d.yearInputs = { ...d.yearInputs, ...s.yearInputs };
+      return { decks: [d], activeId: d.id };
+    }
   } catch {
-    return defaultState();
+    // 무시하고 새로 생성
   }
+  const d = blankDeck("내 덱 1");
+  return { decks: [d], activeId: d.id };
+}
+
+function loadTables(): SkillTables {
+  try {
+    const raw = localStorage.getItem(TABLES_KEY);
+    if (raw) return JSON.parse(raw) as SkillTables;
+    const legacy = localStorage.getItem(LEGACY_KEY);
+    if (legacy) {
+      const s = JSON.parse(legacy) as { tables?: SkillTables };
+      if (s.tables) return s.tables;
+    }
+  } catch {
+    // 무시
+  }
+  return { overrides: {}, customs: [] };
 }
 
 export default function App() {
-  const [boot] = useState(load);
-  const [players, setPlayers] = useState(boot.players);
-  const [chem, setChem] = useState(boot.chem);
-  const [flags, setFlags] = useState(boot.flags);
-  const [yearInputs, setYearInputs] = useState(boot.yearInputs);
-  const [tables, setTables] = useState(boot.tables);
+  const [boot] = useState(loadDecks);
+  const [decks, setDecks] = useState<Deck[]>(boot.decks);
+  const [activeId, setActiveId] = useState(boot.activeId);
+  const [tables, setTables] = useState<SkillTables>(loadTables);
   const [selected, setSelected] = useState<number | null>(null);
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "dark");
   const [photoCache, setPhotoCache] = useState<Record<string, PhotoInfo | null>>(() => {
@@ -92,6 +124,10 @@ export default function App() {
       return {};
     }
   });
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const deck = decks.find((d) => d.id === activeId) ?? decks[0];
+  const { players, chem, flags, yearInputs } = deck;
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -99,12 +135,25 @@ export default function App() {
   }, [theme]);
 
   useEffect(() => {
-    localStorage.setItem(KEY, JSON.stringify({ players, chem, flags, yearInputs, tables }));
-  }, [players, chem, flags, yearInputs, tables]);
+    localStorage.setItem(DECKS_KEY, JSON.stringify({ decks, activeId }));
+  }, [decks, activeId]);
+
+  useEffect(() => {
+    localStorage.setItem(TABLES_KEY, JSON.stringify(tables));
+  }, [tables]);
 
   useEffect(() => {
     localStorage.setItem("rivals-photos-v1", JSON.stringify(photoCache));
   }, [photoCache]);
+
+  // ESC로 팝업 닫기
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSelected(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // 영문명이 있는데 캐시에 없으면 Commons 조회
   useEffect(() => {
@@ -150,8 +199,11 @@ export default function App() {
   const bRes = results.slice(0, 9);
   const pRes = results.slice(9);
 
-  const update = (excelRow: number, patch: Partial<PlayerInput>) =>
-    setPlayers(players.map((p) => (p.excelRow === excelRow ? { ...p, ...patch } : p)));
+  const patchDeck = (patch: Partial<Deck>) =>
+    setDecks(decks.map((d) => (d.id === deck.id ? { ...d, ...patch, updatedAt: Date.now() } : d)));
+
+  const update = (excelRow: number, p: Partial<PlayerInput>) =>
+    patchDeck({ players: players.map((x) => (x.excelRow === excelRow ? { ...x, ...p } : x)) });
 
   const customNames: Record<Kind, string[]> = useMemo(
     () => ({
@@ -173,8 +225,59 @@ export default function App() {
     return out;
   }, [players, photoCache]);
 
-  const selIdx = selected === null ? -1 : players.findIndex((p) => p.excelRow === selected);
-  const selPlayer = selIdx >= 0 ? players[selIdx] : null;
+  const selPlayer = selected === null ? null : players.find((p) => p.excelRow === selected) ?? null;
+  const selRes = selPlayer ? results[players.indexOf(selPlayer)] : null;
+
+  const newDeck = () => {
+    const d = blankDeck(`내 덱 ${decks.length + 1}`);
+    setDecks([...decks, d]);
+    setActiveId(d.id);
+    setSelected(null);
+  };
+  const renameDeck = () => {
+    const name = prompt("덱 이름", deck.name);
+    if (name?.trim()) patchDeck({ name: name.trim() });
+  };
+  const deleteDeck = () => {
+    if (decks.length <= 1) {
+      alert("마지막 덱은 삭제할 수 없습니다.");
+      return;
+    }
+    if (!confirm(`'${deck.name}' 삭제할까요?`)) return;
+    const rest = decks.filter((d) => d.id !== deck.id);
+    setDecks(rest);
+    setActiveId(rest[0].id);
+    setSelected(null);
+  };
+  const exportDeck = () => {
+    const blob = new Blob([JSON.stringify(deck, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${deck.name}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+  const importDeck = (f: File | undefined) => {
+    if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      try {
+        const d = JSON.parse(String(rd.result)) as Deck;
+        if (!Array.isArray(d.players) || d.players.length !== 18) throw new Error("players");
+        const nd = {
+          ...blankDeck(d.name || "가져온 덱"),
+          ...d,
+          id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+          updatedAt: Date.now(),
+        };
+        setDecks([...decks, nd]);
+        setActiveId(nd.id);
+      } catch {
+        alert("덱 파일 형식이 아닙니다.");
+      }
+    };
+    rd.readAsText(f);
+  };
 
   return (
     <div className="wrap">
@@ -185,30 +288,49 @@ export default function App() {
         </button>
       </div>
 
+      <div className="card">
+        <div className="row">
+          <label>내 덱{" "}
+            <select value={deck.id} onChange={(e) => { setActiveId(e.target.value); setSelected(null); }}>
+              {decks.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+          </label>
+          <button onClick={newDeck}>+ 새 덱</button>
+          <button onClick={renameDeck}>이름변경</button>
+          <button onClick={deleteDeck}>삭제</button>
+          <button onClick={exportDeck}>내보내기</button>
+          <button onClick={() => fileRef.current?.click()}>가져오기</button>
+          <input ref={fileRef} type="file" accept=".json" style={{ display: "none" }}
+            onChange={(e) => { importDeck(e.target.files?.[0]); e.target.value = ""; }} />
+        </div>
+        <p className="muted">덱은 이 브라우저에만 저장됩니다 — 남이 내 덱을 볼 수 없고, 나도 남 덱을 못 봅니다. 기기 이동은 내보내기→가져오기로.</p>
+      </div>
+
       <LineupView
         batters={batters} pitchers={pitchers} bRes={bRes} pRes={pRes}
         onSelect={setSelected} photos={photosByRow}
       />
 
-      {selPlayer && (
-        <PlayerEditor
-          p={selPlayer}
-          res={results[selIdx]}
-          update={(patch) => update(selPlayer.excelRow, patch)}
-          close={() => setSelected(null)}
-          customNames={customNames[selPlayer.kind]}
-          photo={photosByRow[selPlayer.excelRow]}
-        />
-      )}
-      {!selPlayer && (
-        <p className="muted">포지션 카드를 클릭하면 선수 입력 폼이 열립니다.</p>
+      {selPlayer && selRes && (
+        <div className="modal-overlay" onClick={() => setSelected(null)}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <PlayerEditor
+              p={selPlayer}
+              res={selRes}
+              update={(patch) => update(selPlayer.excelRow, patch)}
+              close={() => setSelected(null)}
+              customNames={customNames[selPlayer.kind]}
+              photo={photosByRow[selPlayer.excelRow]}
+            />
+          </div>
+        </div>
       )}
 
       <h2>케미 · 팀덱코 · 스덱코</h2>
       <DeckPanel
-        chem={chem} setChem={setChem}
-        flags={flags} toggleFlag={(k) => setFlags({ ...flags, [k]: !flags[k] })}
-        yearInputs={yearInputs} setYearInput={(r, v) => setYearInputs({ ...yearInputs, [r]: v })}
+        chem={chem} setChem={(c) => patchDeck({ chem: c })}
+        flags={flags} toggleFlag={(k) => patchDeck({ flags: { ...flags, [k]: !flags[k] } })}
+        yearInputs={yearInputs} setYearInput={(r, v) => patchDeck({ yearInputs: { ...yearInputs, [r]: v } })}
       />
 
       <h2>상세 결과</h2>
