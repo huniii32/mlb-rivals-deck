@@ -16,6 +16,10 @@ const DIAMOND: [string, number, number][] = [
   ["DH", 50, 64],
 ];
 
+const DEF_ROW: Record<string, number> = {
+  C: 11, "1B": 12, "2B": 13, "3B": 14, SS: 15, LF: 16, CF: 17, RF: 18, DH: 19,
+};
+
 const GRADE_COLOR: [string, string][] = [
   ["블랙", "#a855f7"],
   ["시그니처", "#8b5cf6"],
@@ -85,13 +89,13 @@ function Card({
 }
 
 export function LineupView({
-  batters, pitchers, bRes, pRes, gotoInput, photos,
+  batters, pitchers, bRes, pRes, onSelect, photos,
 }: {
   batters: PlayerInput[];
   pitchers: PlayerInput[];
   bRes: PlayerResult[];
   pRes: PlayerResult[];
-  gotoInput: (kind: "batter" | "pitcher") => void;
+  onSelect: (excelRow: number) => void;
   photos: Record<number, PhotoInfo>;
 }) {
   const byPos = new Map(batters.map((p, i) => [p.pos.trim().toUpperCase(), { p, r: bRes[i] }]));
@@ -130,7 +134,7 @@ export function LineupView({
                 score={hit?.r.total ?? 0}
                 filled={!!hit?.p.name.trim()}
                 photo={hit ? photos[hit.p.excelRow] : undefined}
-                onClick={() => gotoInput("batter")}
+                onClick={() => onSelect(hit?.p.excelRow ?? DEF_ROW[pos] ?? 11)}
               />
             </div>
           );
@@ -140,14 +144,14 @@ export function LineupView({
       <div className="prow">
         {pitchers.slice(0, 5).map((p, i) => (
           <Card key={p.excelRow} pos={p.pos} name={p.name} card={p.card} score={pRes[i].total}
-            filled={!!p.name.trim()} photo={photos[p.excelRow]} onClick={() => gotoInput("pitcher")} />
+            filled={!!p.name.trim()} photo={photos[p.excelRow]} onClick={() => onSelect(p.excelRow)} />
         ))}
       </div>
       <h4>불펜</h4>
       <div className="prow">
         {pitchers.slice(5).map((p, i) => (
           <Card key={p.excelRow} pos={p.pos} name={p.name} card={p.card} score={pRes[i + 5].total}
-            filled={!!p.name.trim()} photo={photos[p.excelRow]} onClick={() => gotoInput("pitcher")} />
+            filled={!!p.name.trim()} photo={photos[p.excelRow]} onClick={() => onSelect(p.excelRow)} />
         ))}
       </div>
       <p className="muted">사진: Wikimedia Commons (CC 라이선스, 클릭 시 출처 페이지로 이동)</p>

@@ -16,8 +16,7 @@ const POS_LABEL: Record<number, string> = {
   27: "RP1", 28: "RP2", 29: "RP3", 30: "CP1",
 };
 
-export function DeckPanel({
-  chem, setChem, flags, toggleFlag, yearInputs, setYearInput,
+export function DeckPanel({  chem, setChem, flags, toggleFlag, yearInputs, setYearInput,
 }: {
   chem: Chem;
   setChem: (c: Chem) => void;
