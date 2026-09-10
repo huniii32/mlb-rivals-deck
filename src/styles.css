@@ -1,0 +1,20 @@
+:root { color-scheme: light; font-family: system-ui, "Noto Sans KR", sans-serif; }
+body { margin: 0; background: #0e1420; color: #eef2f7; }
+a { color: #7dd3fc; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 16px; }
+.tabs { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
+.tabs button { padding: 8px 14px; border-radius: 8px; border: 1px solid #334155; background: #16202f; color: #e2e8f0; cursor: pointer; }
+.tabs button.on { background: #2563eb; border-color: #2563eb; }
+.card { background: #151f30; border: 1px solid #263449; border-radius: 12px; padding: 12px; margin-bottom: 12px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+input, select, button { font-size: 14px; padding: 7px 10px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; }
+button { cursor: pointer; }
+button.primary { background: #2563eb; border-color: #2563eb; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { border-bottom: 1px solid #263449; padding: 6px; text-align: left; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.slot { border: 1px solid #334155; border-radius: 10px; padding: 8px; }
+.slot.filled { border-color: #22c55e; }
+.muted { color: #94a3b8; font-size: 13px; }
+.score { font-size: 28px; font-weight: 800; }
+.warn { background: #451a1a; border: 1px solid #7f1d1d; border-radius: 8px; padding: 8px; margin-bottom: 12px; font-size: 13px; }
