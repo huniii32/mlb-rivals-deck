@@ -375,20 +375,40 @@ export function skillCompare(kind: Kind, skills: string[], tables: SkillTables):
   return (scores[0] ?? 0) + (scores[1] ?? 0) + (scores[2] ?? 0) + (scores[3] ?? 0);
 }
 
-/** 덱코 패널에 보여줄 참조 플래그 목록 (규칙에서 실제 참조된 것만) */
-export function referencedFlags(): { row: number; region: string; side: string }[] {
-  const seen = new Map<string, { row: number; region: string; side: string }>();
+/** 덱코 패널에 보여줄 참조 플래그 목록 (규칙에서 실제 참조된 것만).
+ *  행별 임계값(게임 화면의 POINT 숫자)은 해당 플래그를 참조하는 첫 규칙의 t에서 가져온다. */
+export function referencedFlags(): { row: number; region: string; side: string; threshold: number | null }[] {
+  const seen = new Map<string, { row: number; region: string; side: string; threshold: number | null }>();
   const walk = (c: Cond | null) => {
     if (!c) return;
-    if (c.t === "flag") seen.set(`${c.row}-${c.region}-${c.side}`, { row: c.row, region: c.region, side: c.side });
-    else if (c.t === "not") walk(c.x);
+    if (c.t === "flag") {
+      const k = `${c.row}-${c.region}-${c.side}`;
+      if (!seen.has(k)) seen.set(k, { row: c.row, region: c.region, side: c.side, threshold: thresholdForFlag(c.row, c.region, c.side) });
+    } else if (c.t === "not") walk(c.x);
     else if (c.t === "and" || c.t === "or") c.items.forEach(walk);
     else if (c.t === "arith" || c.t === "cmp") { walk(c.a); walk(c.b); }
   };
   for (const r of DECK.rules) for (const [ci] of r.a) {
     if (ci >= 0) walk(DECK.conds[ci]);
   }
-  return [...seen.values()].sort((a, b) => a.region.localeCompare(b.region) || a.side.localeCompare(b.side) || a.row - b.row);
+  return [...seen.values()].sort((a, b) => a.region.localeCompare(b.region) || (a.threshold ?? 0) - (b.threshold ?? 0) || a.row - b.row || a.side.localeCompare(b.side));
+}
+
+/** (region, row, side) 플래그를 참조하는 첫 규칙의 임계값 t */
+function thresholdForFlag(row: number, region: string, side: string): number | null {
+  const isFlag = (c: Cond | null): boolean =>
+    !!c && (c.t === "flag"
+      ? (c.row === row && c.region === region && c.side === side)
+      : c.t === "not" ? isFlag(c.x)
+      : c.t === "and" || c.t === "or" ? c.items.some(isFlag)
+      : c.t === "arith" || c.t === "cmp" ? isFlag(c.a) || isFlag(c.b)
+      : false);
+  for (const r of DECK.rules) {
+    for (const [ci] of r.a) {
+      if (ci >= 0 && isFlag(DECK.conds[ci]) && r.t !== null) return r.t;
+    }
+  }
+  return null;
 }
 
 export function flagDefaults(): Record<string, boolean> {

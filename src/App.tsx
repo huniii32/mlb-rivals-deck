@@ -5,7 +5,7 @@ import type { PhotoInfo } from "./lib/photos";
 import { effectiveQuery, searchPhoto } from "./lib/photos";
 import { LineupView } from "./components/LineupView";
 import { PlayerEditor } from "./components/PlayerEditor";
-import { DeckPanel } from "./components/DeckPanel";
+import { ChemPanel, DeckScorePanel } from "./components/DeckPanel";
 import { SkillPanel } from "./components/SkillPanel";
 import { TableEditor } from "./components/TableEditor";
 import { NewsTab } from "./components/NewsTab";
@@ -249,6 +249,21 @@ export default function App() {
   const patchDeck = (patch: Partial<Deck>) =>
     setDecks(decks.map((d) => (d.id === deck.id ? { ...d, ...patch, updatedAt: Date.now() } : d)));
 
+  // 행별 좌/우 택1: 고른 쪽만 켜고 반대쪽은 끈다. 이미 켜진 쪽을 다시 누르면 둘 다 끈다.
+  const pickRowSide = (region: string, row: number, side: "L" | "R") => {
+    const next = { ...deck.flags };
+    const a = `${row}-${region}-L`;
+    const b = `${row}-${region}-R`;
+    if (next[`${row}-${region}-${side}`]) {
+      next[a] = false;
+      next[b] = false;
+    } else {
+      next[a] = side === "L";
+      next[b] = side === "R";
+    }
+    patchDeck({ flags: next });
+  };
+
   const update = (excelRow: number, p: Partial<PlayerInput>) =>
     patchDeck({ players: players.map((x) => (x.excelRow === excelRow ? { ...x, ...p } : x)) });
 
@@ -395,11 +410,14 @@ export default function App() {
             />
           </div>
           <aside>
-            <h2>케미 · 팀덱코 · 스덱코</h2>
-            <DeckPanel
-              chem={chem} setChem={(c) => patchDeck({ chem: c })}
+            <h2>팀덱코 · 스덱코 · 케미</h2>
+            <DeckScorePanel
               flags={flags} toggleFlag={(k) => patchDeck({ flags: { ...flags, [k]: !flags[k] } })}
+              setRowSide={(region, row, side) => pickRowSide(region, row, side)}
               yearInputs={yearInputs} setYearInput={(r, v) => patchDeck({ yearInputs: { ...yearInputs, [r]: v } })}
+            />
+            <ChemPanel
+              chem={chem} setChem={(c) => patchDeck({ chem: c })}
             />
           </aside>
         </div>

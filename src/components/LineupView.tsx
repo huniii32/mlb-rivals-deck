@@ -5,15 +5,15 @@ import type { PhotoInfo } from "../lib/photos";
 // 타자 9명(외야 LF/CF/RF, 내야 3B/SS/2B/1B, 포수 C, 지명 DH) + 투수 9명(SP5/RP3/CP1).
 
 const DIAMOND: [string, number, number][] = [
-  ["CF", 50, 5],
-  ["LF", 24, 12],
-  ["RF", 76, 12],
-  ["SS", 41, 26],
-  ["2B", 59, 26],
-  ["3B", 24, 35],
-  ["1B", 76, 35],
-  ["C", 50, 50],
-  ["DH", 50, 64],
+  ["CF", 50, 14],
+  ["LF", 23, 21],
+  ["RF", 77, 21],
+  ["SS", 40, 32],
+  ["2B", 60, 32],
+  ["3B", 23, 41],
+  ["1B", 77, 41],
+  ["C", 50, 69],
+  ["DH", 72, 69],
 ];
 
 const DEF_ROW: Record<string, number> = {
@@ -74,9 +74,12 @@ function Card({
   );
   if (filled && photo) {
     return (
-      <span className="pcard dcard" style={{ borderColor: gradeColor(card), boxShadow: `0 0 12px ${gradeColor(card)}66` }}>
-        <a href={photo.page} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{inner}</a>
-        <button className="pcard-edit" onClick={onClick} title="입력 팝업">✎</button>
+      <span className="pcard dcard" style={{ borderColor: gradeColor(card), boxShadow: `0 0 12px ${gradeColor(card)}66` }}
+        onClick={onClick} role="button" tabIndex={0} title={`${name} — 클릭하면 입력 팞업`}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}>
+        {inner}
+        <a className="pcard-src" href={photo.page} target="_blank" rel="noreferrer"
+          onClick={(e) => e.stopPropagation()} title="사진 출처 페이지">⧉</a>
       </span>
     );
   }
@@ -124,38 +127,54 @@ export function LineupView({
         </div>
       </div>
       <div className="diamond">
-        <svg viewBox="0 0 100 72" preserveAspectRatio="none">
+        <svg viewBox="0 0 100 81" preserveAspectRatio="none">
           <defs>
-            <radialGradient id="grass" cx="50%" cy="18%" r="95%">
-              <stop offset="0%" stopColor="#2a7a3c" />
-              <stop offset="60%" stopColor="#1e5c2c" />
-              <stop offset="100%" stopColor="#143f1f" />
+            <radialGradient id="grass" cx="50%" cy="112%" r="135%">
+              <stop offset="0%" stopColor="#2f8a44" />
+              <stop offset="55%" stopColor="#226b33" />
+              <stop offset="100%" stopColor="#153d21" />
             </radialGradient>
             <linearGradient id="dirt" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#9a6534" />
-              <stop offset="100%" stopColor="#71441f" />
+              <stop offset="0%" stopColor="#a8703a" />
+              <stop offset="100%" stopColor="#7a4c22" />
             </linearGradient>
+            <clipPath id="fieldClip">
+              <path d="M 12 32 Q 50 -2 88 32 L 88 81 L 12 81 Z" />
+            </clipPath>
           </defs>
-          <rect x="0" y="0" width="100" height="72" fill="url(#grass)" />
-          <ellipse cx="50" cy="20" rx="46" ry="26" fill="#ffffff" opacity="0.04" />
-          <ellipse cx="50" cy="20" rx="30" ry="17" fill="#000000" opacity="0.06" />
-          {/* 흙: 내야 다이아몬드 + 마운드 + 홈 */}
-          <polygon points="50,61 71,41 50,21 29,41" fill="url(#dirt)" />
-          <circle cx="50" cy="45" r="3.4" fill="url(#dirt)" />
-          <circle cx="50" cy="58" r="4.6" fill="url(#dirt)" />
-          {/* 잔디: 내야 안쪽 */}
-          <polygon points="50,54 62,42 50,30 38,42" fill="#24703a" />
-          {/* 파울라인 */}
-          <line x1="50" y1="58" x2="6" y2="8" stroke="#f8fafc" strokeWidth="0.45" opacity="0.85" />
-          <line x1="50" y1="58" x2="94" y2="8" stroke="#f8fafc" strokeWidth="0.45" opacity="0.85" />
-          {/* 외야 담장 */}
-          <path d="M 8 44 A 46 46 0 0 1 92 44" fill="none" stroke="#f8fafc" strokeWidth="0.7" opacity="0.7" />
+          <rect x="0" y="0" width="100" height="81" fill="url(#grass)" />
+          {/* 잔디 결: 홈플레이트 중심 방사형 스트라이프 */}
+          <g clipPath="url(#fieldClip)" stroke="#ffffff" fill="none">
+            <circle cx="50" cy="62" r="21" strokeWidth="7" opacity="0.05" />
+            <circle cx="50" cy="62" r="35" strokeWidth="7" opacity="0.05" />
+            <circle cx="50" cy="62" r="49" strokeWidth="7" opacity="0.05" />
+            <circle cx="50" cy="62" r="63" strokeWidth="7" opacity="0.05" />
+          </g>
+          {/* 워닝트랙 + 외야 담장 */}
+          <path d="M 12 32 Q 50 -2 88 32" fill="none" stroke="#8a5a2e" strokeWidth="3.4" opacity="0.9" />
+          <path d="M 12 32 Q 50 -2 88 32" fill="none" stroke="#f8fafc" strokeWidth="0.7" opacity="0.85" />
+          {/* 파울폴 */}
+          <line x1="12" y1="32" x2="12" y2="26" stroke="#facc15" strokeWidth="0.8" />
+          <line x1="88" y1="32" x2="88" y2="26" stroke="#facc15" strokeWidth="0.8" />
+          {/* 파울라인: 홈에서 파울폴까지 */}
+          <line x1="50" y1="62" x2="12" y2="32" stroke="#f8fafc" strokeWidth="0.45" opacity="0.9" />
+          <line x1="50" y1="62" x2="88" y2="32" stroke="#f8fafc" strokeWidth="0.45" opacity="0.9" />
+          {/* 내야 흙 (스킨드 인필드) */}
+          <path d="M 50 64.5 L 66.5 50 L 50 35.5 L 33.5 50 Z" fill="url(#dirt)" stroke="#6e4420" strokeWidth="1" strokeLinejoin="round" />
+          {/* 내야 잔디 */}
+          <path d="M 50 58.5 L 60.5 50 L 50 41.5 L 39.5 50 Z" fill="#2a7a3c" />
+          {/* 마운드 흙 + 고무판 */}
+          <circle cx="50" cy="51" r="2.8" fill="url(#dirt)" />
+          <rect x="49.2" y="50.75" width="1.6" height="0.5" fill="#f8fafc" />
           {/* 베이스 */}
-          <rect x="62.3" y="41.3" width="1.6" height="1.6" fill="#f8fafc" transform="rotate(45 63.1 42.1)" />
-          <rect x="49.2" y="30.2" width="1.6" height="1.6" fill="#f8fafc" transform="rotate(45 50 31)" />
-          <rect x="36.2" y="41.3" width="1.6" height="1.6" fill="#f8fafc" transform="rotate(45 37 42.1)" />
-          <polygon points="50,56.2 51.1,57.3 50.6,58.4 49.4,58.4 48.9,57.3" fill="#f8fafc" />
-          <ellipse cx="50" cy="45" rx="1.6" ry="0.9" fill="#e7e5e4" />
+          <rect x="61.75" y="49.25" width="1.5" height="1.5" fill="#f8fafc" transform="rotate(45 62.5 50)" />
+          <rect x="49.25" y="38.75" width="1.5" height="1.5" fill="#f8fafc" transform="rotate(45 50 39.5)" />
+          <rect x="36.75" y="49.25" width="1.5" height="1.5" fill="#f8fafc" transform="rotate(45 37.5 50)" />
+          {/* 홈 서클 + 홈플레이트 + 타석 */}
+          <circle cx="50" cy="62" r="3.4" fill="url(#dirt)" />
+          <polygon points="50,61.5 50.9,62.1 50.9,63.1 50,63.7 49.1,63.1 49.1,62.1" fill="#f8fafc" />
+          <rect x="47.4" y="60.6" width="1.7" height="3.2" fill="none" stroke="#f8fafc" strokeWidth="0.35" opacity="0.8" />
+          <rect x="50.9" y="60.6" width="1.7" height="3.2" fill="none" stroke="#f8fafc" strokeWidth="0.35" opacity="0.8" />
         </svg>
         {DIAMOND.map(([pos, x, y]) => {
           const hit = byPos.get(pos);
