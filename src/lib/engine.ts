@@ -63,6 +63,8 @@ export interface PlayerInput {
   card: string;
   name: string;
   year: number | "";
+  enName: string; // Wikimedia Commons 검색용 영문명
+  photoUrl: string; // 수동 사진 URL (직접 지정 시 우선)
   base: [number | "", number | "", number | ""];
   train: [number | "", number | "", number | ""];
   spec: [number | "", number | "", number | ""];

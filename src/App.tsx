@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Chem, Kind, PlayerInput, SkillTables } from "./lib/engine";
 import { calcPlayer, flagDefaults } from "./lib/engine";
+import type { PhotoInfo } from "./lib/photos";
+import { searchPhoto } from "./lib/photos";
 import { PlayerTable } from "./components/PlayerTable";
 import { LineupView } from "./components/LineupView";
 import { DeckPanel } from "./components/DeckPanel";
 import { SkillPanel } from "./components/SkillPanel";
+import { PhotoSettings } from "./components/PhotoSettings";
 import { ResultPanel } from "./components/ResultPanel";
 import "./styles.css";
 
@@ -22,7 +25,7 @@ const PITCHER_DEF: [number, string][] = [
 function blankPlayer(excelRow: number, kind: Kind, pos: string, order: number | ""): PlayerInput {
   return {
     excelRow, kind, pos, order,
-    card: "", name: "", year: "",
+    card: "", name: "", year: "", enName: "", photoUrl: "",
     base: ["", "", ""], train: ["", "", ""], spec: ["", "", ""],
     transLv: "", enhLv: "", pohLv: "",
     extra: ["", "", ""],
@@ -60,7 +63,9 @@ function load(): State {
     const s = JSON.parse(raw) as State;
     const d = defaultState();
     return {
-      players: Array.isArray(s.players) && s.players.length === 18 ? s.players : d.players,
+      players: Array.isArray(s.players) && s.players.length === 18
+        ? s.players.map((p) => ({ ...p, enName: p.enName ?? "", photoUrl: p.photoUrl ?? "" }))
+        : d.players,
       chem: { ...d.chem, ...(s.chem || {}) },
       flags: { ...d.flags, ...(s.flags || {}) },
       yearInputs: { ...d.yearInputs, ...(s.yearInputs || {}) },
@@ -81,10 +86,42 @@ export default function App() {
   const [yearInputs, setYearInputs] = useState(boot.yearInputs);
   const [tables, setTables] = useState(boot.tables);
   const [tab, setTab] = useState<Tab>("lineup");
+  const [photoCache, setPhotoCache] = useState<Record<string, PhotoInfo | null>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("rivals-photos-v1") || "{}");
+    } catch {
+      return {};
+    }
+  });
 
   useEffect(() => {
     localStorage.setItem(KEY, JSON.stringify({ players, chem, flags, yearInputs, tables }));
   }, [players, chem, flags, yearInputs, tables]);
+
+  useEffect(() => {
+    localStorage.setItem("rivals-photos-v1", JSON.stringify(photoCache));
+  }, [photoCache]);
+
+  // 영문명이 있는데 캐시에 없으면 Commons 조회
+  useEffect(() => {
+    const targets = players.filter(
+      (p) => !p.photoUrl.trim() && p.enName.trim() && photoCache[p.enName.trim().toLowerCase()] === undefined,
+    );
+    if (!targets.length) return;
+    let alive = true;
+    (async () => {
+      for (const t of targets) {
+        const key = t.enName.trim().toLowerCase();
+        try {
+          const hit = await searchPhoto(t.enName);
+          if (alive) setPhotoCache((c) => (c[key] === undefined ? { ...c, [key]: hit } : c));
+        } catch {
+          if (alive) setPhotoCache((c) => (c[key] === undefined ? { ...c, [key]: null } : c));
+        }
+      }
+    })();
+    return () => { alive = false; };
+  }, [players, photoCache]);
 
   const ctx = useMemo(() => {
     const cardByRow: Record<number, string> = {};
@@ -120,6 +157,18 @@ export default function App() {
     [tables],
   );
 
+  const photosByRow: Record<number, PhotoInfo> = useMemo(() => {
+    const out: Record<number, PhotoInfo> = {};
+    for (const p of players) {
+      if (p.photoUrl.trim()) out[p.excelRow] = { src: p.photoUrl.trim(), page: p.photoUrl.trim() };
+      else if (p.enName.trim()) {
+        const hit = photoCache[p.enName.trim().toLowerCase()];
+        if (hit) out[p.excelRow] = hit;
+      }
+    }
+    return out;
+  }, [players, photoCache]);
+
   return (
     <div className="wrap">
       <h1>Rivals Deck <span className="muted">— 9이닝스 라이벌즈 덱관리 (랭대 공격 기준)</span></h1>
@@ -131,13 +180,19 @@ export default function App() {
         ))}
       </div>
       {tab === "lineup" && (
-        <LineupView batters={batters} pitchers={pitchers} bRes={bRes} pRes={pRes} gotoInput={setTab} />
+        <LineupView batters={batters} pitchers={pitchers} bRes={bRes} pRes={pRes} gotoInput={setTab} photos={photosByRow} />
       )}
       {tab === "batter" && (
-        <PlayerTable title="타자 (최종 육성값: 파워·정확·선구)" kind="batter" rows={batters} results={bRes} update={update} customNames={customNames.batter} />
+        <>
+          <PlayerTable title="타자 (최종 육성값: 파워·정확·선구)" kind="batter" rows={batters} results={bRes} update={update} customNames={customNames.batter} />
+          <PhotoSettings rows={batters} update={update} photos={photosByRow} />
+        </>
       )}
       {tab === "pitcher" && (
-        <PlayerTable title="투수 (최종 육성값: 변화·구위)" kind="pitcher" rows={pitchers} results={pRes} update={update} customNames={customNames.pitcher} />
+        <>
+          <PlayerTable title="투수 (최종 육성값: 변화·구위)" kind="pitcher" rows={pitchers} results={pRes} update={update} customNames={customNames.pitcher} />
+          <PhotoSettings rows={pitchers} update={update} photos={photosByRow} />
+        </>
       )}
       {tab === "deck" && (
         <DeckPanel

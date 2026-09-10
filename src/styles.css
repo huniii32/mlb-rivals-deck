@@ -34,6 +34,9 @@ th { color: #94a3b8; font-weight: 600; }
 .pcard-score { font-size: 20px; font-weight: 800; }
 .pcard-name { font-size: 12px; font-weight: 700; }
 .pcard-grade { font-size: 10px; color: #cbd5e1; }
+.pcard-img { width: 100%; height: 56px; object-fit: cover; object-position: top; border-radius: 4px; }
+.pcard a { color: inherit; text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.pcard-edit { position: absolute; bottom: 2px; right: 2px; font-size: 10px; padding: 1px 5px; }
 .prow { display: flex; gap: 8px; flex-wrap: wrap; }
 .score-sm { font-size: 18px; font-weight: 800; }
 h1 { font-size: 20px; }

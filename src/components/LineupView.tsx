@@ -1,4 +1,5 @@
 import type { PlayerInput, PlayerResult } from "../lib/engine";
+import type { PhotoInfo } from "../lib/photos";
 
 // 게임 라인업 화면처럼 다이아몬드 위에 카드 배치.
 // 타자 9명(외야 LF/CF/RF, 내야 3B/SS/2B/1B, 포수 C, 지명 DH) + 투수 9명(SP5/RP3/CP1).
@@ -43,20 +44,17 @@ function shortCard(card: string): string {
 }
 
 function Card({
-  pos, name, card, score, filled, onClick,
+  pos, name, card, score, filled, photo, onClick,
 }: {
-  pos: string; name: string; card: string; score: number; filled: boolean; onClick: () => void;
+  pos: string; name: string; card: string; score: number; filled: boolean;
+  photo?: PhotoInfo; onClick: () => void;
 }) {
-  return (
-    <button
-      className={`pcard ${filled ? "" : "empty"}`}
-      style={filled ? { borderColor: gradeColor(card), boxShadow: `0 0 10px ${gradeColor(card)}55` } : undefined}
-      onClick={onClick}
-      title={filled ? `${name} — 클릭하면 입력 탭으로` : `${pos} 비어있음 — 클릭하면 입력 탭으로`}
-    >
+  const inner = (
+    <>
       <span className="pcard-pos">{pos}</span>
       {filled ? (
         <>
+          {photo && <img className="pcard-img" src={photo.src} alt={name} />}
           <span className="pcard-score">{score.toFixed(0)}</span>
           <span className="pcard-name">{name}</span>
           <span className="pcard-grade">{shortCard(card)}</span>
@@ -64,18 +62,37 @@ function Card({
       ) : (
         <span className="pcard-name muted">+ 등록</span>
       )}
+    </>
+  );
+  if (filled && photo) {
+    return (
+      <span className="pcard" style={{ borderColor: gradeColor(card), boxShadow: `0 0 10px ${gradeColor(card)}55` }}>
+        <a href={photo.page} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{inner}</a>
+        <button className="pcard-edit" onClick={onClick} title="입력 탭으로">✎</button>
+      </span>
+    );
+  }
+  return (
+    <button
+      className={`pcard ${filled ? "" : "empty"}`}
+      style={filled ? { borderColor: gradeColor(card), boxShadow: `0 0 10px ${gradeColor(card)}55` } : undefined}
+      onClick={onClick}
+      title={filled ? `${name} — 클릭하면 입력 탭으로` : `${pos} 비어있음 — 클릭하면 입력 탭으로`}
+    >
+      {inner}
     </button>
   );
 }
 
 export function LineupView({
-  batters, pitchers, bRes, pRes, gotoInput,
+  batters, pitchers, bRes, pRes, gotoInput, photos,
 }: {
   batters: PlayerInput[];
   pitchers: PlayerInput[];
   bRes: PlayerResult[];
   pRes: PlayerResult[];
   gotoInput: (kind: "batter" | "pitcher") => void;
+  photos: Record<number, PhotoInfo>;
 }) {
   const byPos = new Map(batters.map((p, i) => [p.pos.trim().toUpperCase(), { p, r: bRes[i] }]));
   const avg = (v: number[]) => (v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0);
@@ -112,6 +129,7 @@ export function LineupView({
                 card={hit?.p.card ?? ""}
                 score={hit?.r.total ?? 0}
                 filled={!!hit?.p.name.trim()}
+                photo={hit ? photos[hit.p.excelRow] : undefined}
                 onClick={() => gotoInput("batter")}
               />
             </div>
@@ -122,16 +140,17 @@ export function LineupView({
       <div className="prow">
         {pitchers.slice(0, 5).map((p, i) => (
           <Card key={p.excelRow} pos={p.pos} name={p.name} card={p.card} score={pRes[i].total}
-            filled={!!p.name.trim()} onClick={() => gotoInput("pitcher")} />
+            filled={!!p.name.trim()} photo={photos[p.excelRow]} onClick={() => gotoInput("pitcher")} />
         ))}
       </div>
       <h4>불펜</h4>
       <div className="prow">
         {pitchers.slice(5).map((p, i) => (
           <Card key={p.excelRow} pos={p.pos} name={p.name} card={p.card} score={pRes[i + 5].total}
-            filled={!!p.name.trim()} onClick={() => gotoInput("pitcher")} />
+            filled={!!p.name.trim()} photo={photos[p.excelRow]} onClick={() => gotoInput("pitcher")} />
         ))}
       </div>
+      <p className="muted">사진: Wikimedia Commons (CC 라이선스, 클릭 시 출처 페이지로 이동)</p>
     </div>
   );
 }
