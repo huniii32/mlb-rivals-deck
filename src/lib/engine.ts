@@ -72,6 +72,8 @@ export interface PlayerInput {
   enhLv: number | "";
   pohLv: number | "";
   extra: [number | "", number | "", number | ""];
+  synergy: [number | "", number | "", number | ""]; // 게임 육성수치 시너지 행
+  locker: [number | "", number | "", number | ""]; // 게임 육성수치 라커룸(+효과) 행
   skillB: boolean; // AQ: O면 +3
   skills: [string, string, string, string];
   finalOv: [number | "", number | "", number | ""];
@@ -249,7 +251,7 @@ export function calcPlayer(
     const ar = p.skillB ? 3 : 0;
     const a =
       num(p.base[i]) + num(p.train[i]) + num(p.spec[i]) +
-      (t ?? 0) + (e ?? 0) + (h ?? 0) + num(p.extra[i]) + ar + (deckSums[i] ?? 0);
+      (t ?? 0) + (e ?? 0) + (h ?? 0) + num(p.extra[i]) + num(p.synergy[i]) + num(p.locker[i]) + ar + (deckSums[i] ?? 0);
     auto.push(Math.round(a * 100) / 100);
     const ov = p.finalOv[i];
     manual.push(ov !== "");

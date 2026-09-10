@@ -20,7 +20,7 @@ export function PlayerEditor({
   const stats = kind === "batter" ? ["파워", "정확", "선구"] : ["변화", "구위"];
   const n = kind === "batter" ? 3 : 2;
   const listId = `ed-skills-${kind}-${p.excelRow}`;
-  const setArr = (field: "base" | "train" | "spec" | "extra" | "finalOv", i: number, v: number | "") => {
+  const setArr = (field: "base" | "train" | "spec" | "extra" | "synergy" | "locker" | "finalOv", i: number, v: number | "") => {
     const arr = [...p[field]] as [number | "", number | "", number | ""];
     arr[i] = v;
     update({ [field]: arr } as Partial<PlayerInput>);
@@ -80,7 +80,7 @@ export function PlayerEditor({
       <div className="ed-sec">스탯 (최종열에 직접 적으면 수동 고정 · 지우면 자동)</div>
       <table className="ed-stats">
         <thead>
-          <tr><th>스탯</th><th>기본</th><th>훈련</th><th>특훈</th><th>기타</th><th>초월</th><th>강화</th><th>포훈</th><th>덱코</th><th>자동합</th><th>최종</th></tr>
+          <tr><th>스탯</th><th>기본</th><th>훈련</th><th>특훈</th><th>기타</th><th>시너지</th><th>라커룸</th><th>초월</th><th>강화</th><th>포훈</th><th>덱코</th><th>자동합</th><th>최종</th></tr>
         </thead>
         <tbody>
           {stats.map((s, i) => (
@@ -90,6 +90,8 @@ export function PlayerEditor({
               <td><Num value={p.train[i]} width={56} onChange={(v) => setArr("train", i, v)} /></td>
               <td><Num value={p.spec[i]} width={56} onChange={(v) => setArr("spec", i, v)} /></td>
               <td><Num value={p.extra[i]} width={56} onChange={(v) => setArr("extra", i, v)} /></td>
+              <td><Num value={p.synergy[i]} width={56} onChange={(v) => setArr("synergy", i, v)} /></td>
+              <td><Num value={p.locker[i]} width={56} onChange={(v) => setArr("locker", i, v)} /></td>
               <td className="calc">+{res.trans[i] ?? 0}</td>
               <td className="calc">+{res.enh[i] ?? 0}</td>
               <td className="calc">+{res.poh[i] ?? 0}</td>

@@ -31,6 +31,8 @@ function blankPlayer(excelRow: number, kind: Kind, pos: string, order: number | 
     base: ["", "", ""], train: ["", "", ""], spec: ["", "", ""],
     transLv: "", enhLv: "", pohLv: "",
     extra: ["", "", ""],
+    synergy: ["", "", ""],
+    locker: ["", "", ""],
     skillB: false,
     skills: ["", "", "", ""],
     finalOv: ["", "", ""],
@@ -68,11 +70,23 @@ function loadDecks(): { decks: Deck[]; activeId: string } {
     if (raw) {
       const s = JSON.parse(raw) as { decks: Deck[]; activeId: string };
       if (Array.isArray(s.decks) && s.decks.length) {
-        const decks = s.decks.map((d) => ({
-          ...blankDeck(d.name || "내 덱"),
-          ...d,
-          players: Array.isArray(d.players) && d.players.length === 18 ? d.players : blankDeck("x").players,
-        }));
+        const decks = s.decks.map((d) => {
+          const base = blankDeck(d.name || "내 덱");
+          const norm = (p: PlayerInput): PlayerInput => ({
+            ...p,
+            enName: p.enName ?? "",
+            photoUrl: p.photoUrl ?? "",
+            synergy: p.synergy ?? ["", "", ""],
+            locker: p.locker ?? ["", "", ""],
+          });
+          return {
+            ...base,
+            ...d,
+            players: Array.isArray(d.players) && d.players.length === 18
+              ? (d.players as PlayerInput[]).map(norm)
+              : base.players,
+          };
+        });
         const activeId = decks.some((d) => d.id === s.activeId) ? s.activeId : decks[0].id;
         return { decks, activeId };
       }
@@ -264,9 +278,17 @@ export default function App() {
       try {
         const d = JSON.parse(String(rd.result)) as Deck;
         if (!Array.isArray(d.players) || d.players.length !== 18) throw new Error("players");
-        const nd = {
-          ...blankDeck(d.name || "가져온 덱"),
+        const base = blankDeck(d.name || "가져온 덱");
+        const nd: Deck = {
+          ...base,
           ...d,
+          players: (d.players as PlayerInput[]).map((p) => ({
+            ...p,
+            enName: p.enName ?? "",
+            photoUrl: p.photoUrl ?? "",
+            synergy: p.synergy ?? ["", "", ""],
+            locker: p.locker ?? ["", "", ""],
+          })),
           id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
           updatedAt: Date.now(),
         };
