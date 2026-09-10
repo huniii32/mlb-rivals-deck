@@ -171,7 +171,14 @@ export default function App() {
   }, []);
 
   // 영문명별 사진 조회 (행별 마지막 조회명 추적 → 이름 바뀌면 재조회)
+  // 주의: 진행 중 setPhotoQuery가 effect를 재실행해도 루프가 죽으면 안 되므로
+  // 마운트 여부만 ref로 보고, 캐시 덮어쓰기는 updater 가드로 막는다.
   const [photoQuery, setPhotoQuery] = useState<Record<number, string>>({});
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   useEffect(() => {
     const targets = players.filter((p) => {
       const name = p.enName.trim();
@@ -181,21 +188,21 @@ export default function App() {
       return true;
     });
     if (!targets.length) return;
-    let alive = true;
     (async () => {
       for (const t of targets) {
         const name = t.enName.trim();
         const key = name.toLowerCase();
-        if (alive) setPhotoQuery((q) => ({ ...q, [t.excelRow]: name }));
+        setPhotoQuery((q) => (q[t.excelRow] === name ? q : { ...q, [t.excelRow]: name }));
+        let hit: PhotoInfo | null;
         try {
-          const hit = await searchPhoto(name);
-          if (alive) setPhotoCache((c) => (c[key] === undefined ? { ...c, [key]: hit } : c));
+          hit = await searchPhoto(name);
         } catch {
-          if (alive) setPhotoCache((c) => (c[key] === undefined ? { ...c, [key]: null } : c));
+          hit = null;
         }
+        if (!mounted.current) return;
+        setPhotoCache((c) => (c[key] === undefined ? { ...c, [key]: hit } : c));
       }
     })();
-    return () => { alive = false; };
   }, [players, photoCache, photoQuery]);
 
   const retryPhoto = (p: PlayerInput) => {
