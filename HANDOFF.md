@@ -5,7 +5,10 @@
 ## 앱 상태
 - 공개 URL: https://huniii32.github.io/mlb-rivals-deck/ (main 푸시 → Actions 자동배포, `deploy-pages.sh`는 예비)
 - 시너지·라커룸 입력칸 추가됨 (팝업 스탯표, 자동합산 포함)
-- seed 수집: `scripts/crawl_notices.py --max-posts N` → `data/seed_players.csv` (gitignore, 재생성 가능). 2026-09-10 기준 200포스트 → 1079행
+- 소식 섹션: 공식 공지 번들(`src/data/notices.json`, 크롤러가 생성·커밋) + 정보글 수동등록(localStorage)
+- 공유: 덱→URL 해시 공유, 링크 열면 가져오기 (브라우저 왕복 검증됨). 내 덱 랭킹 내장. 전체 공개 랭킹은 백엔드 필요로 미구현
+- seed 수집: `scripts/crawl_notices.py --max-posts N` → `data/seed_players.csv` (gitignore) + `src/data/notices.json` (커밋)
+- 펨코: 검색이 JS/로그인 장벽이라 자동 수집 불가. 정보글 탭 수동 등록으로 대응
 - 로컬: `WEB_PORT=5176 npm run dev` (5174 trading·5175 clink와 분리됨)
 - 구조: 단일 페이지 (라인업 다이아몬드 → 카드 클릭 팝업 편집 → 우측 케미·팀덱코/스덱코 → 상세 결과 → 스킬점수접기식)
 - 데이터: 브라우저 localStorage, 덱별 저장 (키 `rivals-decks-v1`), 스킬표는 전역 (`rivals-tables-v1`), 사진캐시 (`rivals-photos-v1`), 테마 (`rivals-theme`)

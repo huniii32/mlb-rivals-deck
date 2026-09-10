@@ -309,7 +309,44 @@ export function calcPlayer(
   };
 }
 
-/** 스킬 비교 계산기 (J35:O38 방식): 4개 스킬 합. 4번째 없으면 3개 합. */
+/** 덱 전체 총점 (선발/계투/타자 평균×10, 가중합). 이름 있는 선수만 평균. */
+export interface DeckLike {
+  players: PlayerInput[];
+  chem: Chem;
+  flags: Record<string, boolean>;
+  yearInputs: Record<number, number | "">;
+}
+
+export function calcDeckTotal(
+  d: DeckLike,
+  tables: SkillTables,
+): { sp: number; rp: number; bt: number; total: number; named: number } {
+  const cardByRow: Record<number, string> = {};
+  const orderByRow: Record<number, number> = {};
+  const enhByRow: Record<number, number> = {};
+  const yearByRow: Record<number, number> = {};
+  for (const p of d.players) {
+    cardByRow[p.excelRow] = p.card;
+    orderByRow[p.excelRow] = typeof p.order === "number" ? p.order : 0;
+    enhByRow[p.excelRow] = typeof p.enhLv === "number" ? p.enhLv : 0;
+    yearByRow[p.excelRow] = typeof p.year === "number" ? p.year : 0;
+  }
+  const ctx: EvalCtx & { chem: Chem } = {
+    flags: d.flags, yearInputs: d.yearInputs,
+    cardByRow, orderByRow, enhByRow, yearByRow, chem: d.chem,
+  };
+  const res = d.players.map((p) => calcPlayer(p, ctx, tables));
+  const avg = (v: number[]) => (v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0);
+  const sp = avg(res.slice(9, 14).filter((_, i) => d.players[i + 9].name.trim()).map((r) => r.total)) * 10;
+  const rp = avg(res.slice(14).filter((_, i) => d.players[i + 14].name.trim()).map((r) => r.total)) * 10;
+  const bt = avg(res.slice(0, 9).filter((_, i) => d.players[i].name.trim()).map((r) => r.total)) * 10;
+  const named =
+    res.slice(0, 9).filter((_, i) => d.players[i].name.trim()).length +
+    res.slice(9).filter((_, i) => d.players[i + 9].name.trim()).length;
+  return { sp, rp, bt, total: sp * 0.4 + rp * 0.1 + bt * 0.5, named };
+}
+
+/** 스킬 비교 계산기: 4개 스킬 합. 4번째 없으면 3개 합. */
 export function skillCompare(kind: Kind, skills: string[], tables: SkillTables): number | null {
   const scores = skills.map((s) => (s.trim() ? skillScore(kind, s, tables) : 0));
   if (scores.slice(0, 3).some((s) => s === null)) return null;

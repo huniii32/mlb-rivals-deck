@@ -74,6 +74,15 @@ def norm_header(h):
     return HEADER_MAP.get(h.strip().lower().replace("_", " "), "")
 
 
+def extract_meta(html, url):
+    m = re.search(r'<meta property="og:title" content="([^"]+)"', html)
+    title = ihtml.unescape(m.group(1)).strip() if m else url.rsplit("/", 1)[-1]
+    m2 = re.search(r"(\d{2}-\d{2}-\d{4} \d{2}:\d{2})", html)
+    date = m2.group(1) if m2 else ""
+    lang = "/ko/" if "/ko/" in url else "/en/" if "/en/" in url else ""
+    return {"title": title, "date": date, "url": url, "lang": lang}
+
+
 def extract_players(tables, url):
     out = []
     for t in tables:
@@ -118,6 +127,7 @@ def main():
     queue = [u.strip() for u in args.seeds.split(",") if u.strip()]
     seen = set()
     rows = []
+    notices = []
     fetched = 0
 
     while queue and fetched < args.max_posts:
@@ -135,6 +145,7 @@ def main():
             parser.feed(r.text)
             got = extract_players(parser.tables, url)
             rows.extend(got)
+            notices.append(extract_meta(r.text, url))
             print(f"[{fetched}] {url} tables={len(parser.tables)} players={len(got)}", flush=True)
             for link in sorted(set(re.findall(r"/MLB9IRIVALS/(?:ko|en)/board/\d+/\d+", r.text))):
                 full = urljoin(BASE, link)
@@ -154,6 +165,15 @@ def main():
         w.writeheader()
         w.writerows(final)
     print(f"saved {len(final)} rows -> {out_path} (fetched {fetched} posts)")
+
+    not_path = root / "src" / "data" / "notices.json"
+    not_path.parent.mkdir(parents=True, exist_ok=True)
+    with not_path.open("w", encoding="utf-8") as f:
+        json.dump(
+            {"updated": time.strftime("%Y-%m-%d"), "notices": sorted(notices, key=lambda x: x["date"], reverse=True)},
+            f, ensure_ascii=False, indent=1,
+        )
+    print(f"saved {len(notices)} notices -> {not_path}")
 
 
 if __name__ == "__main__":

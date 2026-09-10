@@ -7,6 +7,8 @@ import { LineupView } from "./components/LineupView";
 import { PlayerEditor } from "./components/PlayerEditor";
 import { DeckPanel } from "./components/DeckPanel";
 import { SkillPanel } from "./components/SkillPanel";
+import { NewsTab } from "./components/NewsTab";
+import { SharePanel } from "./components/SharePanel";
 import { ResultPanel } from "./components/ResultPanel";
 import "./styles.css";
 
@@ -308,30 +310,37 @@ export default function App() {
     const rd = new FileReader();
     rd.onload = () => {
       try {
-        const d = JSON.parse(String(rd.result)) as Deck;
-        if (!Array.isArray(d.players) || d.players.length !== 18) throw new Error("players");
-        const base = blankDeck(d.name || "가져온 덱");
-        const nd: Deck = {
-          ...base,
-          ...d,
-          players: (d.players as PlayerInput[]).map((p) => ({
-            ...p,
-            enName: p.enName ?? "",
-            photoUrl: p.photoUrl ?? "",
-            team: p.team ?? "",
-            synergy: p.synergy ?? ["", "", ""],
-            locker: p.locker ?? ["", "", ""],
-          })),
-          id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
-          updatedAt: Date.now(),
-        };
-        setDecks([...decks, nd]);
-        setActiveId(nd.id);
+        addDeckData(JSON.parse(String(rd.result)) as Deck, "가져온 덱");
       } catch {
         alert("덱 파일 형식이 아닙니다.");
       }
     };
     rd.readAsText(f);
+  };
+
+  const addDeckData = (d: Deck, fallbackName: string) => {
+    if (!d || !Array.isArray(d.players) || d.players.length !== 18) {
+      alert("덱 형식이 아닙니다.");
+      return;
+    }
+    const base = blankDeck(d.name || fallbackName);
+    const nd: Deck = {
+      ...base,
+      ...d,
+      players: (d.players as PlayerInput[]).map((p) => ({
+        ...p,
+        enName: p.enName ?? "",
+        photoUrl: p.photoUrl ?? "",
+        team: p.team ?? "",
+        synergy: p.synergy ?? ["", "", ""],
+        locker: p.locker ?? ["", "", ""],
+      })),
+      id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+      updatedAt: Date.now(),
+    };
+    setDecks((prev) => [...prev, nd]);
+    setActiveId(nd.id);
+    setSelected(null);
   };
 
   return (
@@ -411,6 +420,16 @@ export default function App() {
           </div>
         </div>
       )}
+
+      <h2>소식</h2>
+      <NewsTab />
+
+      <h2>공유 · 랭킹</h2>
+      <SharePanel
+        decks={decks} tables={tables} activeId={deck.id}
+        onSelectDeck={(id) => { setActiveId(id); setSelected(null); }}
+        onImportDeck={(d) => addDeckData(d, "공유받은 덱")}
+      />
 
       <h2>상세 결과</h2>
       <ResultPanel batters={batters} pitchers={pitchers} bRes={bRes} pRes={pRes} tables={tables} customNames={customNames} />
