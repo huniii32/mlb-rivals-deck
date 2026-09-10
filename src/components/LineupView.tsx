@@ -157,7 +157,7 @@ export function LineupView({
         ))}
       </div>
       <p className="muted">사진: Wikimedia Commons (CC 라이선스, 클릭 시 출처 페이지로 이동) ·
-        구장 배경: <a href="https://commons.wikimedia.org/wiki/File:Fifth_Third_Park_night_view_from_left_field.jpg" target="_blank" rel="noreferrer">Fifth Third Park</a> (CC BY-SA 4.0)</p>
+        구장 배경: <a href="https://commons.wikimedia.org/wiki/File:NASA_Sees_Target_Field,_Minneapolis,_Minnesota_--_Home_of_2014_MLB_All-Star_Game_(14478835867).jpg" target="_blank" rel="noreferrer">Target Field 항공사진(NASA)</a> (퍼블릭 도메인)</p>
     </div>
   );
 }
