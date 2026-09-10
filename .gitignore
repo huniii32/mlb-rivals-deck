@@ -3,5 +3,5 @@ dist/
 *.log
 .env
 
-# scraped seed data (regenerable)
-data/
+# scraped seed data (regenerable, repo-root data/ only)
+/data/
