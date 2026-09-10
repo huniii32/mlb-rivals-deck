@@ -7,6 +7,7 @@ import { LineupView } from "./components/LineupView";
 import { PlayerEditor } from "./components/PlayerEditor";
 import { DeckPanel } from "./components/DeckPanel";
 import { SkillPanel } from "./components/SkillPanel";
+import { TableEditor } from "./components/TableEditor";
 import { NewsTab } from "./components/NewsTab";
 import { SharePanel } from "./components/SharePanel";
 import { ResultPanel } from "./components/ResultPanel";
@@ -419,9 +420,10 @@ export default function App() {
       )}
 
       {tab === "skills" && (
-        <div className="card">
+        <>
           <SkillPanel tables={tables} setTables={setTables} />
-        </div>
+          <TableEditor tables={tables} setTables={setTables} />
+        </>
       )}
 
       {selPlayer && selRes && (

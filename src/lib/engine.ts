@@ -168,6 +168,20 @@ export function deckBonus(
 export interface SkillTables {
   overrides: Record<string, number>; // kind:name -> score
   customs: { kind: Kind; name: string; score: number }[];
+  tables?: {
+    enhance?: Record<string, number[]>;
+    transcend?: Record<string, number[]>;
+    pohoon?: Record<string, number[]>;
+  };
+}
+
+export type TableKind = "enhance" | "transcend" | "pohoon";
+export const TABLE_LEVELS: Record<TableKind, number> = { enhance: 20, transcend: 16, pohoon: 20 };
+export const TABLE_LABEL: Record<TableKind, string> = { enhance: "강화", transcend: "초월", pohoon: "포훈" };
+
+export function getTable(kind: TableKind, tables: SkillTables): Record<string, number[]> {
+  const base = LOOKUP[kind] as unknown as Record<string, number[]>;
+  return { ...base, ...(tables.tables?.[kind] ?? {}) };
 }
 
 export function skillScore(
@@ -186,15 +200,23 @@ export function skillScore(
   return found ? found.score : null;
 }
 
+const normKey = (s: string): string => s.replace(/\s+/g, "");
+
 function tableBonus(
-  table: Record<string, number[]>,
+  base: Record<string, number[]>,
   key: string,
   lv: number | "",
-  kind: "transcend" | "enhance" | "pohoon",
+  kind: TableKind,
+  tables: SkillTables,
 ): { v: number; miss: boolean } {
   if (lv === "" || lv === null) return { v: 0, miss: false };
-  const arr = table[key];
-  if (!arr) return { v: 0, miss: true };
+  // 엑셀 원본 결함: 카드 드롭다운('FA 시그니처 블랙')과 표 키('FA시그니처 블랙')의 띄어쓰기가
+  // 달라 FA 계열이 전부 #N/A가 난다. 공백 제거 매칭으로 수정 (WBC 등 표 자체에 없는 카드는 그대로 경고).
+  const table = getTable(kind, tables);
+  const want = normKey(key);
+  const entry = Object.entries(table).find(([k]) => normKey(k) === want);
+  if (!entry) return { v: 0, miss: true };
+  const arr = entry[1];
   const idx = kind === "transcend" ? (lv as number) : (lv as number) - 1;
   if (idx < 0 || idx >= arr.length) return { v: 0, miss: true };
   return { v: arr[idx] ?? 0, miss: false };
@@ -236,9 +258,9 @@ export function calcPlayer(
     let e: number | null = null;
     let h: number | null = null;
     if (i < n) {
-      const tr = tableBonus(LOOKUP.transcend, p.card + stat, p.transLv, "transcend");
-      const en = tableBonus(LOOKUP.enhance, p.card + stat, p.enhLv, "enhance");
-      const ph = tableBonus(LOOKUP.pohoon, p.pos + stat, p.pohLv, "pohoon");
+      const tr = tableBonus(LOOKUP.transcend, p.card + stat, p.transLv, "transcend", tables);
+      const en = tableBonus(LOOKUP.enhance, p.card + stat, p.enhLv, "enhance", tables);
+      const ph = tableBonus(LOOKUP.pohoon, p.pos + stat, p.pohLv, "pohoon", tables);
       if (tr.miss && p.transLv !== "") warnings.push(`${stat} 초월표에 '${p.card}' 없음`);
       if (en.miss && p.enhLv !== "") warnings.push(`${stat} 강화표에 '${p.card}' 없음`);
       if (ph.miss && p.pohLv !== "") warnings.push(`${stat} 포훈표에 '${p.pos}' 없음`);
