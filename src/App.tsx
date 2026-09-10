@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Chem, Kind, PlayerInput, SkillTables } from "./lib/engine";
 import { calcPlayer, flagDefaults } from "./lib/engine";
 import type { PhotoInfo } from "./lib/photos";
-import { searchPhoto } from "./lib/photos";
+import { effectiveQuery, searchPhoto } from "./lib/photos";
 import { LineupView } from "./components/LineupView";
 import { PlayerEditor } from "./components/PlayerEditor";
 import { DeckPanel } from "./components/DeckPanel";
@@ -181,7 +181,7 @@ export default function App() {
   }, []);
   useEffect(() => {
     const targets = players.filter((p) => {
-      const name = p.enName.trim();
+      const name = effectiveQuery(p.enName, p.name);
       if (!name || p.photoUrl.trim()) return false;
       if (photoQuery[p.excelRow] === name) return false;
       if (photoCache[name.toLowerCase()] !== undefined) return false;
@@ -190,7 +190,7 @@ export default function App() {
     if (!targets.length) return;
     (async () => {
       for (const t of targets) {
-        const name = t.enName.trim();
+        const name = effectiveQuery(t.enName, t.name);
         const key = name.toLowerCase();
         setPhotoQuery((q) => (q[t.excelRow] === name ? q : { ...q, [t.excelRow]: name }));
         let hit: PhotoInfo | null;
@@ -206,7 +206,7 @@ export default function App() {
   }, [players, photoCache, photoQuery]);
 
   const retryPhoto = (p: PlayerInput) => {
-    const key = p.enName.trim().toLowerCase();
+    const key = effectiveQuery(p.enName, p.name).toLowerCase();
     setPhotoCache((c) => {
       const n = { ...c };
       delete n[key];
@@ -260,9 +260,12 @@ export default function App() {
     const out: Record<number, PhotoInfo> = {};
     for (const p of players) {
       if (p.photoUrl.trim()) out[p.excelRow] = { src: p.photoUrl.trim(), page: p.photoUrl.trim() };
-      else if (p.enName.trim()) {
-        const hit = photoCache[p.enName.trim().toLowerCase()];
-        if (hit) out[p.excelRow] = hit;
+      else {
+        const q = effectiveQuery(p.enName, p.name);
+        if (q) {
+          const hit = photoCache[q.toLowerCase()];
+          if (hit) out[p.excelRow] = hit;
+        }
       }
     }
     return out;
@@ -393,15 +396,15 @@ export default function App() {
               photo={photosByRow[selPlayer.excelRow]}
               tables={tables}
               photoPending={
-                !!selPlayer.enName.trim() &&
+                !!effectiveQuery(selPlayer.enName, selPlayer.name) &&
                 !selPlayer.photoUrl.trim() &&
-                photoQuery[selPlayer.excelRow] === selPlayer.enName.trim() &&
-                photoCache[selPlayer.enName.trim().toLowerCase()] === undefined
+                photoQuery[selPlayer.excelRow] === effectiveQuery(selPlayer.enName, selPlayer.name) &&
+                photoCache[effectiveQuery(selPlayer.enName, selPlayer.name).toLowerCase()] === undefined
               }
               photoFailed={
-                !!selPlayer.enName.trim() &&
+                !!effectiveQuery(selPlayer.enName, selPlayer.name) &&
                 !selPlayer.photoUrl.trim() &&
-                photoCache[selPlayer.enName.trim().toLowerCase()] === null
+                photoCache[effectiveQuery(selPlayer.enName, selPlayer.name).toLowerCase()] === null
               }
               onRetryPhoto={() => retryPhoto(selPlayer)}
             />

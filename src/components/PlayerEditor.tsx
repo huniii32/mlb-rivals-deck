@@ -128,7 +128,7 @@ export function PlayerEditor({
 
       <div className="ed-sec">사진</div>
       <div className="row">
-        <label>영문명<input value={p.enName} style={{ width: 170 }} placeholder="Shohei Ohtani"
+        <label>영문명(비우면 선수명으로 자동검색)<input value={p.enName} style={{ width: 170 }} placeholder="Shohei Ohtani"
           onChange={(e) => update({ enName: e.target.value })} /></label>
         <label>사진URL<input value={p.photoUrl} style={{ width: 230 }} placeholder="직접 지정 (선택)"
           onChange={(e) => update({ photoUrl: e.target.value })} /></label>
