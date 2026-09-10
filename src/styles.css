@@ -53,6 +53,12 @@ h2 { font-size: 17px; margin: 20px 0 8px; }
 h3 { margin: 4px 0 8px; }
 h4 { margin: 8px 0 4px; }
 details.card summary { cursor: pointer; }
+/* 라인업 + 우측 덱코 사이드바 */
+.lineup-layout { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 12px; align-items: start; }
+.lineup-layout aside h2 { margin-top: 0; }
+@media (max-width: 1024px) {
+  .lineup-layout { grid-template-columns: minmax(0, 1fr); }
+}
 /* 라인업 */
 .stadium { background:
   linear-gradient(rgba(8, 13, 24, 0.62), rgba(8, 13, 24, 0.72)),

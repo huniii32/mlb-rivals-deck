@@ -306,10 +306,22 @@ export default function App() {
         <p className="muted">덱은 이 브라우저에만 저장됩니다 — 남이 내 덱을 볼 수 없고, 나도 남 덱을 못 봅니다. 기기 이동은 내보내기→가져오기로.</p>
       </div>
 
-      <LineupView
-        batters={batters} pitchers={pitchers} bRes={bRes} pRes={pRes}
-        onSelect={setSelected} photos={photosByRow}
-      />
+      <div className="lineup-layout">
+        <div>
+          <LineupView
+            batters={batters} pitchers={pitchers} bRes={bRes} pRes={pRes}
+            onSelect={setSelected} photos={photosByRow}
+          />
+        </div>
+        <aside>
+          <h2>케미 · 팀덱코 · 스덱코</h2>
+          <DeckPanel
+            chem={chem} setChem={(c) => patchDeck({ chem: c })}
+            flags={flags} toggleFlag={(k) => patchDeck({ flags: { ...flags, [k]: !flags[k] } })}
+            yearInputs={yearInputs} setYearInput={(r, v) => patchDeck({ yearInputs: { ...yearInputs, [r]: v } })}
+          />
+        </aside>
+      </div>
 
       {selPlayer && selRes && (
         <div className="modal-overlay" onClick={() => setSelected(null)}>
@@ -326,13 +338,6 @@ export default function App() {
           </div>
         </div>
       )}
-
-      <h2>케미 · 팀덱코 · 스덱코</h2>
-      <DeckPanel
-        chem={chem} setChem={(c) => patchDeck({ chem: c })}
-        flags={flags} toggleFlag={(k) => patchDeck({ flags: { ...flags, [k]: !flags[k] } })}
-        yearInputs={yearInputs} setYearInput={(r, v) => patchDeck({ yearInputs: { ...yearInputs, [r]: v } })}
-      />
 
       <h2>상세 결과</h2>
       <ResultPanel batters={batters} pitchers={pitchers} bRes={bRes} pRes={pRes} tables={tables} customNames={customNames} />
