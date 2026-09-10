@@ -121,9 +121,37 @@ export function LineupView({
       </div>
       <div className="diamond">
         <svg viewBox="0 0 100 72" preserveAspectRatio="none">
-          <path d="M 8 44 A 46 46 0 0 1 92 44" fill="none" stroke="#3b82f6" strokeWidth="1.2" />
-          <polygon points="50,54 64,41 50,28 36,41" fill="none" stroke="#22d3ee" strokeWidth="1" />
-          <circle cx="50" cy="43" r="1.2" fill="#22d3ee" />
+          <defs>
+            <radialGradient id="grass" cx="50%" cy="18%" r="95%">
+              <stop offset="0%" stopColor="#2a7a3c" />
+              <stop offset="60%" stopColor="#1e5c2c" />
+              <stop offset="100%" stopColor="#143f1f" />
+            </radialGradient>
+            <linearGradient id="dirt" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#9a6534" />
+              <stop offset="100%" stopColor="#71441f" />
+            </linearGradient>
+          </defs>
+          <rect x="0" y="0" width="100" height="72" fill="url(#grass)" />
+          <ellipse cx="50" cy="20" rx="46" ry="26" fill="#ffffff" opacity="0.04" />
+          <ellipse cx="50" cy="20" rx="30" ry="17" fill="#000000" opacity="0.06" />
+          {/* 흙: 내야 다이아몬드 + 마운드 + 홈 */}
+          <polygon points="50,61 71,41 50,21 29,41" fill="url(#dirt)" />
+          <circle cx="50" cy="45" r="3.4" fill="url(#dirt)" />
+          <circle cx="50" cy="58" r="4.6" fill="url(#dirt)" />
+          {/* 잔디: 내야 안쪽 */}
+          <polygon points="50,54 62,42 50,30 38,42" fill="#24703a" />
+          {/* 파울라인 */}
+          <line x1="50" y1="58" x2="6" y2="8" stroke="#f8fafc" strokeWidth="0.45" opacity="0.85" />
+          <line x1="50" y1="58" x2="94" y2="8" stroke="#f8fafc" strokeWidth="0.45" opacity="0.85" />
+          {/* 외야 담장 */}
+          <path d="M 8 44 A 46 46 0 0 1 92 44" fill="none" stroke="#f8fafc" strokeWidth="0.7" opacity="0.7" />
+          {/* 베이스 */}
+          <rect x="62.3" y="41.3" width="1.6" height="1.6" fill="#f8fafc" transform="rotate(45 63.1 42.1)" />
+          <rect x="49.2" y="30.2" width="1.6" height="1.6" fill="#f8fafc" transform="rotate(45 50 31)" />
+          <rect x="36.2" y="41.3" width="1.6" height="1.6" fill="#f8fafc" transform="rotate(45 37 42.1)" />
+          <polygon points="50,56.2 51.1,57.3 50.6,58.4 49.4,58.4 48.9,57.3" fill="#f8fafc" />
+          <ellipse cx="50" cy="45" rx="1.6" ry="0.9" fill="#e7e5e4" />
         </svg>
         {DIAMOND.map(([pos, x, y]) => {
           const hit = byPos.get(pos);
@@ -156,8 +184,7 @@ export function LineupView({
             filled={!!p.name.trim()} photo={photos[p.excelRow]} onClick={() => onSelect(p.excelRow)} />
         ))}
       </div>
-      <p className="muted">사진: Wikimedia Commons (CC 라이선스, 클릭 시 출처 페이지로 이동) ·
-        구장 배경: <a href="https://commons.wikimedia.org/wiki/File:NASA_Sees_Target_Field,_Minneapolis,_Minnesota_--_Home_of_2014_MLB_All-Star_Game_(14478835867).jpg" target="_blank" rel="noreferrer">Target Field 항공사진(NASA)</a> (퍼블릭 도메인)</p>
+      <p className="muted">사진: Wikimedia Commons (CC 라이선스, 클릭 시 출처 페이지로 이동)</p>
     </div>
   );
 }
