@@ -170,18 +170,25 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // 영문명이 있는데 캐시에 없으면 Commons 조회
+  // 영문명별 사진 조회 (행별 마지막 조회명 추적 → 이름 바뀌면 재조회)
+  const [photoQuery, setPhotoQuery] = useState<Record<number, string>>({});
   useEffect(() => {
-    const targets = players.filter(
-      (p) => !p.photoUrl.trim() && p.enName.trim() && photoCache[p.enName.trim().toLowerCase()] === undefined,
-    );
+    const targets = players.filter((p) => {
+      const name = p.enName.trim();
+      if (!name || p.photoUrl.trim()) return false;
+      if (photoQuery[p.excelRow] === name) return false;
+      if (photoCache[name.toLowerCase()] !== undefined) return false;
+      return true;
+    });
     if (!targets.length) return;
     let alive = true;
     (async () => {
       for (const t of targets) {
-        const key = t.enName.trim().toLowerCase();
+        const name = t.enName.trim();
+        const key = name.toLowerCase();
+        if (alive) setPhotoQuery((q) => ({ ...q, [t.excelRow]: name }));
         try {
-          const hit = await searchPhoto(t.enName);
+          const hit = await searchPhoto(name);
           if (alive) setPhotoCache((c) => (c[key] === undefined ? { ...c, [key]: hit } : c));
         } catch {
           if (alive) setPhotoCache((c) => (c[key] === undefined ? { ...c, [key]: null } : c));
@@ -189,7 +196,21 @@ export default function App() {
       }
     })();
     return () => { alive = false; };
-  }, [players, photoCache]);
+  }, [players, photoCache, photoQuery]);
+
+  const retryPhoto = (p: PlayerInput) => {
+    const key = p.enName.trim().toLowerCase();
+    setPhotoCache((c) => {
+      const n = { ...c };
+      delete n[key];
+      return n;
+    });
+    setPhotoQuery((q) => {
+      const n = { ...q };
+      delete n[p.excelRow];
+      return n;
+    });
+  };
 
   const ctx = useMemo(() => {
     const cardByRow: Record<number, string> = {};
@@ -364,6 +385,18 @@ export default function App() {
               customNames={customNames[selPlayer.kind]}
               photo={photosByRow[selPlayer.excelRow]}
               tables={tables}
+              photoPending={
+                !!selPlayer.enName.trim() &&
+                !selPlayer.photoUrl.trim() &&
+                photoQuery[selPlayer.excelRow] === selPlayer.enName.trim() &&
+                photoCache[selPlayer.enName.trim().toLowerCase()] === undefined
+              }
+              photoFailed={
+                !!selPlayer.enName.trim() &&
+                !selPlayer.photoUrl.trim() &&
+                photoCache[selPlayer.enName.trim().toLowerCase()] === null
+              }
+              onRetryPhoto={() => retryPhoto(selPlayer)}
             />
           </div>
         </div>

@@ -6,7 +6,7 @@ import { Num } from "./inputs";
 
 /** 라인업에서 포지션 클릭 시 열리는 단일 선수 편집 팝업 */
 export function PlayerEditor({
-  p, res, update, close, customNames, photo, tables,
+  p, res, update, close, customNames, photo, tables, photoPending, photoFailed, onRetryPhoto,
 }: {
   p: PlayerInput;
   res: PlayerResult;
@@ -15,6 +15,9 @@ export function PlayerEditor({
   customNames: string[];
   photo?: PhotoInfo;
   tables: SkillTables;
+  photoPending: boolean;
+  photoFailed: boolean;
+  onRetryPhoto: () => void;
 }) {
   const kind: Kind = p.kind;
   const stats = kind === "batter" ? ["파워", "정확", "선구"] : ["변화", "구위"];
@@ -130,6 +133,13 @@ export function PlayerEditor({
         <label>사진URL<input value={p.photoUrl} style={{ width: 230 }} placeholder="직접 지정 (선택)"
           onChange={(e) => update({ photoUrl: e.target.value })} /></label>
         {p.enName.trim() && <a href={commonsSearchUrl(p.enName)} target="_blank" rel="noreferrer">직접찾기</a>}
+        {photoPending && <span className="muted">사진 찾는 중…</span>}
+        {photoFailed && (
+          <span>
+            <span className="muted">못 찾음 </span>
+            <button onClick={onRetryPhoto}>다시찾기</button>
+          </span>
+        )}
       </div>
 
       <div className="ed-result">
