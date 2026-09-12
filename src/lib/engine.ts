@@ -1,8 +1,9 @@
 import lookup from "../data/lookup.json";
 import deckdata from "../data/deckrules.json";
 
-// 엑셀(MLB라이벌_덱관리프로그램_260812.xlsx) 로직의 웹 이식.
+// 엑셀(MLB라이벌_덱관리프로그램_260910.xlsx) 로직의 웹 이식.
 // 수식 출처: 라인업 시트 J/O/P/D열, 강화/포훈/초월/스킬점수 시트, 덱코(BF:HL) 규칙 파서 추출.
+// 260910 vs 260812: 덱코 조건·점수 동일(1496규칙·684conds 일치), 행9 임계값 라벨 164건 추가(계산 무관), 신스킬 27종.
 
 export type Kind = "batter" | "pitcher";
 

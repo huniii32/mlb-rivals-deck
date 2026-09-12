@@ -10,6 +10,15 @@ interface Notice {
 const NOTICES = (noticesData as { updated: string; notices: Notice[] }).notices;
 const UPDATED = (noticesData as { updated: string }).updated;
 
+/** URL의 board 번호로 섹션 구분: 2=공지사항, 10=Live 업데이트, 11=개발자 노트 */
+const boardOf = (u: string) => u.match(/\/board\/(\d+)\//)?.[1] ?? "";
+const SECTIONS = [
+  { id: "", label: "전체" },
+  { id: "2", label: "공지사항" },
+  { id: "10", label: "Live 업데이트" },
+  { id: "11", label: "개발자 노트" },
+] as const;
+
 interface LinkItem {
   title: string;
   url: string;
@@ -39,6 +48,7 @@ export function NewsTab() {
   const [sub, setSub] = useState<"official" | "info">("official");
   const [q, setQ] = useState("");
   const [lang, setLang] = useState("");
+  const [sec, setSec] = useState<string>("");
   const [links, setLinks] = useState<LinkItem[]>(loadLinks);
   const [t, setT] = useState("");
   const [u, setU] = useState("");
@@ -49,11 +59,10 @@ export function NewsTab() {
     localStorage.setItem(LS_KEY, JSON.stringify(next));
   };
 
-  const filtered = NOTICES.filter(
-    (n) =>
-      (!q || n.title.toLowerCase().includes(q.toLowerCase())) &&
-      (!lang || n.lang === lang),
-  );
+  const matches = (n: Notice) =>
+    (!q || n.title.toLowerCase().includes(q.toLowerCase())) &&
+    (!lang || n.lang === lang);
+  const filtered = NOTICES.filter((n) => matches(n) && (!sec || boardOf(n.url) === sec));
 
   return (
     <div>
@@ -67,6 +76,16 @@ export function NewsTab() {
       </div>
       {sub === "official" ? (
         <div className="card">
+          <div className="row" style={{ marginBottom: 8 }}>
+            {SECTIONS.map((s) => {
+              const c = NOTICES.filter((n) => matches(n) && (!s.id || boardOf(n.url) === s.id)).length;
+              return (
+                <button key={s.id || "all"} className={sec === s.id ? "on" : ""} onClick={() => setSec(s.id)}>
+                  {s.label} ({c})
+                </button>
+              );
+            })}
+          </div>
           <div className="row">
             <input placeholder="공지 검색" value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: 1 }} />
             <select value={lang} onChange={(e) => setLang(e.target.value)}>
