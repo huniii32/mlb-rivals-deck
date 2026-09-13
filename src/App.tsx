@@ -4,7 +4,7 @@ import { calcPlayer, flagDefaults } from "./lib/engine";
 import { LineupView } from "./components/LineupView";
 import { PlayerEditor } from "./components/PlayerEditor";
 import { ChemPanel, DeckScorePanel } from "./components/DeckPanel";
-import { SkillPanel } from "./components/SkillPanel";
+import { SkillCompare, SkillPanel } from "./components/SkillPanel";
 import { TableEditor } from "./components/TableEditor";
 import { NewsTab } from "./components/NewsTab";
 import { SharePanel } from "./components/SharePanel";
@@ -337,7 +337,7 @@ export default function App() {
       <div className="tabs">
         {(["lineup", "skills", "ranking", "news"] as const).map((t) => (
           <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>
-            {{ lineup: "라인업", skills: "스킬점수", ranking: "랭킹공유", news: "정보글" }[t]}
+            {{ lineup: "라인업", skills: "스킬비교", ranking: "덱랭킹", news: "정보글" }[t]}
           </button>
         ))}
       </div>
@@ -354,7 +354,6 @@ export default function App() {
             />
           </div>
           <aside>
-            <h2>팀덱코 · 스덱코</h2>
             <DeckScorePanel
               flags={flags} toggleFlag={(k) => patchDeck({ flags: { ...flags, [k]: !flags[k] } })}
               setRowSide={(region, row, side) => pickRowSide(region, row, side)}
@@ -368,6 +367,7 @@ export default function App() {
 
       {tab === "skills" && (
         <>
+          <SkillCompare tables={tables} />
           <SkillPanel tables={tables} setTables={setTables} />
           <TableEditor tables={tables} setTables={setTables} />
         </>
@@ -380,8 +380,7 @@ export default function App() {
             onSelectDeck={(id) => { setActiveId(id); setSelected(null); }}
             onImportDeck={(d) => addDeckData(d, "공유받은 덱")}
           />
-          <h2>선수 랭킹 · 스킬 비교</h2>
-          <ResultPanel batters={batters} pitchers={pitchers} bRes={bRes} pRes={pRes} tables={tables} customNames={customNames} />
+          <ResultPanel batters={batters} pitchers={pitchers} bRes={bRes} pRes={pRes} />
         </>
       )}
 

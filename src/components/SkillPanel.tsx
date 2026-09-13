@@ -1,6 +1,82 @@
 import { useState } from "react";
 import type { Kind, SkillTables } from "../lib/engine";
-import { LOOKUP } from "../lib/engine";
+import { LOOKUP, skillScore } from "../lib/engine";
+
+/** 스킬 1 vs 2 비교: 양쪽 4슬롯 합산 대결 */
+export function SkillCompare({ tables }: { tables: SkillTables }) {
+  const [kindA, setKindA] = useState<Kind>("batter");
+  const [kindB, setKindB] = useState<Kind>("batter");
+  const [skillsA, setSkillsA] = useState<string[]>(["", "", "", ""]);
+  const [skillsB, setSkillsB] = useState<string[]>(["", "", "", ""]);
+
+  const names = (k: Kind) => [
+    ...tables.customs.filter((c) => c.kind === k).map((c) => c.name),
+    ...(k === "batter" ? LOOKUP.batter : LOOKUP.pitcher).map((s) => s.name),
+  ];
+
+  const calc = (k: Kind, skills: string[]) => {
+    const scores = skills.map((s) => (s.trim() ? skillScore(k, s, tables) : 0));
+    const unknown = skills.filter((s, i) => s.trim() && scores[i] === null);
+    const total = (scores as (number | null)[]).reduce<number | null>(
+      (acc, s) => (acc === null || s === null ? null : acc + s), 0);
+    return { scores, unknown, total };
+  };
+  const a = calc(kindA, skillsA);
+  const b = calc(kindB, skillsB);
+  const diff = a.total !== null && b.total !== null ? a.total - b.total : null;
+
+  const side = (
+    label: string, kind: Kind, setKind: (k: Kind) => void,
+    skills: string[], setSkills: (s: string[]) => void,
+    r: ReturnType<typeof calc>, hl: boolean,
+  ) => (
+    <div className="card" style={hl ? { borderColor: "var(--good)" } : undefined}>
+      <div className="row" style={{ justifyContent: "space-between" }}>
+        <h3 style={{ margin: 0 }}>{label} {hl && diff !== null && diff !== 0 && <span className="pill">승리</span>}</h3>
+        <span>
+          <button className={kind === "batter" ? "on" : ""} onClick={() => setKind("batter")}>타자</button>{" "}
+          <button className={kind === "pitcher" ? "on" : ""} onClick={() => setKind("pitcher")}>투수</button>
+        </span>
+      </div>
+      <div className="ed-skills" style={{ marginTop: 8 }}>
+        {([0, 1, 2, 3] as const).map((i) => {
+          const v = skills[i];
+          const sc = v.trim() ? skillScore(kind, v, tables) : 0;
+          return (
+            <label key={i}>슬롯{i + 1} {sc !== null && v.trim() !== "" && <b>+{sc}</b>}
+              {sc === null && <b className="pill bad-pill">표없음</b>}
+              <input list={`cmp-${label}-${kind}`} value={v} placeholder="스킬 검색"
+                onChange={(e) => {
+                  const n = [...skills];
+                  n[i] = e.target.value;
+                  setSkills(n);
+                }} />
+            </label>
+          );
+        })}
+      </div>
+      <datalist id={`cmp-${label}-${kind}`}>
+        {names(kind).map((x) => <option key={x} value={x} />)}
+      </datalist>
+      <div className="score-sm" style={{ marginTop: 8 }}>
+        합계: {r.total === null ? <span className="bad">표없음 있음</span> : <b>{r.total.toFixed(1)}</b>}
+      </div>
+      {r.unknown.length > 0 && <p className="muted">점수 없음: {r.unknown.join(", ")}</p>}
+    </div>
+  );
+
+  return (
+    <div>
+      <div className="grid" style={{ alignItems: "start" }}>
+        {side("①", kindA, setKindA, skillsA, setSkillsA, a, diff !== null && diff > 0)}
+        {side("②", kindB, setKindB, skillsB, setSkillsB, b, diff !== null && diff < 0)}
+      </div>
+      <p className="muted" style={{ textAlign: "center" }}>
+        {diff === null ? "스킬을 입력하면 합산 대결" : diff === 0 ? "동점" : diff > 0 ? `①이 ${diff.toFixed(1)}점 높음` : `②가 ${(-diff).toFixed(1)}점 높음`}
+      </p>
+    </div>
+  );
+}
 
 /** 스킬점수 탭: 점수 수정 + 신규 스킬 추가 (원본 '스킬점수 시트' 대응) */
 export function SkillPanel({

@@ -5,7 +5,7 @@ import { LOOKUP, referencedFlags } from "../lib/engine";
 const CHEM_LABELS: [keyof Chem, string, string][] = [
   ["commander", "커맨더", "commander"],
   ["catcher", "포수리드", "catcher"],
-  ["pitchChem", "토탈케미스트리", "pitchChem"],
+  ["pitchChem", "투수케미스트리", "pitchChem"],
   ["batChem", "타자케미스트리", "batChem"],
   ["wbcP", "WBC에이스(투수)", "wbcP"],
   ["wbcB", "WBC에이스(타자)", "wbcB"],
@@ -31,7 +31,7 @@ export function ChemPanel({ chem, setChem }: {
 }) {
   return (
     <div className="card">
-      <h3>케미스트리 (토탈·타자·WBC·커맨더·포수리드)</h3>
+      <h3>케미스트리 (투수·타자·WBC·커맨더·포수리드)</h3>
       <div className="row">
         {CHEM_LABELS.map(([k, label, opt]) => (
           <label key={k}>{label}{" "}
@@ -82,6 +82,7 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
   return (
     <div>
       <div className="card">
+        <h3>팀덱코 · 스덱코</h3>
         <div className="deckscore-tabs" role="tablist" aria-label="덱스코어 종류">
           {(["team", "spec"] as const).map((t) => (
             <button key={t} role="tab" aria-selected={scoreTab === t}
