@@ -52,7 +52,7 @@ export function SkillCompare({ tables }: { tables: SkillTables }) {
                   n[i] = e.target.value;
                   setSkills(n);
                 }} />
-              <span className="muted" style={{ display: "block", minHeight: 20 }}>
+              <span className="muted sug">
                 {sug.length > 0 && (
                   <>혹시: {sug.map((s, j) => (
                     <span key={s}>

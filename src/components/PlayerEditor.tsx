@@ -109,7 +109,7 @@ export function PlayerEditor({
               {sc === null && v.trim() && <b className="pill bad-pill">표없음</b>}
               <input list={listId} value={v} placeholder="스킬 검색"
                 onChange={(e) => setSkill(i, e.target.value)} />
-              <span className="muted sug" style={{ display: "block", minHeight: 20 }}>
+              <span className="muted sug">
                 {sug.length > 0 && (
                   <>혹시: {sug.map((s, j) => (
                     <span key={s}>

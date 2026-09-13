@@ -219,6 +219,9 @@ span.pcard { cursor: pointer; }
 .ed-art img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
 .ed-art .gc-art { width: 100%; height: 100%; }
 
+/* 스킬 제안 한 줄 고정 (입력 중 레이아웃 점프 방지) */
+.sug { display: block; height: 22px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
 /* 스킬표 스크롤 고정 (검색 시 레이아웃 점프 방지) */
 .skill-table-wrap { max-height: 480px; overflow-y: auto; margin-top: 8px; }
 .skill-table-wrap thead th { position: sticky; top: 0; z-index: 2; }
