@@ -70,17 +70,21 @@ function PlayerSummary({ p, res, tables }: {
           ))}
         </tbody>
       </table>
-      <div className="row" style={{ marginTop: 8 }}>
-        {p.skills.map((s, i) => {
-          const sc = s.trim() ? skillScore(p.kind, s, tables) : 0;
-          return (
-            <span key={i} className="muted">
-              스킬{i + 1}: {s.trim() || "-"} {s.trim() !== "" && (sc === null ? "(표없음)" : `(+${sc})`)}
-              {i < 3 ? " · " : ""}
-            </span>
-          );
-        })}
-      </div>
+      <table className="ed-stats" style={{ marginTop: 8 }}>
+        <thead><tr><th>슬롯</th><th>스킬</th><th>점수</th></tr></thead>
+        <tbody>
+          {p.skills.map((s, i) => {
+            const sc = s.trim() ? skillScore(p.kind, s, tables) : 0;
+            return (
+              <tr key={i}>
+                <td>스킬{i + 1}</td>
+                <td>{s.trim() || "-"}</td>
+                <td>{s.trim() === "" ? "-" : sc === null ? <b className="pill bad-pill">표없음</b> : <b>+{sc}</b>}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
       <div className="ed-result">
         <div><span>능력치</span><b>{res.ability.toFixed(1)}</b></div>
         <div><span>스킬점</span><b>{res.skill === null ? "표없음" : res.skill.toFixed(1)}</b></div>

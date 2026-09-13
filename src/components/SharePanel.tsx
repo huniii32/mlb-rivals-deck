@@ -205,12 +205,27 @@ export function SharePanel({
   };
 
   const importPub = (r: PublicRank) => {
-    const d = r.deck_json as Deck | null;
-    if (!d || !Array.isArray(d.players) || d.players.length !== 18) {
+    const d = pubDeck(r);
+    if (!d) {
       alert("덱 형식이 아닙니다.");
       return;
     }
     onImportDeck(d);
+  };
+
+  const pubDeck = (r: PublicRank): Deck | null => {
+    const d = r.deck_json as Deck | null;
+    if (!d || !Array.isArray(d.players) || d.players.length !== 18) return null;
+    return d;
+  };
+
+  const previewPub = (r: PublicRank) => {
+    const d = pubDeck(r);
+    if (!d) {
+      alert("덱 형식이 아닙니다.");
+      return;
+    }
+    onPreviewDeck(d);
   };
 
   return (
@@ -246,6 +261,7 @@ export function SharePanel({
                         {new Date(r.created_at).toLocaleDateString("ko-KR")}
                       </td>
                       <td style={{ whiteSpace: "nowrap" }}>
+                        <button onClick={() => previewPub(r)}>보기</button>{" "}
                         <button onClick={() => importPub(r)}>가져오기</button>{" "}
                         {mine[r.id] && <button onClick={() => deletePub(r.id)}>삭제</button>}
                       </td>
