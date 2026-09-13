@@ -4,8 +4,11 @@
 
 ## 앱 상태
 - 탭 순서: 라인업 - 스킬점수 - 랭킹공유 - 정보글 (2026-09-13 변경)
-- 상단바: 테마 전환 옆 문의하기(localStorage 메모판 `rivals-inquiries-v1`) · 공지사항(`src/data/patchnotes.json` 패치 내역) 모달
-- Supabase(전체 공개 랭킹·문의판) 미연동 — 사용자가 프로젝트+키 발급하면 연동 예정
+- 상단바: 테마 전환 옆 문의하기 · 공지사항(`src/data/patchnotes.json` 패치 내역) 모달
+- Supabase 연동됨 (2026-09-13, 코드만): `src/lib/supabase.ts`, 스키마 `scripts/supabase_schema.sql`
+  - 미완료(사용자 차례): ① SQL Editor에서 스키마 실행 ② GitHub repo Settings→Secrets에
+    `VITE_SUPABASE_URL`·`VITE_SUPABASE_ANON_KEY` 등록 → 다음 main 푸시 때 배포본에 반영
+  - 로컬 `.env`에는 URL+공개키 입력됨(gitignore). env 없으면 로컬 모드(기존 localStorage)로 동작
 - 공개 URL: https://huniii32.github.io/mlb-rivals-deck/ (main 푸시 → Actions 자동배포, `deploy-pages.sh`는 예비)
 - 시너지·라커룸 입력칸 추가됨 (팝업 스탯표, 자동합산 포함)
 - 소식 섹션: 공식 공지 번들(`src/data/notices.json`, 크롤러가 생성·커밋) + 정보글 수동등록(localStorage)
