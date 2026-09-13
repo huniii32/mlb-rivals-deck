@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Kind, SkillTables } from "../lib/engine";
 import { LOOKUP, skillScore, suggestSkills } from "../lib/engine";
 
@@ -121,6 +121,11 @@ export function SkillPanel({
     s.name.replace(/\s+/g, "").toLowerCase().includes(nq));
   const bCount = ofKind("batter").length;
   const pCount = ofKind("pitcher").length;
+  // 검색어·탭 바뀌면 표 스크롤 맨 위로 (빈 공간 보이는 것 방지)
+  const wrapRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    wrapRef.current?.scrollTo({ top: 0 });
+  }, [q, filter]);
 
   const setScore = (k: Kind, name: string, score: number, custom: boolean) => {
     if (custom) {
@@ -163,7 +168,7 @@ export function SkillPanel({
         <input type="number" value={nScore} onChange={(e) => setNScore(e.target.value === "" ? "" : Number(e.target.value))} style={{ width: 90 }} />
         <button className="primary" onClick={add}>추가</button>
       </div>
-      <div className="skill-table-wrap">
+      <div className="skill-table-wrap" ref={wrapRef}>
         <table style={{ marginTop: 8 }}>
           <thead><tr><th>종류</th><th>스킬</th><th>점수</th><th></th></tr></thead>
           <tbody>
