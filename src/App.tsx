@@ -10,6 +10,7 @@ import { NewsTab } from "./components/NewsTab";
 import { SharePanel } from "./components/SharePanel";
 import { ResultPanel } from "./components/ResultPanel";
 import { InquiryModal, PatchNotesModal } from "./components/SiteModals";
+import { parseExcelDeck } from "./lib/excelImport";
 import "./styles.css";
 
 const DECKS_KEY = "rivals-decks-v1";
@@ -137,6 +138,7 @@ export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "dark");
   const [modal, setModal] = useState<"inquiry" | "notices" | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const xlRef = useRef<HTMLInputElement>(null);
 
   const deck = decks.find((d) => d.id === activeId) ?? decks[0];
   const { players, chem, flags, yearInputs } = deck;
@@ -272,6 +274,21 @@ export default function App() {
     rd.readAsText(f);
   };
 
+  const importExcel = async (f: File | undefined) => {
+    if (!f) return;
+    try {
+      const d = await parseExcelDeck(f);
+      addDeckData(
+        { id: "", name: d.name, updatedAt: 0, players: d.players, chem: d.chem, flags: d.flags, yearInputs: d.yearInputs },
+        d.name,
+      );
+    } catch (e) {
+      alert(e instanceof Error && e.message === "NO_LINEUP_SHEET"
+        ? "라인업 시트가 없는 파일입니다."
+        : "엑셀을 읽지 못했습니다.");
+    }
+  };
+
   const addDeckData = (d: Deck, fallbackName: string) => {
     if (!d || !Array.isArray(d.players) || d.players.length !== 18) {
       alert("덱 형식이 아닙니다.");
@@ -328,8 +345,11 @@ export default function App() {
           <button onClick={deleteDeck}>삭제</button>
           <button onClick={exportDeck}>내보내기</button>
           <button onClick={() => fileRef.current?.click()}>가져오기</button>
+          <button onClick={() => xlRef.current?.click()}>엑셀 가져오기</button>
           <input ref={fileRef} type="file" accept=".json" style={{ display: "none" }}
             onChange={(e) => { importDeck(e.target.files?.[0]); e.target.value = ""; }} />
+          <input ref={xlRef} type="file" accept=".xlsx,.xlsm,.xls" style={{ display: "none" }}
+            onChange={(e) => { importExcel(e.target.files?.[0]); e.target.value = ""; }} />
         </div>
         <p className="muted">덱은 이 브라우저에만 저장됩니다 — 남이 내 덱을 볼 수 없고, 나도 남 덱을 못 봅니다. 기기 이동은 내보내기→가져오기로.</p>
       </div>

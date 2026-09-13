@@ -23,6 +23,13 @@ export function ResultPanel({
     ...pitchers.map((p, i) => ({ name: p.name || p.pos, pos: p.pos, score: pRes[i].total })),
   ].filter((r) => r.name).sort((a, b) => b.score - a.score);
 
+  // 엑셀 BB/BD 덱코 합계 대응: 좌/우 선택에 따라 바뀌는 스탯별 합계
+  const deckRows = [
+    ...batters.map((p, i) => ({ pos: p.pos, name: p.name || p.pos, deck: bRes[i].deck, named: !!p.name.trim() })),
+    ...pitchers.map((p, i) => ({ pos: p.pos, name: p.name || p.pos, deck: pRes[i].deck, named: !!p.name.trim() })),
+  ].filter((r) => r.named);
+  const deckSum = [0, 1, 2].map((s) => deckRows.reduce((a, r) => a + (r.deck[s] ?? 0), 0));
+
   return (
     <div>
       <div className="card">
@@ -42,6 +49,24 @@ export function ResultPanel({
               <tr key={i}><td>{i + 1}</td><td>{r.pos}</td><td>{r.name}</td><td><b>{r.score.toFixed(1)}</b></td></tr>
             ))}
           </tbody>
+        </table>
+      </div>
+      <div className="card">
+        <h3>덱코 합계 (좌/우 선택 연동)</h3>
+        <table>
+          <thead><tr><th>포지션</th><th>선수</th><th>스탯1</th><th>스탯2</th><th>스탯3</th><th>합</th></tr></thead>
+          <tbody>
+            {deckRows.map((r, i) => {
+              const d = [r.deck[0] ?? 0, r.deck[1] ?? 0, r.deck[2] ?? 0];
+              return (
+                <tr key={i}><td>{r.pos}</td><td>{r.name}</td>
+                  <td>{d[0]}</td><td>{d[1]}</td><td>{d[2]}</td><td><b>{d[0] + d[1] + d[2]}</b></td></tr>
+              );
+            })}
+          </tbody>
+          <tfoot><tr><td colSpan={2}><b>합계</b></td>
+            <td><b>{deckSum[0]}</b></td><td><b>{deckSum[1]}</b></td><td><b>{deckSum[2]}</b></td>
+            <td><b>{deckSum[0] + deckSum[1] + deckSum[2]}</b></td></tr></tfoot>
         </table>
       </div>
     </div>
