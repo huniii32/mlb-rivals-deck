@@ -52,9 +52,6 @@ export function PlayerEditor({
       <div className="ed-sec">기본 정보</div>
       <div className="ed-grid">
         <label>포지션<input value={p.pos} onChange={(e) => update({ pos: e.target.value })} /></label>
-        {kind === "batter" && (
-          <label>타순<Num value={p.order} onChange={(v) => update({ order: v })} /></label>
-        )}
         <label>카드
           <select value={p.card} onChange={(e) => update({ card: e.target.value })}>
             <option value="">— 선택 —</option>
@@ -68,6 +65,9 @@ export function PlayerEditor({
         <label>초월Lv<Num value={p.transLv} onChange={(v) => update({ transLv: v })} /></label>
         <label>강화Lv<Num value={p.enhLv} onChange={(v) => update({ enhLv: v })} /></label>
         <label>포훈Lv<Num value={p.pohLv} onChange={(v) => update({ pohLv: v })} /></label>
+        {kind === "batter" && (
+          <label>타순<Num value={p.order} onChange={(v) => update({ order: v })} /></label>
+        )}
       </div>
 
       <div className="ed-sec">스탯 (최종열에 직접 적으면 수동 고정 · 지우면 자동)</div>
