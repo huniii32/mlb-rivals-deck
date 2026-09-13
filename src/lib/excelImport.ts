@@ -50,12 +50,23 @@ function blank(excelRow: number, kind: Kind, pos: string): PlayerInput {
   };
 }
 
+/** 시트명 변형(공백·대소문자·한영)까지 잡는 라인업 시트 탐색. */
+export function findLineupSheetName(wb: XLSX.WorkBook): string | undefined {
+  const names = wb.SheetNames ?? [];
+  const norm = (s: string) => s.trim().replace(/\s+/g, "").toLowerCase();
+  return names.find((n) => norm(n) === "라인업")
+    ?? names.find((n) => norm(n).includes("라인업"))
+    ?? names.find((n) => norm(n) === "lineup")
+    ?? names.find((n) => norm(n).includes("lineup"));
+}
+
 /** 덱관리 엑셀(.xlsx) → 덱 데이터. 능력치·스킬·덱코입력을 그대로 읽는다. */
 export async function parseExcelDeck(file: File): Promise<ExcelDeckData> {
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { type: "array" });
-  const sheet = wb.Sheets["라인업"];
-  if (!sheet) throw new Error("NO_LINEUP_SHEET");
+  const lineupName = findLineupSheetName(wb);
+  if (!lineupName) throw new Error(`NO_LINEUP_SHEET:${(wb.SheetNames ?? []).join(",")}`);
+  const sheet = wb.Sheets[lineupName];
   const at = (col: string, row: number): Cell | undefined =>
     (sheet[`${col}${row}`] as Cell | undefined) ?? undefined;
 

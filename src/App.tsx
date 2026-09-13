@@ -294,6 +294,15 @@ export default function App() {
 
   const importExcel = async (f: File | undefined) => {
     if (!f) return;
+    // 흔한 오선택 먼저 걸러내기 (엑셀 잠금파일·JSON을 엑셀 버튼으로 여는 경우)
+    if (f.name.startsWith("~$")) {
+      alert("엑셀 잠금파일(~$)입니다. 엑셀이 열려 있을 때 생기는 임시파일이니, 원본 .xlsx 파일을 닫지 않은 채로 다시 선택해주세요.");
+      return;
+    }
+    if (/\.json$/i.test(f.name)) {
+      alert("JSON 덱 파일은 '가져오기'로 여세요. '엑셀 가져오기'는 덱관리 .xlsx/.xlsm 전용입니다.");
+      return;
+    }
     try {
       const d = await parseExcelDeck(f);
       addDeckData(
@@ -301,9 +310,14 @@ export default function App() {
         d.name,
       );
     } catch (e) {
-      alert(e instanceof Error && e.message === "NO_LINEUP_SHEET"
-        ? "라인업 시트가 없는 파일입니다."
-        : "엑셀을 읽지 못했습니다.");
+      if (e instanceof Error && e.message.startsWith("NO_LINEUP_SHEET")) {
+        const sheets = e.message.slice("NO_LINEUP_SHEET:".length);
+        alert(sheets
+          ? `라인업 시트를 못 찾았습니다. 이 파일의 시트: ${sheets}\n덱관리 엑셀 원본(.xlsx)의 '라인업' 시트가 있는 파일을 선택해주세요.`
+          : "라인업 시트가 없는 파일입니다. 덱관리 엑셀 원본을 선택해주세요.");
+      } else {
+        alert("엑셀을 읽지 못했습니다.");
+      }
     }
   };
 
