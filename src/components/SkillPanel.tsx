@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Kind, SkillTables } from "../lib/engine";
-import { LOOKUP, skillScore } from "../lib/engine";
+import { LOOKUP, skillScore, suggestSkills } from "../lib/engine";
 
 /** 스킬 1 vs 2 비교: 양쪽 4슬롯 합산 대결 */
 export function SkillCompare({ tables }: { tables: SkillTables }) {
@@ -42,6 +42,7 @@ export function SkillCompare({ tables }: { tables: SkillTables }) {
         {([0, 1, 2, 3] as const).map((i) => {
           const v = skills[i];
           const sc = v.trim() ? skillScore(kind, v, tables) : 0;
+          const sug = v.trim() && sc === null ? suggestSkills(kind, v, tables, 3) : [];
           return (
             <label key={i}>슬롯{i + 1} {sc !== null && v.trim() !== "" && <b>+{sc}</b>}
               {sc === null && <b className="pill bad-pill">표없음</b>}
@@ -51,6 +52,19 @@ export function SkillCompare({ tables }: { tables: SkillTables }) {
                   n[i] = e.target.value;
                   setSkills(n);
                 }} />
+              {sug.length > 0 && (
+                <span className="muted">혹시: {sug.map((s, j) => (
+                  <span key={s}>
+                    <a href="#" onClick={(e) => {
+                      e.preventDefault();
+                      const n = [...skills];
+                      n[i] = s;
+                      setSkills(n);
+                    }}>{s}</a>
+                    {j < sug.length - 1 ? " · " : ""}
+                  </span>
+                ))}</span>
+              )}
             </label>
           );
         })}
@@ -90,6 +104,7 @@ export function SkillPanel({
   const [nName, setNName] = useState("");
   const [nScore, setNScore] = useState<number | "">(0);
   const base = kind === "batter" ? LOOKUP.batter : LOOKUP.pitcher;
+  const nq = q.replace(/\s+/g, "").toLowerCase();
   const merged: { name: string; score: number; custom: boolean; edited?: boolean }[] = [
     ...tables.customs.filter((c) => c.kind === kind).map((c) => ({ name: c.name, score: c.score, custom: true })),
     ...base.map((s) => ({
@@ -98,7 +113,8 @@ export function SkillPanel({
       custom: false,
       edited: tables.overrides[`${kind}:${s.name}`] !== undefined,
     })),
-  ].filter((s) => !q || s.name.includes(q));
+  ].filter((s) => !nq || s.name.toLowerCase().includes(q.trim().toLowerCase()) ||
+    s.name.replace(/\s+/g, "").toLowerCase().includes(nq));
 
   const setScore = (name: string, score: number, custom: boolean) => {
     if (custom) {

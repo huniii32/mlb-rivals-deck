@@ -1,5 +1,5 @@
 import type { Kind, PlayerInput, PlayerResult, SkillTables } from "../lib/engine";
-import { LOOKUP, skillScore } from "../lib/engine";
+import { LOOKUP, skillScore, suggestSkills } from "../lib/engine";
 import { PlayerArt, gradeColor } from "./CardArt";
 import { Num } from "./inputs";
 
@@ -99,12 +99,24 @@ export function PlayerEditor({
       <div className="ed-sec">스킬</div>
       <div className="ed-skills">
         {([0, 1, 2, 3] as const).map((i) => {
-          const sc = p.skills[i].trim() ? skillScore(kind, p.skills[i], tables) : 0;
+          const v = p.skills[i];
+          const sc = v.trim() ? skillScore(kind, v, tables) : 0;
+          const exact = v.trim() !== "" && (tables.customs.some((c) => c.kind === kind && c.name === v.trim()) ||
+            skillList.some((s) => s.name === v.trim()));
+          const sug = !exact && v.trim() ? suggestSkills(kind, v, tables, 3) : [];
           return (
             <label key={i}>스킬{i + 1} {sc !== null && <b className="pill">+{sc}</b>}
-              {sc === null && p.skills[i].trim() && <b className="pill bad-pill">표없음</b>}
-              <input list={listId} value={p.skills[i]} placeholder="스킬 검색"
+              {sc === null && v.trim() && <b className="pill bad-pill">표없음</b>}
+              <input list={listId} value={v} placeholder="스킬 검색"
                 onChange={(e) => setSkill(i, e.target.value)} />
+              {sug.length > 0 && (
+                <span className="muted">혹시: {sug.map((s, j) => (
+                  <span key={s}>
+                    <a href="#" onClick={(e) => { e.preventDefault(); setSkill(i, s); }}>{s}</a>
+                    {j < sug.length - 1 ? " · " : ""}
+                  </span>
+                ))}</span>
+              )}
             </label>
           );
         })}

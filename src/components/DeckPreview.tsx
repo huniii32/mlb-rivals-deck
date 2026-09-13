@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import type { Deck } from "../App";
 import type { PlayerResult, SkillTables } from "../lib/engine";
-import { calcPlayer, flagDefaults, referencedFlags, skillScore } from "../lib/engine";
+import { calcPlayer, allThresholds, flagDefaults, referencedFlags, skillScore } from "../lib/engine";
 import { LineupView } from "./LineupView";
 import { YEAR_ANCHOR } from "./DeckPanel";
 
@@ -18,6 +18,10 @@ function ScoreTable({ region, title, flags, yearInputs }: {
       if (!g.sides.includes(f.side)) g.sides.push(f.side);
       if (g.threshold === null) g.threshold = f.threshold;
       m.set(f.row, g);
+    }
+    // 규칙 미참조행(팀 330/345, 스펙 연도행)도 엑셀처럼 표시
+    for (const { row, threshold } of allThresholds(region as "team" | "spec")) {
+      if (!m.has(row)) m.set(row, { row, threshold, sides: ["L", "R"] });
     }
     return [...m.values()].sort((a, b) => (a.threshold ?? 9999) - (b.threshold ?? 9999));
   }, [region]);

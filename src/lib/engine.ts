@@ -202,6 +202,66 @@ export function skillScore(
 }
 
 const normKey = (s: string): string => s.replace(/\s+/g, "");
+const normSkill = (s: string): string => s.replace(/\s+/g, "").toLowerCase();
+const stripBracket = (s: string): string => s.replace(/\[[^\]]*\]/g, "").replace(/\([^)]*\)/g, "");
+const stripParticle = (s: string): string =>
+  s.replace(/(에게|한테|부터|까지|처럼|보다|으로|의|은|는|이|가|을|를|에|와|과|로|도|만)$/, "");
+
+function lev(a: string, b: string): number {
+  const dp: number[] = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let prev = dp[0];
+    dp[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const cur = dp[j];
+      dp[j] = Math.min(dp[j] + 1, dp[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = cur;
+    }
+  }
+  return dp[b.length];
+}
+
+/** 스킬 후보 찾기: 정확 포함 → 조사 무시 토큰 매칭 → 오타 2자까지 허용 */
+export function suggestSkills(kind: Kind, query: string, tables: SkillTables, limit = 5): string[] {
+  const q = query.trim();
+  if (!q) return [];
+  const names = [
+    ...tables.customs.filter((c) => c.kind === kind).map((c) => c.name),
+    ...(kind === "batter" ? LOOKUP.batter : LOOKUP.pitcher).map((s) => s.name),
+  ];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  const push = (n: string) => {
+    if (!seen.has(n) && out.length < limit) {
+      seen.add(n);
+      out.push(n);
+    }
+  };
+  names.forEach((n) => { if (n.includes(q)) push(n); });
+  if (out.length >= limit) return out;
+  const toks = q.split(/\s+/).map((t) => stripParticle(normSkill(stripBracket(t)))).filter(Boolean);
+  if (toks.length) {
+    names.forEach((n) => {
+      const nn = normSkill(stripBracket(n));
+      if (toks.every((t) => nn.includes(t))) push(n);
+    });
+  }
+  if (out.length >= limit) return out;
+  const nq = normSkill(stripBracket(q));
+  if (nq.length >= 3) {
+    const scored: { n: string; d: number }[] = [];
+    names.forEach((n) => {
+      if (seen.has(n)) return;
+      const nn = normSkill(stripBracket(n));
+      if (Math.abs(nn.length - nq.length) <= 2) {
+        const d = lev(nn, nq);
+        if (d <= 2) scored.push({ n, d });
+      }
+    });
+    scored.sort((a, b) => a.d - b.d).forEach(({ n }) => push(n));
+  }
+  return out;
+}
 
 function tableBonus(
   base: Record<string, number[]>,
@@ -379,6 +439,17 @@ export function skillCompare(kind: Kind, skills: string[], tables: SkillTables):
 
 /** 덱코 패널에 보여줄 참조 플래그 목록 (규칙에서 실제 참조된 것만).
  *  행별 임계값(게임 화면의 POINT 숫자)은 해당 플래그를 참조하는 첫 규칙의 t에서 가져온다. */
+/** 덱코표 전체 임계값 (AT=팀, AX=스펙). 규칙 미참조 행(팀 330/345 등)도 포함. */
+export function allThresholds(region: "team" | "spec"): { row: number; threshold: number }[] {
+  const col = region === "team" ? "AT" : "AX";
+  const out: { row: number; threshold: number }[] = [];
+  for (const [k, v] of Object.entries(DECK.flags)) {
+    const m = k.match(new RegExp(`^(\\d+)-${col}$`));
+    if (m && typeof v === "number") out.push({ row: Number(m[1]), threshold: v });
+  }
+  return out.sort((a, b) => a.threshold - b.threshold);
+}
+
 export function referencedFlags(): { row: number; region: string; side: string; threshold: number | null }[] {
   const seen = new Map<string, { row: number; region: string; side: string; threshold: number | null }>();
   const walk = (c: Cond | null) => {

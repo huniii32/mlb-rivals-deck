@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Chem } from "../lib/engine";
-import { LOOKUP, referencedFlags } from "../lib/engine";
+import { LOOKUP, allThresholds, referencedFlags } from "../lib/engine";
 
 const CHEM_LABELS: [keyof Chem, string, string][] = [
   ["commander", "커맨더", "commander"],
@@ -69,6 +69,14 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
   const list = [...rows.values()]
     .filter((g) => g.region === scoreTab)
     .sort((a, b) => (a.threshold ?? 9999) - (b.threshold ?? 9999) || a.row - b.row);
+  // 규칙 미참조 팀덱코행(330/345): 엑셀에도 O표시만 있고 점수에 안 들어감. 표시·토글은 되게 추가.
+  if (scoreTab === "team") {
+    const have = new Set(list.map((g) => g.row));
+    for (const { row, threshold } of allThresholds("team")) {
+      if (!have.has(row)) list.push({ region: "team", row, threshold, sides: ["L", "R"] });
+    }
+    list.sort((a, b) => (a.threshold ?? 9999) - (b.threshold ?? 9999) || a.row - b.row);
+  }
   // 연도 입력행(615/645/680): 스코어 규칙에서 참조하지 않아 목록에 없으므로 표시 전용 행으로 추가
   if (scoreTab === "spec") {
     const have = new Set(list.map((g) => g.threshold));
