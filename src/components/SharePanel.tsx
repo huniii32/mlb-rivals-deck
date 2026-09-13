@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Deck } from "../App";
 import type { SkillTables } from "../lib/engine";
 import { calcDeckTotal } from "../lib/engine";
@@ -63,6 +63,13 @@ export function SharePanel({
     setMine(next);
     localStorage.setItem("rivals-my-ranks-v1", JSON.stringify(next));
   };
+  // 실시간 콜백에서 최신 값을 쓰기 위한 ref
+  const decksRef = useRef(decks);
+  decksRef.current = decks;
+  const tablesRef = useRef(tables);
+  tablesRef.current = tables;
+  const mineRef = useRef(mine);
+  mineRef.current = mine;
 
   const ranking = useMemo(
     () =>
@@ -108,14 +115,16 @@ export function SharePanel({
       const rows = (data ?? []) as PublicRank[];
       setPub(rows);
       // 자동 반영: 연결된 로컬 덱이 바뀌었으면 서버 행 갱신
-      const links = mineNow ?? mine;
+      const links = mineNow ?? mineRef.current;
+      const decksNow = decksRef.current;
+      const tablesNow = tablesRef.current;
       let changed = false;
       for (const r of rows) {
         const link = links[r.id];
         if (!link?.token || !link.deckId) continue;
-        const local = decks.find((d) => d.id === link.deckId);
+        const local = decksNow.find((d) => d.id === link.deckId);
         if (!local) continue;
-        const s = calcDeckTotal(local, tables);
+        const s = calcDeckTotal(local, tablesNow);
         const name = local.name.slice(0, 50);
         if (r.deck_name === name && Number(r.total) === s.total && Number(r.sp) === s.sp &&
             Number(r.rp) === s.rp && Number(r.bt) === s.bt && r.named === s.named) continue;
@@ -146,6 +155,18 @@ export function SharePanel({
   };
   useEffect(() => {
     loadPub();
+    const sb = supabase;
+    if (!sb) return;
+    // 실시간 반영: 남이 올리면 자동 새로고침 (+30초 폴백 폴링)
+    const ch = sb
+      .channel("rankings-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "rankings" }, () => loadPub())
+      .subscribe();
+    const timer = setInterval(() => loadPub(), 30000);
+    return () => {
+      clearInterval(timer);
+      sb.removeChannel(ch);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
