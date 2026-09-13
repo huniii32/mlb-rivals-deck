@@ -244,7 +244,10 @@ export default function App() {
   };
   const deleteDeck = () => {
     if (decks.length <= 1) {
-      alert("마지막 덱은 삭제할 수 없습니다.");
+      if (!confirm(`마지막 덱이라 삭제 대신 '${deck.name}' 내용을 비웁니다. 계속할까요?`)) return;
+      const fresh = blankDeck(deck.name);
+      patchDeck({ players: fresh.players, chem: fresh.chem, flags: fresh.flags, yearInputs: fresh.yearInputs });
+      setSelected(null);
       return;
     }
     if (!confirm(`'${deck.name}' 삭제할까요?`)) return;
