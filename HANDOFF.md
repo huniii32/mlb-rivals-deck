@@ -54,17 +54,21 @@
 ## 선수 마스터 수집 계획 (합의됨)
 - 우선순위: Steam 에셋 → 네트워크(API) → 공식공지 HTML(seed) → 자동캡처/OCR → 수동(안 함)
 - 팩트체크 완료: Steam판 존재 ✓, nProtect GameGuard 명시 ✓ (스토어 페이지 조회)
-- 미확인: Unity/IL2CPP (폴더에서 `GameAssembly.dll` 확인 필요)
+- **스팀 실측 완료 (2026-09-13)**: Unity IL2CPP ✓ (`GameAssembly.dll` 29MB + `global-metadata.dat` 19MB)
+  - `MLBRIVALS_Data/StreamingAssets/aa/StandaloneWindows64/` 번들 **3066개 전부 UnityFS 정상** → "암호화" 썰은 오정보. UnityPy 파싱·TextAsset 평문 추출 검증됨
+  - `catalog.json` 33MB 파싱: `.bytes` 키 1113개 전수 확인 → **선수 스탯 마스터 테이블 없음**. 인게임 밸런스표 + 오프라인 라인업만 존재
+  - 결론: **스탯은 서버 제공 확정적**. 번일 추출로 얻을 수 있는 건 카드 이미지(`PlayerImage/ACT·MUG/팀/연도/선수ID`, 3만 장 규모)·스킬 테이블뿐
+  - 스탯 수집 루트: MITM(1순위) 또는 에뮬+ADB+PaddleOCR(이미 설치됨)
 - 원칙: GameGuard 환경에서 인젝션·후킹·메모리변조 금지. 정적 파일 + 정상 트래픽 관찰만
 - 스키마 원칙: **player/card 분리** (오타니 '26 WBC시그 ≠ '26 라이브)
 - 마스터 용도: 자동완성 + 기본스탯. 스킬점수·덱코 계산은 엑셀 확보분으로 충분
 - 3만 행은 프론트 탑재 불가 → Supabase 등 DB + 검색 API 필요 (미구현)
 
 ## 다음 할 일
-1. 이 PC에 Steam 없음 → Steam 설치 + MLB 9 Innings Rivals 26 (15GB) 다운로드 필요 (사용자 차례)
-2. 설치 후: 폴더 구조 확인 → AssetRipper 투입 판단 (다음 세션이 명령어 주면 됨)
-3. 병행 가능: 공식공지 테이블 크롤러 (seed DB용)
-4. MITM은 폰 기종 미확인 (안드로이드/iPhone 여부에 따라 절차 다름 — 사용자 답변 대기)
+1. ~~이 PC에 Steam 없음 → Steam 설치 + MLB 9 Innings Rivals 26 (15GB) 다운로드 필요 (사용자 차례)~~ 설치 확인됨 (2026-09-13)
+2. MITM 노트북 단독 캡처 (진행 중, 2026-09-13): mitmproxy 12.2.3 설치·CA 생성됨. 사용자 차례 = CA 인증서 설치(`~\.mitmproxy\mitmproxy-ca-cert.cer` → 신뢰 루트) → 프록시 ON → `mitmdump -p 8080 -w C:\project\tools\rivals.mitm` → 게임 도감 스크롤 → 프록시 OFF
+3. 캡처 후: `scripts/parse_mitm.py` (준비됨) → 카드 JSON → 스탯 테이블화. GameGuard가 프록시 하에서 게임을 막으면 에뮬+ADB+PaddleOCR 플랜B
+4. 병행 가능: 공식공지 테이블 크롤러 (seed DB용)
 
 ## 공유 구조
 - 불특정다수 공개이나 덱은 각자 브라우저 저장 (서버 없음, 섞일 일 없음)

@@ -52,19 +52,21 @@ export function PlayerArt({ kind, accent }: { kind: Kind; accent: string }) {
           <stop offset="0%" stopColor={accent} stopOpacity="0.4" />
           <stop offset="100%" stopColor={accent} stopOpacity="0" />
         </radialGradient>
-        <filter id={`gc-blur-${kind}`} x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur stdDeviation="3" />
-        </filter>
+        <radialGradient id={`gc-soft-${kind}`} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#fcd34d" stopOpacity="0.9" />
+          <stop offset="55%" stopColor="#f59e0b" stopOpacity="0.5" />
+          <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
+        </radialGradient>
       </defs>
       <rect x="0" y="0" width="100" height="120" fill="#0d1628" />
       <circle cx="50" cy="30" r="52" fill={`url(#gc-glow-${kind})`} />
-      {/* 불꽃 */}
-      <g filter={`url(#gc-blur-${kind})`} opacity="0.9">
-        <ellipse cx="22" cy="108" rx="16" ry="26" fill="#f59e0b" opacity="0.55" />
-        <ellipse cx="50" cy="114" rx="20" ry="30" fill="#fbbf24" opacity="0.6" />
-        <ellipse cx="78" cy="108" rx="16" ry="26" fill="#ef4444" opacity="0.45" />
-        <ellipse cx="38" cy="96" rx="9" ry="16" fill="#fde68a" opacity="0.7" />
-        <ellipse cx="64" cy="96" rx="9" ry="16" fill="#fcd34d" opacity="0.7" />
+      {/* 불꽃 (필터 없이 그라데이션 타원으로 — 블러 필터가 카드 텍스트 합성을 깨뜨림) */}
+      <g>
+        <ellipse cx="22" cy="108" rx="17" ry="27" fill={`url(#gc-soft-${kind})`} opacity="0.7" />
+        <ellipse cx="50" cy="114" rx="22" ry="32" fill={`url(#gc-soft-${kind})`} opacity="0.8" />
+        <ellipse cx="78" cy="108" rx="17" ry="27" fill={`url(#gc-soft-${kind})`} opacity="0.7" />
+        <ellipse cx="38" cy="94" rx="9" ry="15" fill="#fde68a" opacity="0.55" />
+        <ellipse cx="64" cy="94" rx="9" ry="15" fill="#fde68a" opacity="0.55" />
       </g>
       <rect x="0" y="0" width="100" height="120" fill={`url(#gc-flame-${kind})`} />
       {/* 불티 */}

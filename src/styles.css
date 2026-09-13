@@ -191,7 +191,7 @@ span.pcard { cursor: pointer; }
 .dc-name { font-size: 13px; font-weight: 800; background: rgba(0, 0, 0, 0.55); width: 100%;
   padding: 2px 4px; margin-top: auto; }
 [data-theme="light"] .dc-name { background: rgba(15, 23, 42, 0.72); color: #f8fafc; }
-.dc-grade { font-size: 9.5px; color: var(--muted); padding-bottom: 3px; }
+.dc-grade { font-size: 9.5px; color: var(--muted); padding-bottom: 3px; position: relative; z-index: 1; }
 .dcard a { width: 100%; }
 .prow { display: flex; gap: 12px; flex-wrap: wrap; }
 
@@ -201,7 +201,7 @@ span.pcard { cursor: pointer; }
   border: 1px solid #60a5fa;
   background: linear-gradient(165deg, #7db4fb 0%, #1d4ed8 30%, #172554 70%, #3b82f6 100%);
 }
-.gc-top { display: flex; width: 100%; align-items: flex-start; justify-content: space-between; padding: 2px 4px 0; z-index: 1; }
+.gc-top { display: flex; width: 100%; align-items: flex-start; justify-content: space-between; padding: 2px 4px 0; z-index: 1; position: relative; }
 .gc-ovr { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
   color: #ffd166; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8); }
 .gc-tags { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
@@ -212,7 +212,7 @@ span.pcard { cursor: pointer; }
 .gc-art { width: 100%; height: 100%; display: block; }
 .gc-img { width: 100%; height: 78px; object-fit: cover; object-position: top; display: block; }
 .gc-name { font-size: 13px; font-weight: 800; background: rgba(0, 0, 0, 0.55); width: 100%;
-  padding: 2px 4px; margin-top: auto; letter-spacing: 0.02em; }
+  padding: 2px 4px; margin-top: auto; letter-spacing: 0.02em; position: relative; z-index: 1; }
 .ed-art { width: 60px; height: 76px; border-radius: 10px; overflow: hidden; border: 2px solid #475569; background: #0b1526; flex: none; }
 .ed-art img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
 .ed-art .gc-art { width: 100%; height: 100%; }
