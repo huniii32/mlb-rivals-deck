@@ -30,55 +30,119 @@ export function shortCard(card: string): string {
     .replace("WBC 프라임", "WBC프");
 }
 
-/** 타자/투수 실루엣 일러스트 */
+/** 타자/투수 일러스트: 유니폼·헬멧·장비 갖춘 플랫 벡터 + 금빛 불꽃 배경 */
 export function PlayerArt({ kind, accent }: { kind: Kind; accent: string }) {
-  const fig = "#0b1526";
+  const SKIN = "#eab88c";
+  const SKIN_D = "#d29a6b";
+  const JERSEY = "#f1f5f9";
+  const JERSEY_D = "#cbd5e1";
+  const PANTS = "#eef2f6";
+  const PANTS_D = "#c9d2dd";
+  const NAVY = "#16294d";
+  const NAVY_L = "#274067";
   return (
-    <svg viewBox="0 0 100 100" className="gc-art" aria-hidden="true">
+    <svg viewBox="0 0 100 120" className="gc-art" aria-hidden="true">
       <defs>
-        <radialGradient id={`gc-glow-${kind}`} cx="50%" cy="62%" r="55%">
-          <stop offset="0%" stopColor={accent} stopOpacity="0.55" />
+        <radialGradient id={`gc-flame-${kind}`} cx="50%" cy="88%" r="75%">
+          <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.85" />
+          <stop offset="45%" stopColor="#f59e0b" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id={`gc-glow-${kind}`} cx="50%" cy="30%" r="70%">
+          <stop offset="0%" stopColor={accent} stopOpacity="0.4" />
           <stop offset="100%" stopColor={accent} stopOpacity="0" />
         </radialGradient>
+        <filter id={`gc-blur-${kind}`} x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="3" />
+        </filter>
       </defs>
-      <circle cx="50" cy="62" r="46" fill={`url(#gc-glow-${kind})`} />
-      {/* 스피드선 */}
-      <g stroke="#ffffff" strokeWidth="1.6" opacity="0.16" strokeLinecap="round">
-        <line x1="8" y1="30" x2="34" y2="30" />
-        <line x1="4" y1="44" x2="28" y2="44" />
-        <line x1="72" y1="70" x2="96" y2="70" />
-        <line x1="66" y1="82" x2="92" y2="82" />
+      <rect x="0" y="0" width="100" height="120" fill="#0d1628" />
+      <circle cx="50" cy="30" r="52" fill={`url(#gc-glow-${kind})`} />
+      {/* 불꽃 */}
+      <g filter={`url(#gc-blur-${kind})`} opacity="0.9">
+        <ellipse cx="22" cy="108" rx="16" ry="26" fill="#f59e0b" opacity="0.55" />
+        <ellipse cx="50" cy="114" rx="20" ry="30" fill="#fbbf24" opacity="0.6" />
+        <ellipse cx="78" cy="108" rx="16" ry="26" fill="#ef4444" opacity="0.45" />
+        <ellipse cx="38" cy="96" rx="9" ry="16" fill="#fde68a" opacity="0.7" />
+        <ellipse cx="64" cy="96" rx="9" ry="16" fill="#fcd34d" opacity="0.7" />
+      </g>
+      <rect x="0" y="0" width="100" height="120" fill={`url(#gc-flame-${kind})`} />
+      {/* 불티 */}
+      <g fill="#fde68a" opacity="0.8">
+        <circle cx="18" cy="70" r="1.4" />
+        <circle cx="30" cy="52" r="1" />
+        <circle cx="82" cy="62" r="1.4" />
+        <circle cx="90" cy="80" r="1" />
+        <circle cx="70" cy="40" r="1" />
       </g>
       {kind === "batter" ? (
-        <g stroke={fig} strokeWidth="9" strokeLinecap="round" fill="none">
-          <line x1="55" y1="34" x2="48" y2="58" />
-          <line x1="48" y1="58" x2="37" y2="86" />
-          <line x1="48" y1="58" x2="59" y2="84" />
-          <line x1="54" y1="38" x2="70" y2="46" />
-          <line x1="70" y1="46" x2="86" y2="30" stroke="#e2e8f0" strokeWidth="4" />
+        <g>
+          {/* 방망이 (손 뒤) */}
+          <polygon points="80,2 89,7 69,31 62,26" fill="#d9a866" />
+          <polygon points="80,2 84,4 66,28 62,26" fill="#f0c98a" />
+          <line x1="64" y1="32" x2="80" y2="10" stroke="#8a5a2e" strokeWidth="3.5" strokeLinecap="round" />
+          {/* 뒷다리 (음영) */}
+          <line x1="57" y1="62" x2="65" y2="102" stroke={PANTS_D} strokeWidth="10" strokeLinecap="round" />
+          <rect x="58" y="100" width="15" height="6.5" rx="3" fill="#1e293b" />
+          {/* 앞다리 */}
+          <line x1="50" y1="62" x2="40" y2="102" stroke={PANTS} strokeWidth="10" strokeLinecap="round" />
+          <rect x="30" y="100" width="15" height="6.5" rx="3" fill="#0f172a" />
+          {/* 몸통 유니폼 */}
+          <path d="M42,30 L62,30 L64,62 L44,62 Z" fill={JERSEY} />
+          <path d="M55,30 L62,30 L64,62 L56,62 Z" fill={JERSEY_D} opacity="0.8" />
+          <line x1="53" y1="32" x2="53" y2="58" stroke={JERSEY_D} strokeWidth="1.4" />
+          <circle cx="53" cy="38" r="1.1" fill="#94a3b8" />
+          <circle cx="53" cy="45" r="1.1" fill="#94a3b8" />
+          <circle cx="53" cy="52" r="1.1" fill="#94a3b8" />
+          {/* 벨트 */}
+          <rect x="44" y="59" width="20" height="5" fill={NAVY} />
+          {/* 소매 */}
+          <path d="M42,30 L49,31 L47,42 L39,40 Z" fill={JERSEY} />
+          <path d="M62,30 L56,31 L58,42 L65,40 Z" fill={JERSEY_D} />
+          {/* 팔 (방망이 쥠) */}
+          <line x1="57" y1="38" x2="63" y2="46" stroke={SKIN_D} strokeWidth="6" strokeLinecap="round" />
+          <line x1="63" y1="46" x2="66" y2="32" stroke={SKIN_D} strokeWidth="5.5" strokeLinecap="round" />
+          <line x1="50" y1="38" x2="57" y2="47" stroke={SKIN} strokeWidth="6" strokeLinecap="round" />
+          <line x1="57" y1="47" x2="66" y2="32" stroke={SKIN} strokeWidth="5.5" strokeLinecap="round" />
+          <circle cx="66" cy="31" r="4.2" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1" />
+          {/* 목 + 머리 + 헬멧 */}
+          <rect x="52" y="24" width="7" height="8" fill={SKIN} />
+          <circle cx="55" cy="19" r="8" fill={SKIN} />
+          <path d="M46.5,19 a8.5 8.5 0 0 1 17 0 Z" fill={NAVY} />
+          <path d="M46.5,19 a8.5 8.5 0 0 1 8 -6 l -1.5 -2.5 a 11 11 0 0 0 -9 8.5 Z" fill={NAVY_L} />
+          <rect x="37" y="15.5" width="10" height="3.4" rx="1.7" fill={NAVY} />
         </g>
       ) : (
-        <g stroke={fig} strokeWidth="9" strokeLinecap="round" fill="none">
-          <line x1="50" y1="32" x2="50" y2="56" />
-          <line x1="50" y1="56" x2="43" y2="86" />
-          <line x1="50" y1="56" x2="66" y2="63" />
-          <line x1="66" y1="63" x2="61" y2="79" />
-          <line x1="50" y1="36" x2="69" y2="27" />
-          <line x1="50" y1="38" x2="35" y2="46" />
+        <g>
+          {/* 지지 다리 */}
+          <line x1="50" y1="62" x2="45" y2="102" stroke={PANTS} strokeWidth="10" strokeLinecap="round" />
+          <rect x="37" y="100" width="15" height="6.5" rx="3" fill="#0f172a" />
+          {/* 든 다리 */}
+          <line x1="52" y1="62" x2="67" y2="55" stroke={PANTS_D} strokeWidth="10" strokeLinecap="round" />
+          <line x1="67" y1="55" x2="64" y2="73" stroke={PANTS_D} strokeWidth="9" strokeLinecap="round" />
+          <rect x="57" y="71" width="13" height="6.5" rx="3" fill="#1e293b" />
+          {/* 몸통 유니폼 */}
+          <path d="M40,32 L60,32 L58,62 L42,62 Z" fill={JERSEY} />
+          <path d="M53,32 L60,32 L58,62 L51,62 Z" fill={JERSEY_D} opacity="0.8" />
+          <line x1="47" y1="34" x2="47" y2="58" stroke={JERSEY_D} strokeWidth="1.4" />
+          <rect x="42" y="59" width="16" height="5" fill={NAVY} />
+          {/* 글러브 팔 */}
+          <path d="M40,33 L34,35 L32,44 L38,45 Z" fill={JERSEY} />
+          <line x1="36" y1="44" x2="29" y2="50" stroke={SKIN} strokeWidth="6" strokeLinecap="round" />
+          <ellipse cx="24" cy="55" rx="8" ry="10" fill="#7a4c22" />
+          <ellipse cx="24" cy="55" rx="4" ry="6" fill="#5b3719" />
+          {/* 던지는 팔 (뒤로) */}
+          <path d="M60,33 L55,34 L56,43 L62,42 Z" fill={JERSEY_D} />
+          <line x1="59" y1="41" x2="71" y2="28" stroke={SKIN} strokeWidth="6" strokeLinecap="round" />
+          <circle cx="72" cy="27" r="3.6" fill={SKIN} />
+          <circle cx="77" cy="22" r="3.6" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1" />
+          {/* 목 + 머리 + 모자 */}
+          <rect x="47" y="24" width="7" height="8" fill={SKIN} />
+          <circle cx="50" cy="20" r="8" fill={SKIN} />
+          <path d="M41.5,20 a8.5 8.5 0 0 1 17 0 Z" fill={NAVY} />
+          <circle cx="50" cy="13.5" r="1.6" fill={NAVY_L} />
+          <rect x="30" y="17" width="13" height="3.4" rx="1.7" fill={NAVY} />
         </g>
-      )}
-      {kind === "batter" ? (
-        <>
-          <circle cx="60" cy="23" r="8.5" fill={fig} />
-          <path d="M 52 20 a 8.5 8.5 0 0 1 12 -3 l -2 -4 a 11 11 0 0 0 -14 3 z" fill="#1e293b" />
-          <circle cx="88" cy="28" r="3" fill="#f8fafc" />
-        </>
-      ) : (
-        <>
-          <circle cx="50" cy="21" r="8.5" fill={fig} />
-          <circle cx="71" cy="25" r="3" fill="#f8fafc" />
-          <circle cx="33" cy="47" r="6.5" fill="#1e293b" />
-        </>
       )}
     </svg>
   );
@@ -103,21 +167,23 @@ export function GameCard({
   return (
     <button
       className="pcard dcard gcard"
-      style={{ borderColor: gc, boxShadow: `0 0 12px ${gc}66` }}
+      style={{ boxShadow: `0 0 12px ${gc}66` }}
       onClick={onClick}
       title={`${name} — 클릭하면 입력 팝업`}
     >
       <span className="gc-top">
-        <span className="dc-ovr">{score.toFixed(0)}</span>
-        <span className="dc-pos" style={{ background: `${gc}55` }}>{pos}</span>
+        <span className="gc-ovr">{score.toFixed(0)}</span>
+        <span className="gc-tags">
+          {team && <b className="gc-team">{team.slice(0, 3)}</b>}
+          <span className="dc-pos">{pos}</span>
+        </span>
       </span>
-      {team && <span className="dc-team">{team}</span>}
-      <span className="gc-artbox" style={{ background: `linear-gradient(180deg, #101b30 0%, ${gc}33 100%)` }}>
+      <span className="gc-artbox">
         {artUrl
           ? <img className="gc-img" src={artUrl} alt={name} />
           : <PlayerArt kind={kind} accent={gc} />}
       </span>
-      <span className="dc-name">{name}</span>
+      <span className="gc-name">{name}</span>
       <span className="dc-grade">{shortCard(card)}</span>
     </button>
   );

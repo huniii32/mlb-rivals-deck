@@ -195,12 +195,24 @@ span.pcard { cursor: pointer; }
 .dcard a { width: 100%; }
 .prow { display: flex; gap: 12px; flex-wrap: wrap; }
 
-/* 게임식 일러스트 카드 */
-.gcard { padding: 0; justify-content: flex-start; }
-.gc-top { display: flex; width: 100%; align-items: flex-start; justify-content: space-between; padding: 3px 5px 0; z-index: 1; }
-.gc-artbox { width: 100%; height: 76px; margin-top: -14px; overflow: hidden; }
+/* 게임식 일러스트 카드 (파란 메탈 프레임 + 금빛 불꽃) */
+.gcard {
+  padding: 3px; justify-content: flex-start;
+  border: 1px solid #60a5fa;
+  background: linear-gradient(165deg, #7db4fb 0%, #1d4ed8 30%, #172554 70%, #3b82f6 100%);
+}
+.gc-top { display: flex; width: 100%; align-items: flex-start; justify-content: space-between; padding: 2px 4px 0; z-index: 1; }
+.gc-ovr { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+  color: #ffd166; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8); }
+.gc-tags { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.gc-team { font-size: 10px; font-weight: 800; letter-spacing: 0.05em; color: #ffd166;
+  border: 1px solid rgba(255, 209, 102, 0.7); border-radius: 4px; padding: 0 4px;
+  background: rgba(0, 0, 0, 0.45); }
+.gc-artbox { width: 100%; height: 78px; margin-top: -16px; overflow: hidden; border-radius: 2px; }
 .gc-art { width: 100%; height: 100%; display: block; }
-.gc-img { width: 100%; height: 76px; object-fit: cover; object-position: top; display: block; }
+.gc-img { width: 100%; height: 78px; object-fit: cover; object-position: top; display: block; }
+.gc-name { font-size: 13px; font-weight: 800; background: rgba(0, 0, 0, 0.55); width: 100%;
+  padding: 2px 4px; margin-top: auto; letter-spacing: 0.02em; }
 .ed-art { width: 60px; height: 76px; border-radius: 10px; overflow: hidden; border: 2px solid #475569; background: #0b1526; flex: none; }
 .ed-art img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
 .ed-art .gc-art { width: 100%; height: 100%; }
@@ -301,7 +313,8 @@ button.dia-opt.on { border-color: #facc15; box-shadow: 0 0 14px rgba(250, 204, 2
   .pcard-score { font-size: 17px; }
   .diamond { padding-top: 52px; }
   .dcard { width: 70px; min-height: 92px; }
-  .gc-artbox, .gc-img { height: 40px; }
+  .gc-artbox, .gc-img { height: 42px; }
+  .gc-ovr { font-size: 17px; }
   .dc-ovr { font-size: 17px; }
   .scoreboard > div { min-width: 0; padding: 6px 10px; }
   .grid { grid-template-columns: 1fr; }

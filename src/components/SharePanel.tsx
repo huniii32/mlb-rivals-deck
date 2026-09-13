@@ -141,9 +141,9 @@ export function SharePanel({
                 <td>{i + 1}</td>
                 <td>{r.deck.name}{r.deck.id === activeId && " ◀"}</td>
                 <td><b>{r.total.toFixed(1)}</b></td>
-                <td>{r.sp.toFixed(0)}</td>
-                <td>{r.rp.toFixed(0)}</td>
-                <td>{r.bt.toFixed(0)}</td>
+                <td>{r.sp.toFixed(1)}</td>
+                <td>{r.rp.toFixed(1)}</td>
+                <td>{r.bt.toFixed(1)}</td>
                 <td>{r.named}/18</td>
                 <td>{r.deck.id !== activeId && <button onClick={() => onSelectDeck(r.deck.id)}>보기</button>}</td>
               </tr>
