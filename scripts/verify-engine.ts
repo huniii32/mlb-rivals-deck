@@ -106,7 +106,7 @@ const TABLES = { overrides: {}, customs: [] };
   eq("T8 transcend len", tr?.length, 16);
   console.log("  enhance[17](lv18) =", e?.[17], "| pohoon[15](lv16) =", h?.[15], "| transcend[0](lv0) =", tr?.[0]);
 }
-// T8b: FA 공백 정규화 + WBC 미수록 확인
+// T8b: FA 공백 정규화 + WBC Alias 확인 (2026-09-13 실측 반영 후 미스 없음)
 {
   const p = blank(11, "batter", "C");
   p.card = "FA 시그니처 블랙"; p.enhLv = 18;
@@ -115,21 +115,22 @@ const TABLES = { overrides: {}, customs: [] };
   const q = blank(11, "batter", "C");
   q.card = "WBC 시그니처 블랙"; q.enhLv = 18;
   const r2 = calcPlayer(q, ctxOf(q, CHEM_S), { overrides: {}, customs: [] });
-  eq("T8b WBC enhance miss warn", r2.warnings.some((w) => w.includes("강화표")), true);
+  eq("T8b WBC enhance miss warn", r2.warnings.some((w) => w.includes("강화표")), false);
 }
 // T9: 스킬 4번째 누락 시 3개합, 1~3번째 누락 시 null (엑셀 IFNA(SUM...) 동작)
 {
   eq("T9 missing 4th", skillScore("batter", "[S0] 5툴 플레이어 (주수 200-249)", TABLES), 8);
   eq("T9 unknown", skillScore("batter", "없는 스킬", TABLES), null);
 }
-// T10: AR(+3) 자동합산 포함 여부 확인 (가정 기록용)
+// T10: AR(+3) 상시 적용 확인 (2026-09-13 전원 S 확정, skillB 플래그 무시)
 {
   const a = blank(11, "batter", "C");
   const b = blank(11, "batter", "C");
   b.skillB = true;
   const ra = calcPlayer(a, ctxOf(a, CHEM_S), TABLES);
   const rb = calcPlayer(b, ctxOf(b, CHEM_S), TABLES);
-  eq("T10 AR delta", rb.auto.map((v, i) => Math.round((v - ra.auto[i]) * 100) / 100), [3, 3, 3]);
+  eq("T10 AR always", JSON.stringify(ra.auto) === JSON.stringify(rb.auto), true);
+  eq("T10 AR delta", rb.auto.map((v, i) => Math.round((v - ra.auto[i]) * 100) / 100), [0, 0, 0]);
 }
 
 console.log(`\npass=${pass} fail=${fail}`);

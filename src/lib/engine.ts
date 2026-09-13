@@ -274,6 +274,23 @@ export function suggestSkills(kind: Kind, query: string, tables: SkillTables, li
   return out;
 }
 
+// 실측Alias: 게임 화면에서 원본 등급과 동일함이 확인된 것만. (WBC시그니처 강화는 별도 실측값으로 표에 있음)
+// - 강화: WBC시그니처블랙==시그니처블랙(+1~10 확인), 슈프림모먼트==모먼트(60셀 전체 확인)
+// - 초월: 명시 복사본 있음. 남은 구멍(WBC프라임·투수 WBC시그니처)은 경고 유지.
+const TABLE_ALIAS: Record<string, Record<string, string>> = {
+  enhance: { "WBC시그니처블랙": "시그니처블랙", "슈프림모먼트": "모먼트" },
+  transcend: {},
+};
+const STAT_SUFFIX = ["파워", "정확", "선구", "변화", "구위"];
+
+function splitCardStat(key: string): [string, string] | null {
+  const nk = normKey(key);
+  for (const s of STAT_SUFFIX) {
+    if (nk.endsWith(s)) return [nk.slice(0, nk.length - s.length), s];
+  }
+  return null;
+}
+
 function tableBonus(
   base: Record<string, number[]>,
   key: string,
@@ -286,7 +303,18 @@ function tableBonus(
   // 달라 FA 계열이 전부 #N/A가 난다. 공백 제거 매칭으로 수정 (WBC 등 표 자체에 없는 카드는 그대로 경고).
   const table = getTable(kind, tables);
   const want = normKey(key);
-  const entry = Object.entries(table).find(([k]) => normKey(k) === want);
+  let entry = Object.entries(table).find(([k]) => normKey(k) === want);
+  if (!entry && kind !== "pohoon") {
+    // 검증된 등급Alias에서 원본 표를 찾는다 (사용자 customs·명시값 우선, base 표 대상)
+    const split = splitCardStat(key);
+    const aliasGrade = split ? TABLE_ALIAS[kind]?.[split[0]] : undefined;
+    if (aliasGrade) {
+      const want2 = normKey(aliasGrade + split![1]);
+      const baseEntry = Object.entries(LOOKUP[kind] as unknown as Record<string, number[]>)
+        .find(([k]) => normKey(k) === want2);
+      if (baseEntry) entry = baseEntry;
+    }
+  }
   if (!entry) return { v: 0, miss: true };
   const arr = entry[1];
   const idx = kind === "transcend" ? (lv as number) : (lv as number) - 1;

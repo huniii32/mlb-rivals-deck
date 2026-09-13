@@ -97,11 +97,11 @@ for (const [row, want] of [[11, 4], [19, 8], [27, 4], [28, 1]] as const) {
   const res = calcPlayer(toPlayer(r), CTX, TABLES);
   eq(`pohoon row${row}`, res.poh[0], want);
 }
-// 4) 초월/강화 WBC 미스로 경고 (AC/AG #N/A)
+// 4) WBC 표 채움 확인 (2026-09-13 게임 화면 실측 반영 후 경고 없어야 함)
 {
   const res = calcPlayer(toPlayer(ROWS[0]), CTX, TABLES);
-  eq("warn transcend", res.warnings.some((w) => w.includes("초월표")), true);
-  eq("warn enhance", res.warnings.some((w) => w.includes("강화표")), true);
+  eq("warn transcend", res.warnings.some((w) => w.includes("초월표")), false);
+  eq("warn enhance", res.warnings.some((w) => w.includes("강화표")), false);
 }
 // 5) 총점 (최종수동 0 → P=O+J 엑셀 동일 → D4=780 D5=780 D6=371 D7=575.5)
 {
@@ -112,6 +112,33 @@ for (const [row, want] of [[11, 4], [19, 8], [27, 4], [28, 1]] as const) {
   });
   const t = calcDeckTotal({ players, chem: CHEM, flags: flagDefaults(), yearInputs: {} }, TABLES);
   eq("totals", [t.sp, t.rp, t.bt, Math.round(t.total * 10) / 10], [780, 780, 371, 575.5]);
+}
+
+// 6) WBC/슈모 표 (2026-09-13 게임 화면 실측)
+{
+  const mk = (card: string, transLv: number | "", enhLv: number | ""): PlayerInput => ({
+    ...toPlayer(ROWS[0]),
+    card,
+    transLv,
+    enhLv,
+    base: [0, 0, 0],
+    train: [0, 0, 0],
+    spec: [0, 0, 0],
+    extra: [0, 0, 0],
+    finalOv: ["", "", ""],
+  });
+  // WBC시그니처 강화 실측 누적 (+18 → 18)
+  eq("wbc-sign-enh", calcPlayer(mk("WBC 시그니처", "", 18), CTX, TABLES).enh[0], 18);
+  // WBC시그니처블랙 초월 == 시그니처블랙 (LV.9 → 4)
+  eq("wbc-sblack-tr", calcPlayer(mk("WBC 시그니처 블랙", 9, ""), CTX, TABLES).trans[0], 4);
+  // 슈프림모먼트 강화 Alias == 모먼트 (+10 → 8)
+  eq("shumoment-enh", calcPlayer(mk("슈프림 모먼트", "", 10), CTX, TABLES).enh[0], 8);
+  // WBC프라임은 아직 표 없음 → 경고 유지
+  eq(
+    "wbc-prime-miss",
+    calcPlayer(mk("WBC 프라임", "", 10), CTX, TABLES).warnings.some((w) => w.includes("강화표")),
+    true,
+  );
 }
 
 console.log(`\npass=${pass} fail=${fail}`);
