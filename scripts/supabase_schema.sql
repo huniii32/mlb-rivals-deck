@@ -69,6 +69,7 @@ create table if not exists public.inquiries (
   id uuid primary key default gen_random_uuid(),
   name text not null default '익명' check (char_length(name) between 1 and 20),
   body text not null check (char_length(body) between 1 and 2000),
+  reply text,
   created_at timestamptz not null default now()
 );
 alter table public.inquiries enable row level security;

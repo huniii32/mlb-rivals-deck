@@ -6,10 +6,12 @@ interface Inquiry {
   id: string;
   name: string;
   text: string;
+  reply?: string;
   createdAt: number;
 }
 
 const INQ_KEY = "rivals-inquiries-v1";
+const ADMIN_KEY = "rivals-admin-v1";
 
 function loadInquiries(): Inquiry[] {
   try {
@@ -32,6 +34,14 @@ export function InquiryModal({ close }: { close: () => void }) {
   const [loading, setLoading] = useState(remote);
   const [name, setName] = useState("");
   const [text, setText] = useState("");
+  // 관리자 모드: 비번은 이 브라우저 localStorage에만 보관. 남 화면엔 버튼 자체가 안 보임.
+  const [admin, setAdmin] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(ADMIN_KEY);
+    } catch {
+      return null;
+    }
+  });
 
   const loadPub = async () => {
     if (!supabase) return;
@@ -39,7 +49,7 @@ export function InquiryModal({ close }: { close: () => void }) {
     try {
       const { data, error } = await supabase
         .from("inquiries")
-        .select("id,name,body,created_at")
+        .select("id,name,body,reply,created_at")
         .order("created_at", { ascending: false })
         .limit(100);
       if (error) throw error;
@@ -58,6 +68,89 @@ export function InquiryModal({ close }: { close: () => void }) {
   const save = (next: Inquiry[]) => {
     setItems(next);
     localStorage.setItem(INQ_KEY, JSON.stringify(next));
+  };
+
+  const rpcFail = () => {
+    alert("관리자 인증 실패 — SQL 마이그레이션을 실행했는지, 비번이 맞는지 확인하세요.");
+    setAdmin(null);
+    try {
+      localStorage.removeItem(ADMIN_KEY);
+    } catch {
+      // 무시
+    }
+  };
+
+  const unlock = async () => {
+    if (!supabase) {
+      alert("로컬 모드에서는 전부 내 글이라 관리 잠금이 필요 없습니다.");
+      return;
+    }
+    const s = prompt("관리자 비번");
+    if (!s) return;
+    try {
+      const { data, error } = await supabase.rpc("admin_check", { p_secret: s });
+      if (error) throw error;
+      if (!data) {
+        alert("비번이 틀렸습니다.");
+        return;
+      }
+      setAdmin(s);
+      localStorage.setItem(ADMIN_KEY, s);
+    } catch {
+      alert("확인 실패 — 마이그레이션 SQL을 실행했는지 확인하세요.");
+    }
+  };
+
+  const lock = () => {
+    setAdmin(null);
+    try {
+      localStorage.removeItem(ADMIN_KEY);
+    } catch {
+      // 무시
+    }
+  };
+
+  const replyPub = async (it: PublicInquiry) => {
+    if (!supabase || !admin) return;
+    const r = prompt("답변 내용 (지우려면 비우기)", it.reply ?? "");
+    if (r === null) return;
+    try {
+      const { data, error } = await supabase.rpc("admin_reply_inquiry", {
+        p_id: it.id, p_secret: admin, p_reply: r,
+      });
+      if (error) throw error;
+      if (!data) {
+        rpcFail();
+        return;
+      }
+      loadPub();
+    } catch {
+      rpcFail();
+    }
+  };
+
+  const deletePub = async (id: string) => {
+    if (!supabase || !admin) return;
+    if (!confirm("이 문의를 삭제할까요?")) return;
+    try {
+      const { data, error } = await supabase.rpc("admin_delete_inquiry", {
+        p_id: id, p_secret: admin,
+      });
+      if (error) throw error;
+      if (!data) {
+        rpcFail();
+        return;
+      }
+      loadPub();
+    } catch {
+      rpcFail();
+    }
+  };
+
+  const replyLocal = (it: Inquiry) => {
+    const r = prompt("답변 내용 (지우려면 비우기)", it.reply ?? "");
+    if (r === null) return;
+    save(items.map((x) => (x.id === it.id ? { ...x, reply: r.trim() || undefined } : x)));
   };
 
   const submit = async () => {
@@ -101,7 +194,14 @@ export function InquiryModal({ close }: { close: () => void }) {
             <h3 style={{ margin: 0 }}>
               문의하기 ({remote ? pubItems.length : items.length})
             </h3>
-            <button onClick={close}>닫기 ✕</button>
+            <span className="row">
+              {remote && (admin ? (
+                <button onClick={lock} title="관리자 모드 해제">🔓 관리중</button>
+              ) : (
+                <button onClick={unlock} title="관리자 로그인">관리</button>
+              ))}
+              <button onClick={close}>닫기 ✕</button>
+            </span>
           </div>
           <p className="muted">
             {remote
@@ -144,6 +244,7 @@ export function InquiryModal({ close }: { close: () => void }) {
                     <th>날짜</th>
                     <th>이름</th>
                     <th>내용</th>
+                    {admin && <th>관리</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -153,7 +254,20 @@ export function InquiryModal({ close }: { close: () => void }) {
                         {new Date(it.created_at).toLocaleDateString("ko-KR")}
                       </td>
                       <td style={{ whiteSpace: "nowrap" }}>{it.name}</td>
-                      <td style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>{it.body}</td>
+                      <td style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+                        {it.body}
+                        {it.reply && (
+                          <div className="muted" style={{ marginTop: 6, borderLeft: "3px solid var(--accent)", paddingLeft: 8 }}>
+                            ↳ 답변: {it.reply}
+                          </div>
+                        )}
+                      </td>
+                      {admin && (
+                        <td style={{ whiteSpace: "nowrap" }}>
+                          <button onClick={() => replyPub(it)}>답변</button>{" "}
+                          <button onClick={() => deletePub(it.id)}>삭제</button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -173,22 +287,30 @@ export function InquiryModal({ close }: { close: () => void }) {
                   <th></th>
                 </tr>
               </thead>
-              <tbody>
-                {items.map((it) => (
-                  <tr key={it.id}>
-                    <td style={{ whiteSpace: "nowrap" }}>
-                      {new Date(it.createdAt).toLocaleDateString("ko-KR")}
-                    </td>
-                    <td style={{ whiteSpace: "nowrap" }}>{it.name}</td>
-                    <td style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>{it.text}</td>
-                    <td>
-                      <button onClick={() => save(items.filter((x) => x.id !== it.id))}>
-                        삭제
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
+                <tbody>
+                  {items.map((it) => (
+                    <tr key={it.id}>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        {new Date(it.createdAt).toLocaleDateString("ko-KR")}
+                      </td>
+                      <td style={{ whiteSpace: "nowrap" }}>{it.name}</td>
+                      <td style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+                        {it.text}
+                        {it.reply && (
+                          <div className="muted" style={{ marginTop: 6, borderLeft: "3px solid var(--accent)", paddingLeft: 8 }}>
+                            ↳ 답변: {it.reply}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        <button onClick={() => replyLocal(it)}>답변</button>{" "}
+                        <button onClick={() => save(items.filter((x) => x.id !== it.id))}>
+                          삭제
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
             </table>
           )}
         </div>

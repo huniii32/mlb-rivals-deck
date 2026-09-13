@@ -25,5 +25,6 @@ export interface PublicInquiry {
   id: string;
   name: string;
   body: string;
+  reply: string | null;
   created_at: string;
 }
