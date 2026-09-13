@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Deck } from "../App";
 import type { SkillTables } from "../lib/engine";
 import { calcDeckTotal } from "../lib/engine";
+import { isSupabaseOn, supabase, type PublicRank } from "../lib/supabase";
 
 function encodeDeck(d: Deck): string {
   const json = JSON.stringify(d);
@@ -37,6 +38,9 @@ export function SharePanel({
 }) {
   const [link, setLink] = useState("");
   const [input, setInput] = useState("");
+  const [pub, setPub] = useState<PublicRank[]>([]);
+  const [pubLoading, setPubLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const ranking = useMemo(
     () =>
@@ -68,6 +72,63 @@ export function SharePanel({
     if (m) setInput(window.location.href);
   }, []);
 
+  // 전체 공개 랭킹 조회
+  const loadPub = async () => {
+    if (!supabase) return;
+    setPubLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("rankings")
+        .select("id,deck_name,total,sp,rp,bt,named,deck_json,created_at")
+        .order("total", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      setPub((data ?? []) as PublicRank[]);
+    } catch {
+      // 조회 실패는 조용히 무시 (미연동·RLS 전 상태)
+    } finally {
+      setPubLoading(false);
+    }
+  };
+  useEffect(() => {
+    loadPub();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 현재 덱을 전체 공개 랭킹에 등록
+  const submitPub = async () => {
+    if (!supabase || submitting) return;
+    setSubmitting(true);
+    try {
+      const s = calcDeckTotal(active, tables);
+      const { error } = await supabase.from("rankings").insert({
+        deck_name: active.name.slice(0, 50),
+        total: s.total,
+        sp: s.sp,
+        rp: s.rp,
+        bt: s.bt,
+        named: s.named,
+        deck_json: JSON.parse(JSON.stringify(active)) as object,
+      });
+      if (error) throw error;
+      alert("전체 랭킹에 등록됐습니다.");
+      loadPub();
+    } catch {
+      alert("등록 실패 — 테이블·정책이 만들어졌는지 확인하세요.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const importPub = (r: PublicRank) => {
+    const d = r.deck_json as Deck | null;
+    if (!d || !Array.isArray(d.players) || d.players.length !== 18) {
+      alert("덱 형식이 아닙니다.");
+      return;
+    }
+    onImportDeck(d);
+  };
+
   return (
     <div>
       <div className="card">
@@ -89,6 +150,43 @@ export function SharePanel({
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="card">
+        <h3>전체 공개 랭킹</h3>
+        {!isSupabaseOn() ? (
+          <p className="muted">Supabase 미연동 — 로컬에서만 동작 중. 연동하면 전세계 덱이 여기 뜹니다.</p>
+        ) : (
+          <>
+            <div className="row">
+              <button className="primary" disabled={submitting} onClick={submitPub}>
+                {submitting ? "등록 중…" : `내 덱(${active.name}) 등록하기`}
+              </button>
+              <button disabled={pubLoading} onClick={loadPub}>새로고침</button>
+            </div>
+            {pub.length === 0 ? (
+              <p className="muted" style={{ marginTop: 8 }}>
+                {pubLoading ? "불러오는 중…" : "아직 등록된 덱이 없습니다. 첫 등록자가 되어보세요."}
+              </p>
+            ) : (
+              <table style={{ marginTop: 8 }}>
+                <thead><tr><th>#</th><th>덱</th><th>총점</th><th>등록</th><th></th></tr></thead>
+                <tbody>
+                  {pub.map((r, i) => (
+                    <tr key={r.id}>
+                      <td>{i + 1}</td>
+                      <td>{r.deck_name} <span className="muted">({r.named}/18)</span></td>
+                      <td><b>{Number(r.total).toFixed(1)}</b></td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        {new Date(r.created_at).toLocaleDateString("ko-KR")}
+                      </td>
+                      <td><button onClick={() => importPub(r)}>가져오기</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </>
+        )}
       </div>
       <div className="card">
         <h3>덱 공유하기</h3>
