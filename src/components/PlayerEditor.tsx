@@ -85,7 +85,7 @@ export function PlayerEditor({
       <div className="ed-sec">스탯 (최종열에 직접 적으면 수동 고정 · 지우면 자동)</div>
       <table className="ed-stats">
         <thead>
-          <tr><th>스탯</th><th>기본</th><th>훈련</th><th>특훈</th><th>기타</th><th>시너지</th><th>라커룸</th><th>초월</th><th>강화</th><th>포훈</th><th>덱코</th><th>자동합</th><th>최종</th></tr>
+          <tr><th>스탯</th><th>기본</th><th>훈련</th><th>특훈</th><th>포지션훈련</th><th>시너지</th><th>라커룸</th><th>초월</th><th>강화</th><th>포훈</th><th>덱코</th><th>자동합</th><th>최종</th></tr>
         </thead>
         <tbody>
           {stats.map((s, i) => (

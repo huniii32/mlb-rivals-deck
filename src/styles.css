@@ -82,6 +82,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 6px 18px rgba(47, 107, 255, 0.35); }
 button.on { background: #166534; border-color: var(--good); color: #fff; }
 .theme-btn { border-radius: 999px; padding: 7px 14px; }
+.topbar-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
 /* 덱 도구막대 */
 .toolbar { display: flex; flex-direction: column; gap: 10px; }

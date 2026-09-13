@@ -11,6 +11,7 @@ import { TableEditor } from "./components/TableEditor";
 import { NewsTab } from "./components/NewsTab";
 import { SharePanel } from "./components/SharePanel";
 import { ResultPanel } from "./components/ResultPanel";
+import { InquiryModal, PatchNotesModal } from "./components/SiteModals";
 import "./styles.css";
 
 const DECKS_KEY = "rivals-decks-v1";
@@ -134,8 +135,9 @@ export default function App() {
   const [activeId, setActiveId] = useState(boot.activeId);
   const [tables, setTables] = useState<SkillTables>(loadTables);
   const [selected, setSelected] = useState<number | null>(null);
-  const [tab, setTab] = useState<"lineup" | "news" | "ranking" | "skills">("lineup");
+  const [tab, setTab] = useState<"lineup" | "skills" | "ranking" | "news">("lineup");
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "dark");
+  const [modal, setModal] = useState<"inquiry" | "notices" | null>(null);
   const [photoCache, setPhotoCache] = useState<Record<string, PhotoInfo | null>>(() => {
     try {
       return JSON.parse(localStorage.getItem("rivals-photos-v1") || "{}");
@@ -168,7 +170,10 @@ export default function App() {
   // ESC로 팝업 닫기
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSelected(null);
+      if (e.key === "Escape") {
+        setSelected(null);
+        setModal(null);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -370,9 +375,13 @@ export default function App() {
           </svg>
           Rivals Deck <small>9이닝스 라이벌즈 덱관리</small>
         </div>
-        <button className="theme-btn" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} title="테마 전환">
-          {theme === "dark" ? "☀️ 라이트" : "🌙 다크"}
-        </button>
+        <div className="topbar-actions">
+          <button className="theme-btn" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} title="테마 전환">
+            {theme === "dark" ? "☀️ 라이트" : "🌙 다크"}
+          </button>
+          <button onClick={() => setModal("inquiry")}>✉️ 문의하기</button>
+          <button onClick={() => setModal("notices")}>📢 공지사항</button>
+        </div>
       </header>
 
       <div className="card toolbar">
@@ -394,9 +403,9 @@ export default function App() {
       </div>
 
       <div className="tabs">
-        {(["lineup", "news", "ranking", "skills"] as const).map((t) => (
+        {(["lineup", "skills", "ranking", "news"] as const).map((t) => (
           <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>
-            {{ lineup: "라인업", news: "정보", ranking: "랭킹 · 공유", skills: "스킬점수" }[t]}
+            {{ lineup: "라인업", skills: "스킬점수", ranking: "랭킹공유", news: "정보글" }[t]}
           </button>
         ))}
       </div>
@@ -425,6 +434,13 @@ export default function App() {
 
       {tab === "news" && <NewsTab />}
 
+      {tab === "skills" && (
+        <>
+          <SkillPanel tables={tables} setTables={setTables} />
+          <TableEditor tables={tables} setTables={setTables} />
+        </>
+      )}
+
       {tab === "ranking" && (
         <>
           <SharePanel
@@ -437,12 +453,8 @@ export default function App() {
         </>
       )}
 
-      {tab === "skills" && (
-        <>
-          <SkillPanel tables={tables} setTables={setTables} />
-          <TableEditor tables={tables} setTables={setTables} />
-        </>
-      )}
+      {modal === "inquiry" && <InquiryModal close={() => setModal(null)} />}
+      {modal === "notices" && <PatchNotesModal close={() => setModal(null)} />}
 
       {selPlayer && selRes && (
         <div className="modal-overlay" onClick={() => setSelected(null)}>
