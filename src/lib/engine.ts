@@ -203,6 +203,17 @@ export function skillScore(
 
 const normKey = (s: string): string => s.replace(/\s+/g, "");
 const normSkill = (s: string): string => s.replace(/\s+/g, "").toLowerCase();
+
+/** 구 스킬명 → 현행명. 저장된 덱·표에 옛 이름이 남아있으면 로드 시 치환. */
+export const SKILL_RENAMES: Record<string, string> = {
+  "batter:[S0] 리그 주도자 (-)": "[S0] 리그의 주도자 (-)",
+  "batter:[S1] 리그 주도자 (-)": "[S1] 리그의 주도자 (-)",
+  "batter:[S2] 리그 주도자 (-)": "[S2] 리그의 주도자 (-)",
+};
+
+export function migrateSkillName(kind: Kind, name: string): string {
+  return SKILL_RENAMES[`${kind}:${name}`] ?? name;
+}
 const stripBracket = (s: string): string => s.replace(/\[[^\]]*\]/g, "").replace(/\([^)]*\)/g, "");
 const stripParticle = (s: string): string =>
   s.replace(/(에게|한테|부터|까지|처럼|보다|으로|의|은|는|이|가|을|를|에|와|과|로|도|만)$/, "");

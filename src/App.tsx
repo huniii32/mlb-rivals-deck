@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Chem, Kind, PlayerInput, SkillTables } from "./lib/engine";
-import { calcPlayer, flagDefaults } from "./lib/engine";
+import { calcPlayer, flagDefaults, migrateSkillName } from "./lib/engine";
 import { LineupView } from "./components/LineupView";
 import { PlayerEditor } from "./components/PlayerEditor";
 import { ChemPanel, DeckScorePanel } from "./components/DeckPanel";
@@ -83,6 +83,8 @@ function loadDecks(): { decks: Deck[]; activeId: string } {
             team: p.team ?? "",
             synergy: p.synergy ?? ["", "", ""],
             locker: p.locker ?? ["", "", ""],
+            skills: (p.skills ?? ["", "", "", ""]).map((s) =>
+              migrateSkillName(p.kind, s)) as [string, string, string, string],
           });
           return {
             ...base,
@@ -114,14 +116,24 @@ function loadDecks(): { decks: Deck[]; activeId: string } {
   return { decks: [d], activeId: d.id };
 }
 
+function migrateTables(t: SkillTables): SkillTables {
+  const overrides: Record<string, number> = {};
+  for (const [k, v] of Object.entries(t.overrides || {})) {
+    const m = k.match(/^(batter|pitcher):(.*)$/);
+    overrides[m ? `${m[1]}:${migrateSkillName(m[1] as Kind, m[2])}` : k] = v;
+  }
+  const customs = (t.customs || []).map((c) => ({ ...c, name: migrateSkillName(c.kind, c.name) }));
+  return { ...t, overrides, customs };
+}
+
 function loadTables(): SkillTables {
   try {
     const raw = localStorage.getItem(TABLES_KEY);
-    if (raw) return JSON.parse(raw) as SkillTables;
+    if (raw) return migrateTables(JSON.parse(raw) as SkillTables);
     const legacy = localStorage.getItem(LEGACY_KEY);
     if (legacy) {
       const s = JSON.parse(legacy) as { tables?: SkillTables };
-      if (s.tables) return s.tables;
+      if (s.tables) return migrateTables(s.tables);
     }
   } catch {
     // 무시
@@ -311,6 +323,8 @@ export default function App() {
         team: p.team ?? "",
         synergy: p.synergy ?? ["", "", ""],
         locker: p.locker ?? ["", "", ""],
+        skills: (p.skills ?? ["", "", "", ""]).map((s) =>
+          migrateSkillName(p.kind, s)) as [string, string, string, string],
       })),
       id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
       updatedAt: Date.now(),

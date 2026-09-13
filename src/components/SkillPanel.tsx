@@ -52,19 +52,21 @@ export function SkillCompare({ tables }: { tables: SkillTables }) {
                   n[i] = e.target.value;
                   setSkills(n);
                 }} />
-              {sug.length > 0 && (
-                <span className="muted">혹시: {sug.map((s, j) => (
-                  <span key={s}>
-                    <a href="#" onClick={(e) => {
-                      e.preventDefault();
-                      const n = [...skills];
-                      n[i] = s;
-                      setSkills(n);
-                    }}>{s}</a>
-                    {j < sug.length - 1 ? " · " : ""}
-                  </span>
-                ))}</span>
-              )}
+              <span className="muted" style={{ display: "block", minHeight: 20 }}>
+                {sug.length > 0 && (
+                  <>혹시: {sug.map((s, j) => (
+                    <span key={s}>
+                      <a href="#" onClick={(e) => {
+                        e.preventDefault();
+                        const n = [...skills];
+                        n[i] = s;
+                        setSkills(n);
+                      }}>{s}</a>
+                      {j < sug.length - 1 ? " · " : ""}
+                    </span>
+                  ))}</>
+                )}
+              </span>
             </label>
           );
         })}
