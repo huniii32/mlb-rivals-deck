@@ -10,6 +10,7 @@ import { NewsTab } from "./components/NewsTab";
 import { SharePanel } from "./components/SharePanel";
 import { ResultPanel } from "./components/ResultPanel";
 import { InquiryModal, PatchNotesModal } from "./components/SiteModals";
+import { DeckPreviewModal } from "./components/DeckPreview";
 import { parseExcelDeck } from "./lib/excelImport";
 import "./styles.css";
 
@@ -137,6 +138,7 @@ export default function App() {
   const [tab, setTab] = useState<"lineup" | "skills" | "ranking" | "news">("lineup");
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "dark");
   const [modal, setModal] = useState<"inquiry" | "notices" | null>(null);
+  const [preview, setPreview] = useState<Deck | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const xlRef = useRef<HTMLInputElement>(null);
 
@@ -162,6 +164,7 @@ export default function App() {
       if (e.key === "Escape") {
         setSelected(null);
         setModal(null);
+        setPreview(null);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -402,6 +405,7 @@ export default function App() {
             decks={decks} tables={tables} activeId={deck.id}
             onSelectDeck={(id) => { setActiveId(id); setSelected(null); }}
             onImportDeck={(d) => addDeckData(d, "공유받은 덱")}
+            onPreviewDeck={(d) => setPreview(d)}
           />
           <ResultPanel batters={batters} pitchers={pitchers} bRes={bRes} pRes={pRes} />
         </>
@@ -409,6 +413,7 @@ export default function App() {
 
       {modal === "inquiry" && <InquiryModal close={() => setModal(null)} />}
       {modal === "notices" && <PatchNotesModal close={() => setModal(null)} />}
+      {preview && <DeckPreviewModal deck={preview} tables={tables} close={() => setPreview(null)} />}
 
       {selPlayer && selRes && (
         <div className="modal-overlay" onClick={() => setSelected(null)}>

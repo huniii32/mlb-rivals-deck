@@ -23,7 +23,7 @@ function rowLabel(row: number): string {
 }
 
 // 연도 입력행 -> 스덱코 임계값 행 옆에 표시 (규칙: 33→615, 35→645, 37→680)
-const YEAR_ANCHOR: Record<number, number> = { 615: 33, 645: 35, 680: 37 };
+export const YEAR_ANCHOR: Record<number, number> = { 615: 33, 645: 35, 680: 37 };
 
 export function ChemPanel({ chem, setChem }: {
   chem: Chem;

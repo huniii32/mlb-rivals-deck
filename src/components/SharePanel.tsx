@@ -26,15 +26,16 @@ export function decodeDeck(code: string): Deck | null {
   }
 }
 
-/** 공유 + 내 덱 랭킹. 전체 공개 랭킹은 서버가 필요해서 내 덱끼리만 순위. */
+/** 공유 + 내 덱 랭킹 + 전체 공개 랭킹 */
 export function SharePanel({
-  decks, tables, activeId, onSelectDeck, onImportDeck,
+  decks, tables, activeId, onSelectDeck, onImportDeck, onPreviewDeck,
 }: {
   decks: Deck[];
   tables: SkillTables;
   activeId: string;
   onSelectDeck: (id: string) => void;
   onImportDeck: (d: Deck) => void;
+  onPreviewDeck: (d: Deck) => void;
 }) {
   const [link, setLink] = useState("");
   const [input, setInput] = useState("");
@@ -270,7 +271,10 @@ export function SharePanel({
                 <td>{r.rp.toFixed(1)}</td>
                 <td>{r.bt.toFixed(1)}</td>
                 <td>{r.named}/18</td>
-                <td>{r.deck.id !== activeId && <button onClick={() => onSelectDeck(r.deck.id)}>보기</button>}</td>
+                <td style={{ whiteSpace: "nowrap" }}>
+                  <button onClick={() => onPreviewDeck(r.deck)}>보기</button>{" "}
+                  {r.deck.id !== activeId && <button onClick={() => onSelectDeck(r.deck.id)}>선택</button>}
+                </td>
               </tr>
             ))}
           </tbody>
