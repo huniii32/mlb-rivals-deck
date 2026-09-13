@@ -117,7 +117,7 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
                             if (g.sides.length < 2) toggleFlag(key);
                             else setRowSide(g.region, g.row, s);
                           }}>
-                          <span>{s === "L" ? "좌" : "우"}</span>
+                          <span>{g.sides.length < 2 ? "선택" : s === "L" ? "좌" : "우"}</span>
                           {on && <b className="dia-check">✓</b>}
                         </button>
                       );
