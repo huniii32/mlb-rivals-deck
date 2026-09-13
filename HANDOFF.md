@@ -1,8 +1,11 @@
 # Rivals Deck — 세션 인계
 
-> 새 세션은 이 파일부터 읽을 것. 직전 상태: 2026-09-10.
+> 새 세션은 이 파일부터 읽을 것. 직전 상태: 2026-09-13.
 
 ## 앱 상태
+- 탭 순서: 라인업 - 스킬점수 - 랭킹공유 - 정보글 (2026-09-13 변경)
+- 상단바: 테마 전환 옆 문의하기(localStorage 메모판 `rivals-inquiries-v1`) · 공지사항(`src/data/patchnotes.json` 패치 내역) 모달
+- Supabase(전체 공개 랭킹·문의판) 미연동 — 사용자가 프로젝트+키 발급하면 연동 예정
 - 공개 URL: https://huniii32.github.io/mlb-rivals-deck/ (main 푸시 → Actions 자동배포, `deploy-pages.sh`는 예비)
 - 시너지·라커룸 입력칸 추가됨 (팝업 스탯표, 자동합산 포함)
 - 소식 섹션: 공식 공지 번들(`src/data/notices.json`, 크롤러가 생성·커밋) + 정보글 수동등록(localStorage)
