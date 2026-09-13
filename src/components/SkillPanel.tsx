@@ -99,39 +99,43 @@ export function SkillPanel({
   tables: SkillTables;
   setTables: (t: SkillTables) => void;
 }) {
+  const [filter, setFilter] = useState<"batter" | "pitcher" | "all">("batter");
   const [kind, setKind] = useState<Kind>("batter");
   const [q, setQ] = useState("");
   const [nName, setNName] = useState("");
   const [nScore, setNScore] = useState<number | "">(0);
-  const base = kind === "batter" ? LOOKUP.batter : LOOKUP.pitcher;
   const nq = q.replace(/\s+/g, "").toLowerCase();
-  const merged: { name: string; score: number; custom: boolean; edited?: boolean }[] = [
-    ...tables.customs.filter((c) => c.kind === kind).map((c) => ({ name: c.name, score: c.score, custom: true })),
-    ...base.map((s) => ({
-      name: s.name,
-      score: tables.overrides[`${kind}:${s.name}`] ?? s.score,
-      custom: false,
-      edited: tables.overrides[`${kind}:${s.name}`] !== undefined,
+  const ofKind = (k: Kind) => [
+    ...tables.customs.filter((c) => c.kind === k).map((c) => ({ kind: k, name: c.name, score: c.score, custom: true as const, edited: false as const })),
+    ...(k === "batter" ? LOOKUP.batter : LOOKUP.pitcher).map((s) => ({
+      kind: k, name: s.name,
+      score: tables.overrides[`${k}:${s.name}`] ?? s.score,
+      custom: false as const,
+      edited: tables.overrides[`${k}:${s.name}`] !== undefined,
     })),
-  ].filter((s) => !nq || s.name.toLowerCase().includes(q.trim().toLowerCase()) ||
+  ];
+  const all = filter === "all" ? [...ofKind("batter"), ...ofKind("pitcher")] : ofKind(filter);
+  const merged = all.filter((s) => !nq || s.name.toLowerCase().includes(q.trim().toLowerCase()) ||
     s.name.replace(/\s+/g, "").toLowerCase().includes(nq));
+  const bCount = ofKind("batter").length;
+  const pCount = ofKind("pitcher").length;
 
-  const setScore = (name: string, score: number, custom: boolean) => {
+  const setScore = (k: Kind, name: string, score: number, custom: boolean) => {
     if (custom) {
-      setTables({ ...tables, customs: tables.customs.map((c) => (c.kind === kind && c.name === name ? { ...c, score } : c)) });
+      setTables({ ...tables, customs: tables.customs.map((c) => (c.kind === k && c.name === name ? { ...c, score } : c)) });
     } else {
-      setTables({ ...tables, overrides: { ...tables.overrides, [`${kind}:${name}`]: score } });
+      setTables({ ...tables, overrides: { ...tables.overrides, [`${k}:${name}`]: score } });
     }
   };
-  const resetScore = (name: string) => {
+  const resetScore = (k: Kind, name: string) => {
     const o = { ...tables.overrides };
-    delete o[`${kind}:${name}`];
+    delete o[`${k}:${name}`];
     setTables({ ...tables, overrides: o });
   };
   const add = () => {
     const name = nName.trim();
     if (!name || nScore === "") return;
-    if (base.some((s) => s.name === name) || tables.customs.some((c) => c.kind === kind && c.name === name)) {
+    if (ofKind(kind).some((s) => s.name === name)) {
       alert("이미 있는 스킬명입니다. 점수 수정으로 변경하세요.");
       return;
     }
@@ -143,33 +147,41 @@ export function SkillPanel({
     <div className="card">
       <h3>스킬점수 관리</h3>
       <div className="row">
-        <button className={kind === "batter" ? "on" : ""} onClick={() => setKind("batter")}>타자({LOOKUP.batter.length})</button>
-        <button className={kind === "pitcher" ? "on" : ""} onClick={() => setKind("pitcher")}>투수({LOOKUP.pitcher.length})</button>
+        <button className={filter === "batter" ? "on" : ""} onClick={() => setFilter("batter")}>타자({bCount})</button>
+        <button className={filter === "pitcher" ? "on" : ""} onClick={() => setFilter("pitcher")}>투수({pCount})</button>
+        <button className={filter === "all" ? "on" : ""} onClick={() => setFilter("all")}>전체({bCount + pCount})</button>
         <input placeholder="스킬 검색" value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: 1 }} />
       </div>
       <div className="row" style={{ marginTop: 8 }}>
+        <select value={kind} onChange={(e) => setKind(e.target.value as Kind)}>
+          <option value="batter">타자</option>
+          <option value="pitcher">투수</option>
+        </select>
         <input placeholder="신규 스킬명 (예: [S0] xxx)" value={nName} onChange={(e) => setNName(e.target.value)} style={{ flex: 1 }} />
         <input type="number" value={nScore} onChange={(e) => setNScore(e.target.value === "" ? "" : Number(e.target.value))} style={{ width: 90 }} />
         <button className="primary" onClick={add}>추가</button>
       </div>
-      <table style={{ marginTop: 8 }}>
-        <thead><tr><th>스킬</th><th>점수</th><th></th></tr></thead>
-        <tbody>
-          {merged.slice(0, 200).map((s) => (
-            <tr key={s.name}>
-              <td>{s.name} {s.custom && <span className="muted">(추가)</span>} {s.edited && <span className="muted">(수정됨)</span>}</td>
-              <td>
-                <input
-                  type="number" step="0.01" style={{ width: 90 }}
-                  value={s.score}
-                  onChange={(e) => setScore(s.name, Number(e.target.value), !!s.custom)}
-                />
-              </td>
-              <td>{s.edited && <button onClick={() => resetScore(s.name)}>원복</button>}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="skill-table-wrap">
+        <table style={{ marginTop: 8 }}>
+          <thead><tr><th>종류</th><th>스킬</th><th>점수</th><th></th></tr></thead>
+          <tbody>
+            {merged.slice(0, 200).map((s) => (
+              <tr key={`${s.kind}:${s.name}`}>
+                <td>{s.kind === "batter" ? "타자" : "투수"}</td>
+                <td>{s.name} {s.custom && <span className="muted">(추가)</span>} {s.edited && <span className="muted">(수정됨)</span>}</td>
+                <td>
+                  <input
+                    type="number" step="0.01" style={{ width: 90 }}
+                    value={s.score}
+                    onChange={(e) => setScore(s.kind, s.name, Number(e.target.value), !!s.custom)}
+                  />
+                </td>
+                <td>{s.edited && <button onClick={() => resetScore(s.kind, s.name)}>원복</button>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {merged.length > 200 && <p className="muted">{merged.length - 200}개 더 있음 — 검색으로 찾으세요.</p>}
     </div>
   );

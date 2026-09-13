@@ -219,6 +219,10 @@ span.pcard { cursor: pointer; }
 .ed-art img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
 .ed-art .gc-art { width: 100%; height: 100%; }
 
+/* 스킬표 스크롤 고정 (검색 시 레이아웃 점프 방지) */
+.skill-table-wrap { max-height: 480px; overflow-y: auto; margin-top: 8px; }
+.skill-table-wrap thead th { position: sticky; top: 0; z-index: 2; }
+
 /* 팝업 */
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(3, 7, 17, 0.66); z-index: 50;
