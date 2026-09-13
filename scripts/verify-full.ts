@@ -133,6 +133,25 @@ for (const [row, want] of [[11, 4], [19, 8], [27, 4], [28, 1]] as const) {
   eq("wbc-sblack-tr", calcPlayer(mk("WBC 시그니처 블랙", 9, ""), CTX, TABLES).trans[0], 4);
   // 슈프림모먼트 강화 Alias == 모먼트 (+10 → 8)
   eq("shumoment-enh", calcPlayer(mk("슈프림 모먼트", "", 10), CTX, TABLES).enh[0], 8);
+  // 투수 WBC시그니처 강화 실측 (버그사항2 IMG_9923/9924: +20 합계 21)
+  const mkP = (card: string, transLv: number | "", enhLv: number | ""): PlayerInput => ({
+    ...toPlayer(ROWS[9]),
+    card,
+    transLv,
+    enhLv,
+    base: [0, 0, ""],
+    train: [0, 0, ""],
+    spec: [0, 0, ""],
+    extra: [0, 0, ""],
+    finalOv: ["", "", ""],
+  });
+  const rp = calcPlayer(mkP("WBC 시그니처", "", 20), CTX, TABLES);
+  eq("wbc-sign-p-enh", rp.enh.slice(0, 2), [21, 21]);
+  eq("wbc-sign-p-enh-warn", rp.warnings.some((w) => w.includes("강화표")), false);
+  // 투수 WBC시그니처 초월 실측 (IMG_9917: LV1~9, 합계 4.0)
+  eq("wbc-sign-p-tr", calcPlayer(mkP("WBC 시그니처", 9, ""), CTX, TABLES).trans.slice(0, 2), [4, 4]);
+  // 투수 슈프림모먼트 강화 Alias == 모먼트 (IMG_9925/9926: +20 합계 20)
+  eq("shumoment-p-enh", calcPlayer(mkP("슈프림 모먼트", "", 20), CTX, TABLES).enh.slice(0, 2), [20, 20]);
   // WBC프라임은 아직 표 없음 → 경고 유지
   eq(
     "wbc-prime-miss",

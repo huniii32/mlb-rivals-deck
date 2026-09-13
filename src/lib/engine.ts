@@ -275,8 +275,10 @@ export function suggestSkills(kind: Kind, query: string, tables: SkillTables, li
 }
 
 // 실측Alias: 게임 화면에서 원본 등급과 동일함이 확인된 것만. (WBC시그니처 강화는 별도 실측값으로 표에 있음)
-// - 강화: WBC시그니처블랙==시그니처블랙(+1~10 확인), 슈프림모먼트==모먼트(60셀 전체 확인)
-// - 초월: 명시 복사본 있음. 남은 구멍(WBC프라임·투수 WBC시그니처)은 경고 유지.
+// - 강화: WBC시그니처블랙==시그니처블랙(+1~10 확인), 슈프림모먼트==모먼트(60셀 전체 확인),
+//   WBC시그니처 투수 변화/구위 별도 실측 입력 (버그사항2 16장, +20 합계 21)
+// - 초월: 명시 복사본 있음. WBC시그니처 투수는 LV1~9 실측확인(합계 4.0, LV10~15 무보너스).
+//   남은 구멍(WBC프라임)은 경고 유지.
 const TABLE_ALIAS: Record<string, Record<string, string>> = {
   enhance: { "WBC시그니처블랙": "시그니처블랙", "슈프림모먼트": "모먼트" },
   transcend: {},
