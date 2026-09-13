@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Chem, Kind, PlayerInput, SkillTables } from "./lib/engine";
 import { calcPlayer, flagDefaults } from "./lib/engine";
-import type { PhotoInfo } from "./lib/photos";
-import { effectiveQuery, searchPhoto } from "./lib/photos";
 import { LineupView } from "./components/LineupView";
 import { PlayerEditor } from "./components/PlayerEditor";
 import { ChemPanel, DeckScorePanel } from "./components/DeckPanel";
@@ -138,13 +136,6 @@ export default function App() {
   const [tab, setTab] = useState<"lineup" | "skills" | "ranking" | "news">("lineup");
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "dark");
   const [modal, setModal] = useState<"inquiry" | "notices" | null>(null);
-  const [photoCache, setPhotoCache] = useState<Record<string, PhotoInfo | null>>(() => {
-    try {
-      return JSON.parse(localStorage.getItem("rivals-photos-v1") || "{}");
-    } catch {
-      return {};
-    }
-  });
   const fileRef = useRef<HTMLInputElement>(null);
 
   const deck = decks.find((d) => d.id === activeId) ?? decks[0];
@@ -163,10 +154,6 @@ export default function App() {
     localStorage.setItem(TABLES_KEY, JSON.stringify(tables));
   }, [tables]);
 
-  useEffect(() => {
-    localStorage.setItem("rivals-photos-v1", JSON.stringify(photoCache));
-  }, [photoCache]);
-
   // ESC로 팝업 닫기
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -179,54 +166,14 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // 영문명별 사진 조회 (행별 마지막 조회명 추적 → 이름 바뀌면 재조회)
-  // 주의: 진행 중 setPhotoQuery가 effect를 재실행해도 루프가 죽으면 안 되므로
-  // 마운트 여부만 ref로 보고, 캐시 덮어쓰기는 updater 가드로 막는다.
-  const [photoQuery, setPhotoQuery] = useState<Record<number, string>>({});
-  const mounted = useRef(true);
-  useEffect(() => {
-    mounted.current = true;
-    return () => { mounted.current = false; };
-  }, []);
-  useEffect(() => {
-    const targets = players.filter((p) => {
-      const name = effectiveQuery(p.enName, p.name);
-      if (!name || p.photoUrl.trim()) return false;
-      if (photoQuery[p.excelRow] === name) return false;
-      if (photoCache[name.toLowerCase()] !== undefined) return false;
-      return true;
-    });
-    if (!targets.length) return;
-    (async () => {
-      for (const t of targets) {
-        const name = effectiveQuery(t.enName, t.name);
-        const key = name.toLowerCase();
-        setPhotoQuery((q) => (q[t.excelRow] === name ? q : { ...q, [t.excelRow]: name }));
-        let hit: PhotoInfo | null;
-        try {
-          hit = await searchPhoto(name);
-        } catch {
-          hit = null;
-        }
-        if (!mounted.current) return;
-        setPhotoCache((c) => (c[key] === undefined ? { ...c, [key]: hit } : c));
-      }
-    })();
-  }, [players, photoCache, photoQuery]);
-
-  const retryPhoto = (p: PlayerInput) => {
-    const key = effectiveQuery(p.enName, p.name).toLowerCase();
-    setPhotoCache((c) => {
-      const n = { ...c };
-      delete n[key];
-      return n;
-    });
-    setPhotoQuery((q) => {
-      const n = { ...q };
-      delete n[p.excelRow];
-      return n;
-    });
-  };
+  // 카드 그림: 수동 이미지 URL만 사용, 없으면 자체 일러스트
+  const artByRow: Record<number, string> = useMemo(() => {
+    const out: Record<number, string> = {};
+    for (const p of players) {
+      if (p.photoUrl.trim()) out[p.excelRow] = p.photoUrl.trim();
+    }
+    return out;
+  }, [players]);
 
   const ctx = useMemo(() => {
     const cardByRow: Record<number, string> = {};
@@ -279,21 +226,6 @@ export default function App() {
     }),
     [tables],
   );
-
-  const photosByRow: Record<number, PhotoInfo> = useMemo(() => {
-    const out: Record<number, PhotoInfo> = {};
-    for (const p of players) {
-      if (p.photoUrl.trim()) out[p.excelRow] = { src: p.photoUrl.trim(), page: p.photoUrl.trim() };
-      else {
-        const q = effectiveQuery(p.enName, p.name);
-        if (q) {
-          const hit = photoCache[q.toLowerCase()];
-          if (hit) out[p.excelRow] = hit;
-        }
-      }
-    }
-    return out;
-  }, [players, photoCache]);
 
   const selPlayer = selected === null ? null : players.find((p) => p.excelRow === selected) ?? null;
   const selRes = selPlayer ? results[players.indexOf(selPlayer)] : null;
@@ -415,7 +347,7 @@ export default function App() {
           <div>
             <LineupView
               batters={batters} pitchers={pitchers} bRes={bRes} pRes={pRes}
-              onSelect={setSelected} photos={photosByRow}
+              onSelect={setSelected} art={artByRow}
             />
             <ChemPanel
               chem={chem} setChem={(c) => patchDeck({ chem: c })}
@@ -465,26 +397,13 @@ export default function App() {
               update={(patch) => update(selPlayer.excelRow, patch)}
               close={() => setSelected(null)}
               customNames={customNames[selPlayer.kind]}
-              photo={photosByRow[selPlayer.excelRow]}
               tables={tables}
-              photoPending={
-                !!effectiveQuery(selPlayer.enName, selPlayer.name) &&
-                !selPlayer.photoUrl.trim() &&
-                photoQuery[selPlayer.excelRow] === effectiveQuery(selPlayer.enName, selPlayer.name) &&
-                photoCache[effectiveQuery(selPlayer.enName, selPlayer.name).toLowerCase()] === undefined
-              }
-              photoFailed={
-                !!effectiveQuery(selPlayer.enName, selPlayer.name) &&
-                !selPlayer.photoUrl.trim() &&
-                photoCache[effectiveQuery(selPlayer.enName, selPlayer.name).toLowerCase()] === null
-              }
-              onRetryPhoto={() => retryPhoto(selPlayer)}
             />
           </div>
         </div>
       )}
 
-      <p className="muted">사진: Wikimedia Commons (CC 라이선스) · 점수는 랭대 공격 기준</p>
+      <p className="muted">카드 일러스트: 자체 제작 · 점수는 랭대 공격 기준</p>
     </div>
   );
 }

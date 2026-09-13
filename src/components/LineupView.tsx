@@ -1,8 +1,9 @@
 import type { PlayerInput, PlayerResult } from "../lib/engine";
-import type { PhotoInfo } from "../lib/photos";
+import { GameCard } from "./CardArt";
 
 // 게임 라인업 화면처럼 다이아몬드 위에 카드 배치.
 // 타자 9명(외야 LF/CF/RF, 내야 3B/SS/2B/1B, 포수 C, 지명 DH) + 투수 9명(SP5/RP3/CP1).
+// 카드 그림은 자체 제작 일러스트. 수동 이미지 URL이 있으면 그걸 우선 표시.
 
 const DIAMOND: [string, number, number][] = [
   ["CF", 50, 14],
@@ -20,90 +21,15 @@ const DEF_ROW: Record<string, number> = {
   C: 11, "1B": 12, "2B": 13, "3B": 14, SS: 15, LF: 16, CF: 17, RF: 18, DH: 19,
 };
 
-const GRADE_COLOR: [string, string][] = [
-  ["블랙", "#a855f7"],
-  ["시그니처", "#8b5cf6"],
-  ["슈프림", "#ef4444"],
-  ["모먼트", "#f97316"],
-  ["프라임", "#3b82f6"],
-  ["명예의 전당", "#eab308"],
-];
-
-function gradeColor(card: string): string {
-  for (const [k, c] of GRADE_COLOR) if (card.includes(k)) return c;
-  return "#64748b";
-}
-
-function shortCard(card: string): string {
-  return card
-    .replace("WBC 시그니처 블랙", "WBC시블")
-    .replace("FA 시그니처 블랙", "FA시블")
-    .replace("시그니처 블랙", "시블")
-    .replace("FA 시그니처", "FA시그")
-    .replace("WBC 시그니처", "WBC시그")
-    .replace("슈프림 모먼트", "슈모")
-    .replace("명예의 전당", "HOF")
-    .replace("FA 프라임", "FA프")
-    .replace("WBC 프라임", "WBC프");
-}
-
-function Card({
-  pos, name, team, card, score, filled, photo, onClick,
-}: {
-  pos: string; name: string; team: string; card: string; score: number; filled: boolean;
-  photo?: PhotoInfo; onClick: () => void;
-}) {
-  const inner = filled ? (
-    <>
-      <span className="dc-top">
-        <span className="dc-ovr">{score.toFixed(0)}</span>
-        <span className="dc-pos">{pos}</span>
-      </span>
-      {team && <span className="dc-team">{team}</span>}
-      {photo
-        ? <img className="dc-img" src={photo.src} alt={name} />
-        : <span className="dc-noimg">NO PHOTO</span>}
-      <span className="dc-name">{name}</span>
-      <span className="dc-grade">{shortCard(card)}</span>
-    </>
-  ) : (
-    <>
-      <span className="dc-pos alone">{pos}</span>
-      <span className="dc-name muted">+ 등록</span>
-    </>
-  );
-  if (filled && photo) {
-    return (
-      <span className="pcard dcard" style={{ borderColor: gradeColor(card), boxShadow: `0 0 12px ${gradeColor(card)}66` }}
-        onClick={onClick} role="button" tabIndex={0} title={`${name} — 클릭하면 입력 팞업`}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}>
-        {inner}
-        <a className="pcard-src" href={photo.page} target="_blank" rel="noreferrer"
-          onClick={(e) => e.stopPropagation()} title="사진 출처 페이지">⧉</a>
-      </span>
-    );
-  }
-  return (
-    <button
-      className={`pcard dcard ${filled ? "" : "empty"}`}
-      style={filled ? { borderColor: gradeColor(card), boxShadow: `0 0 12px ${gradeColor(card)}66` } : undefined}
-      onClick={onClick}
-      title={filled ? `${name} — 클릭하면 입력 팝업` : `${pos} 비어있음 — 클릭하면 입력 팝업`}
-    >
-      {inner}
-    </button>
-  );
-}
-
 export function LineupView({
-  batters, pitchers, bRes, pRes, onSelect, photos,
+  batters, pitchers, bRes, pRes, onSelect, art,
 }: {
   batters: PlayerInput[];
   pitchers: PlayerInput[];
   bRes: PlayerResult[];
   pRes: PlayerResult[];
   onSelect: (excelRow: number) => void;
-  photos: Record<number, PhotoInfo>;
+  art: Record<number, string>;
 }) {
   const byPos = new Map(batters.map((p, i) => [p.pos.trim().toUpperCase(), { p, r: bRes[i] }]));
   const avg = (v: number[]) => (v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0);
@@ -180,14 +106,15 @@ export function LineupView({
           const hit = byPos.get(pos);
           return (
             <div key={pos} className="dslot" style={{ left: `${x}%`, top: `${y}%` }}>
-              <Card
+              <GameCard
                 pos={pos}
+                kind="batter"
                 name={hit?.p.name ?? ""}
                 team={hit?.p.team ?? ""}
                 card={hit?.p.card ?? ""}
                 score={hit?.r.total ?? 0}
                 filled={!!hit?.p.name.trim()}
-                photo={hit ? photos[hit.p.excelRow] : undefined}
+                artUrl={hit ? art[hit.p.excelRow] : undefined}
                 onClick={() => onSelect(hit?.p.excelRow ?? DEF_ROW[pos] ?? 11)}
               />
             </div>
@@ -197,18 +124,18 @@ export function LineupView({
       <h4>선발</h4>
       <div className="prow">
         {pitchers.slice(0, 5).map((p, i) => (
-          <Card key={p.excelRow} pos={p.pos} name={p.name} team={p.team} card={p.card} score={pRes[i].total}
-            filled={!!p.name.trim()} photo={photos[p.excelRow]} onClick={() => onSelect(p.excelRow)} />
+          <GameCard key={p.excelRow} pos={p.pos} kind="pitcher" name={p.name} team={p.team} card={p.card} score={pRes[i].total}
+            filled={!!p.name.trim()} artUrl={art[p.excelRow]} onClick={() => onSelect(p.excelRow)} />
         ))}
       </div>
       <h4>불펜</h4>
       <div className="prow">
         {pitchers.slice(5).map((p, i) => (
-          <Card key={p.excelRow} pos={p.pos} name={p.name} team={p.team} card={p.card} score={pRes[i + 5].total}
-            filled={!!p.name.trim()} photo={photos[p.excelRow]} onClick={() => onSelect(p.excelRow)} />
+          <GameCard key={p.excelRow} pos={p.pos} kind="pitcher" name={p.name} team={p.team} card={p.card} score={pRes[i + 5].total}
+            filled={!!p.name.trim()} artUrl={art[p.excelRow]} onClick={() => onSelect(p.excelRow)} />
         ))}
       </div>
-      <p className="muted">사진: Wikimedia Commons (CC 라이선스, 클릭 시 출처 페이지로 이동)</p>
+      <p className="muted">카드 그림은 자체 제작 일러스트. 이미지 URL을 직접 넣으면 그걸 대신 표시.</p>
     </div>
   );
 }

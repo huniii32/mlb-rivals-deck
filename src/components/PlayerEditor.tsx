@@ -1,23 +1,18 @@
 import type { Kind, PlayerInput, PlayerResult, SkillTables } from "../lib/engine";
 import { LOOKUP, skillScore } from "../lib/engine";
-import type { PhotoInfo } from "../lib/photos";
-import { commonsSearchUrl } from "../lib/photos";
+import { PlayerArt, gradeColor } from "./CardArt";
 import { Num } from "./inputs";
 
 /** 라인업에서 포지션 클릭 시 열리는 단일 선수 편집 팝업 */
 export function PlayerEditor({
-  p, res, update, close, customNames, photo, tables, photoPending, photoFailed, onRetryPhoto,
+  p, res, update, close, customNames, tables,
 }: {
   p: PlayerInput;
   res: PlayerResult;
   update: (patch: Partial<PlayerInput>) => void;
   close: () => void;
   customNames: string[];
-  photo?: PhotoInfo;
   tables: SkillTables;
-  photoPending: boolean;
-  photoFailed: boolean;
-  onRetryPhoto: () => void;
 }) {
   const kind: Kind = p.kind;
   const stats = kind === "batter" ? ["파워", "정확", "선구"] : ["변화", "구위"];
@@ -38,13 +33,11 @@ export function PlayerEditor({
   return (
     <div className="card editor">
       <div className="ed-head">
-        {photo ? (
-          <a href={photo.page} target="_blank" rel="noreferrer">
-            <img src={photo.src} alt={p.name} />
-          </a>
-        ) : (
-          <div className="ed-noimg">{p.pos}</div>
-        )}
+        <div className="ed-art" style={{ borderColor: gradeColor(p.card) }}>
+          {p.photoUrl.trim()
+            ? <img src={p.photoUrl.trim()} alt={p.name} />
+            : <PlayerArt kind={kind} accent={gradeColor(p.card)} />}
+        </div>
         <div className="ed-title">
           <div className="ed-name">{p.name || "신규 선수"}</div>
           <div className="muted">{p.pos} · {kind === "batter" ? "타자" : "투수"} {p.card && `· ${p.card}`}</div>
@@ -75,11 +68,6 @@ export function PlayerEditor({
         <label>초월Lv<Num value={p.transLv} onChange={(v) => update({ transLv: v })} /></label>
         <label>강화Lv<Num value={p.enhLv} onChange={(v) => update({ enhLv: v })} /></label>
         <label>포훈Lv<Num value={p.pohLv} onChange={(v) => update({ pohLv: v })} /></label>
-        <label>스킬B(+3)
-          <button className={p.skillB ? "on" : ""} onClick={() => update({ skillB: !p.skillB })}>
-            {p.skillB ? "O" : "X"}
-          </button>
-        </label>
       </div>
 
       <div className="ed-sec">스탯 (최종열에 직접 적으면 수동 고정 · 지우면 자동)</div>
@@ -126,20 +114,11 @@ export function PlayerEditor({
         </datalist>
       </div>
 
-      <div className="ed-sec">사진</div>
+      <div className="ed-sec">카드 그림</div>
       <div className="row">
-        <label>영문명(비우면 선수명으로 자동검색)<input value={p.enName} style={{ width: 170 }} placeholder="Shohei Ohtani"
-          onChange={(e) => update({ enName: e.target.value })} /></label>
-        <label>사진URL<input value={p.photoUrl} style={{ width: 230 }} placeholder="직접 지정 (선택)"
+        <label>이미지 URL<input value={p.photoUrl} style={{ width: 280 }} placeholder="비우면 자체 일러스트"
           onChange={(e) => update({ photoUrl: e.target.value })} /></label>
-        {p.enName.trim() && <a href={commonsSearchUrl(p.enName)} target="_blank" rel="noreferrer">직접찾기</a>}
-        {photoPending && <span className="muted">사진 찾는 중…</span>}
-        {photoFailed && (
-          <span>
-            <span className="muted">못 찾음 </span>
-            <button onClick={onRetryPhoto}>다시찾기</button>
-          </span>
-        )}
+        <span className="muted">직접 그린 카드 그림 URL이 있으면 입력</span>
       </div>
 
       <div className="ed-result">

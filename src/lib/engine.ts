@@ -76,7 +76,7 @@ export interface PlayerInput {
   extra: [number | "", number | "", number | ""];
   synergy: [number | "", number | "", number | ""]; // 게임 육성수치 시너지 행
   locker: [number | "", number | "", number | ""]; // 게임 육성수치 라커룸(+효과) 행
-  skillB: boolean; // AQ: O면 +3
+  skillB: boolean; // 레거시(AQ): 항상 +3 적용이라 무시됨. 구 덱링크 호환용.
   skills: [string, string, string, string];
   finalOv: [number | "", number | "", number | ""];
 }
@@ -272,7 +272,8 @@ export function calcPlayer(
     trans.push(t);
     enh.push(e);
     poh.push(h);
-    const ar = p.skillB ? 3 : 0;
+    // 스킬 보너스(AR): 전원 S라 상시 +3. skillB 플래그는 구버전 호환용으로만 유지.
+    const ar = 3;
     const a =
       num(p.base[i]) + num(p.train[i]) + num(p.spec[i]) +
       (t ?? 0) + (e ?? 0) + (h ?? 0) + num(p.extra[i]) + num(p.synergy[i]) + num(p.locker[i]) + ar + (deckSums[i] ?? 0);

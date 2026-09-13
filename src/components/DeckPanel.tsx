@@ -119,9 +119,6 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
                     </button>
                   );
                 })}
-                {yearRow === undefined && (
-                  <span className="deckscore-rowlabel">{rowLabel(g.row)}</span>
-                )}
                 {yearRow !== undefined && (
                   <label className="deckscore-year">행{yearRow} 연도
                     <input
