@@ -102,24 +102,28 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
                 <span className="dia dia-th" title={rowLabel(g.row)}>
                   <span>{g.threshold ?? rowLabel(g.row)}</span>
                 </span>
-                {(["L", "R"] as const).map((s) => {
-                  if (!g.sides.includes(s)) return <span key={s} className="dia dia-empty" />;
-                  const on = s === "L" ? onL : onR;
-                  return (
-                    <button key={s} className={`dia dia-opt${on ? " on" : ""}`}
-                      title={`${rowLabel(g.row)} ${s === "L" ? "좌" : "우"}${on ? " (선택됨, 다시 누르면 해제)" : ""}`}
-                      aria-pressed={on}
-                      onClick={() => {
-                        const key = `${g.row}-${g.region}-${s}`;
-                        // 한쪽만 있는 행이면 기존 체크 토글, 양쪽 행이면 택1 로직
-                        if (g.sides.length < 2) toggleFlag(key);
-                        else setRowSide(g.region, g.row, s);
-                      }}>
-                      <span>{s === "L" ? "좌" : "우"}</span>
-                      {on && <b className="dia-check">✓</b>}
-                    </button>
-                  );
-                })}
+                {g.sides.length > 0 && (
+                  <span className={`dia-pair${g.sides.length < 2 ? " centered" : ""}`}>
+                    {(["L", "R"] as const).map((s) => {
+                      if (!g.sides.includes(s)) return null;
+                      const on = s === "L" ? onL : onR;
+                      return (
+                        <button key={s} className={`dia dia-opt${on ? " on" : ""}`}
+                          title={`${rowLabel(g.row)} ${s === "L" ? "좌" : "우"}${on ? " (선택됨, 다시 누르면 해제)" : ""}`}
+                          aria-pressed={on}
+                          onClick={() => {
+                            const key = `${g.row}-${g.region}-${s}`;
+                            // 한쪽만 있는 행이면 기존 체크 토글, 양쪽 행이면 택1 로직
+                            if (g.sides.length < 2) toggleFlag(key);
+                            else setRowSide(g.region, g.row, s);
+                          }}>
+                          <span>{s === "L" ? "좌" : "우"}</span>
+                          {on && <b className="dia-check">✓</b>}
+                        </button>
+                      );
+                    })}
+                  </span>
+                )}
                 {yearRow !== undefined && (
                   <label className="deckscore-year">행{yearRow} 연도
                     <input

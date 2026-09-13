@@ -275,6 +275,8 @@ span.pcard { cursor: pointer; }
 }
 .deckscore-rows { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
 .deckscore-row { display: flex; align-items: center; gap: 20px; }
+.dia-pair { display: flex; gap: 20px; width: 124px; }
+.dia-pair.centered { justify-content: center; }
 .deckscore-year { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700;
   color: var(--muted); margin-left: 4px; }
 .deckscore-year input { width: 76px; font-size: 13px; padding: 6px 8px; }
