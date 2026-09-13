@@ -5,8 +5,8 @@ import { LOOKUP, referencedFlags } from "../lib/engine";
 const CHEM_LABELS: [keyof Chem, string, string][] = [
   ["commander", "커맨더", "commander"],
   ["catcher", "포수리드", "catcher"],
-  ["pitchChem", "투케(투수케미)", "pitchChem"],
-  ["batChem", "타케(타자케미)", "batChem"],
+  ["pitchChem", "토탈케미스트리", "pitchChem"],
+  ["batChem", "타자케미스트리", "batChem"],
   ["wbcP", "WBC에이스(투수)", "wbcP"],
   ["wbcB", "WBC에이스(타자)", "wbcB"],
 ];
@@ -31,7 +31,7 @@ export function ChemPanel({ chem, setChem }: {
 }) {
   return (
     <div className="card">
-      <h3>케미스트리 (투케·타케·WBC·커맨더·포수리드)</h3>
+      <h3>케미스트리 (토탈·타자·WBC·커맨더·포수리드)</h3>
       <div className="row">
         {CHEM_LABELS.map(([k, label, opt]) => (
           <label key={k}>{label}{" "}
@@ -69,11 +69,15 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
   const list = [...rows.values()]
     .filter((g) => g.region === scoreTab)
     .sort((a, b) => (a.threshold ?? 9999) - (b.threshold ?? 9999) || a.row - b.row);
-  // 스덱코 전체 행에 배치된 연도 입력행 (탭과 무관; 못 박은 것만 하단 폴백에)
-  const placedYears = new Set(
-    [...rows.values()].filter((g) => g.region === "spec" && g.threshold !== null && YEAR_ANCHOR[g.threshold] !== undefined)
-      .map((g) => YEAR_ANCHOR[g.threshold as number]),
-  );
+  // 연도 입력행(615/645/680): 스코어 규칙에서 참조하지 않아 목록에 없으므로 표시 전용 행으로 추가
+  if (scoreTab === "spec") {
+    const have = new Set(list.map((g) => g.threshold));
+    for (const [th, yrow] of Object.entries(YEAR_ANCHOR)) {
+      const t = Number(th);
+      if (!have.has(t)) list.push({ region: "spec", row: yrow, threshold: t, sides: [] });
+    }
+    list.sort((a, b) => (a.threshold ?? 9999) - (b.threshold ?? 9999) || a.row - b.row);
+  }
 
   return (
     <div>
@@ -86,7 +90,7 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
             </button>
           ))}
         </div>
-        <p className="muted">행마다 좌·우 중 하나만 선택 (다시 누르면 해제). 게임 덱스코어 화면과 같은 방식.</p>
+        <p className="muted">행마다 좌·우 중 하나만 선택 (다시 누르면 해제). 게임 덱스코어 화면과 같은 방식. 연도행: 선수 연도가 입력 연도 이후 0~9년 이내면 +1.</p>
         <div className="deckscore-rows">
           {list.map((g) => {
             const onL = !!flags[`${g.row}-${g.region}-L`];
@@ -115,9 +119,11 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
                     </button>
                   );
                 })}
-                <span className="deckscore-rowlabel">{rowLabel(g.row)}</span>
+                {yearRow === undefined && (
+                  <span className="deckscore-rowlabel">{rowLabel(g.row)}</span>
+                )}
                 {yearRow !== undefined && (
-                  <label className="deckscore-year">연도
+                  <label className="deckscore-year">행{yearRow} 연도
                     <input
                       type="number"
                       value={yearInputs[yearRow] ?? ""}
@@ -131,25 +137,6 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
           })}
         </div>
       </div>
-      {[33, 35, 37].filter((r) => !placedYears.has(r)).length > 0 && (
-        <div className="card">
-          <h4>연도 조건 (스덱코)</h4>
-          <div className="row">
-            {[33, 35, 37].filter((r) => !placedYears.has(r)).map((r) => (
-              <label key={r}>행{r} 연도{" "}
-                <input
-                  type="number"
-                  style={{ width: 80 }}
-                  value={yearInputs[r] ?? ""}
-                  placeholder="예: 2020"
-                  onChange={(e) => setYearInput(r, e.target.value === "" ? "" : Number(e.target.value))}
-                />
-              </label>
-            ))}
-          </div>
-          <p className="muted">선수 연도가 입력 연도 이후 0~9년 이내면 +1 (원본: 연도-입력연도가 0~9).</p>
-        </div>
-      )}
     </div>
   );
 }

@@ -417,16 +417,16 @@ export default function App() {
               batters={batters} pitchers={pitchers} bRes={bRes} pRes={pRes}
               onSelect={setSelected} photos={photosByRow}
             />
+            <ChemPanel
+              chem={chem} setChem={(c) => patchDeck({ chem: c })}
+            />
           </div>
           <aside>
-            <h2>팀덱코 · 스덱코 · 케미</h2>
+            <h2>팀덱코 · 스덱코</h2>
             <DeckScorePanel
               flags={flags} toggleFlag={(k) => patchDeck({ flags: { ...flags, [k]: !flags[k] } })}
               setRowSide={(region, row, side) => pickRowSide(region, row, side)}
               yearInputs={yearInputs} setYearInput={(r, v) => patchDeck({ yearInputs: { ...yearInputs, [r]: v } })}
-            />
-            <ChemPanel
-              chem={chem} setChem={(c) => patchDeck({ chem: c })}
             />
           </aside>
         </div>

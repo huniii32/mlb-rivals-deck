@@ -50,8 +50,8 @@ export type Cond =
 export interface Chem {
   commander: string; // O2 커맨더
   catcher: string; // O3 포수리드
-  pitchChem: string; // O4 투케
-  batChem: string; // O5 타케
+  pitchChem: string; // O4 토탈케미스트리
+  batChem: string; // O5 타자케미스트리
   wbcP: string; // O6 WBC에이스(투수)
   wbcB: string; // O7 WBC에이스(타자)
 }
