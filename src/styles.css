@@ -332,6 +332,22 @@ button.dia-opt.on { border-color: #facc15; box-shadow: 0 0 14px rgba(250, 204, 2
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
 }
 
+/* 덱 비교 팝업: 좌우 배치 (좁으면 세로로 쌓임 — 다이아몬드 카드가 겹치지 않는
+   최소 폭에서만 좌우 배치, 그 아래는 기본 카드 크기 그대로 세로 스택) */
+.compare-cols { display: flex; flex-direction: column; gap: 16px; }
+.compare-cols > div { min-width: 0; }
+@media (min-width: 960px) {
+  .compare-cols { flex-direction: row; }
+  .compare-cols > div { flex: 1; }
+  .compare-cols .dcard { width: 66px; min-height: 88px; }
+  .compare-cols .diamond { padding-top: 50px; }
+  .compare-cols .gc-artbox, .compare-cols .gc-img { height: 40px; }
+  .compare-cols .gc-ovr, .compare-cols .dc-ovr { font-size: 15px; }
+  .compare-cols .scoreboard > div { min-width: 0; padding: 5px 8px; }
+  .compare-cols .scoreboard b { font-size: 15px; }
+  .compare-cols .scoreboard .sb-total b { font-size: 19px; }
+}
+
 @media (max-width: 640px) {
   .wrap { padding: 12px 12px 48px; }
   .topbar { margin: 0 -12px 12px; padding: 10px 12px; }

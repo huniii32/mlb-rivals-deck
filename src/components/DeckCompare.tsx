@@ -12,7 +12,8 @@ const artOf = (d: Deck): Record<number, string> => {
   return out;
 };
 
-/** 내 덱 vs 남 덱(공개 랭킹·내 다른 덱) 1:1 비교 팝업: 라인업 두 개를 위아래로 보여줌 */
+/** 내 덱 vs 남 덱(공개 랭킹·내 다른 덱) 1:1 비교 팝업: 라인업 두 개를 좌우로 보여줌
+ *  (좁은 화면에선 .compare-cols가 세로로 쌓이도록 styles.css에서 처리) */
 export function DeckCompareModal({
   myName, myDeck, otherName, otherDeck, tables, close,
 }: {
@@ -44,7 +45,7 @@ export function DeckCompareModal({
 
   return (
     <div className="modal-overlay" onClick={close}>
-      <div className="modal-box" style={{ width: "min(1100px, 100%)" }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal-box" style={{ width: "min(1400px, 100%)" }} onClick={(e) => e.stopPropagation()}>
         <div className="card">
           <div className="row" style={{ justifyContent: "space-between" }}>
             <h3 style={{ margin: 0 }}>덱 비교: {myName} vs {otherName}</h3>
@@ -65,23 +66,24 @@ export function DeckCompareModal({
           </table>
         </div>
 
-        <div className="card" style={{ paddingBottom: 4 }}>
-          <h4 style={{ margin: "0 0 8px" }}>{myName}</h4>
+        <div className="compare-cols">
+          <div>
+            <h4 style={{ margin: "0 0 8px" }}>{myName}</h4>
+            <LineupView
+              batters={myDeck.players.slice(0, 9)} pitchers={myDeck.players.slice(9)}
+              bRes={mine.slice(0, 9)} pRes={mine.slice(9)}
+              onSelect={() => {}} art={artOf(myDeck)} diff={myDiff}
+            />
+          </div>
+          <div>
+            <h4 style={{ margin: "0 0 8px" }}>{otherName}</h4>
+            <LineupView
+              batters={otherDeck.players.slice(0, 9)} pitchers={otherDeck.players.slice(9)}
+              bRes={other.slice(0, 9)} pRes={other.slice(9)}
+              onSelect={() => {}} art={artOf(otherDeck)} diff={otherDiff}
+            />
+          </div>
         </div>
-        <LineupView
-          batters={myDeck.players.slice(0, 9)} pitchers={myDeck.players.slice(9)}
-          bRes={mine.slice(0, 9)} pRes={mine.slice(9)}
-          onSelect={() => {}} art={artOf(myDeck)} diff={myDiff}
-        />
-
-        <div className="card" style={{ paddingBottom: 4 }}>
-          <h4 style={{ margin: "0 0 8px" }}>{otherName}</h4>
-        </div>
-        <LineupView
-          batters={otherDeck.players.slice(0, 9)} pitchers={otherDeck.players.slice(9)}
-          bRes={other.slice(0, 9)} pRes={other.slice(9)}
-          onSelect={() => {}} art={artOf(otherDeck)} diff={otherDiff}
-        />
 
         <div className="card">
           <h3>포지션별 상세</h3>
