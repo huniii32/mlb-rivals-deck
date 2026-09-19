@@ -280,6 +280,37 @@ span.pcard { cursor: pointer; }
   border-radius: 5px; padding: 1px 6px; font-size: 0.92em;
 }
 
+/* 산정방식 모달: 흐름도 */
+.flow-diagram { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 10px 0; }
+.flow-item { display: flex; align-items: center; gap: 6px; }
+.flow-step {
+  font-size: 12.5px; font-weight: 700; padding: 8px 12px; border-radius: 9px;
+  background: var(--panel2); border: 1px solid var(--border2); color: var(--text2);
+  white-space: nowrap;
+}
+.flow-arrow { color: var(--accent); font-weight: 800; font-size: 15px; }
+
+/* 산정방식 모달: 비율 막대 (선발/계투/타자 등) */
+.share-bar { display: flex; height: 22px; border-radius: 999px; overflow: hidden; border: 1px solid var(--border2); }
+.share-seg { height: 100%; }
+.share-seg + .share-seg { border-left: 2px solid var(--panel); }
+.share-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; font-size: 12.5px; color: var(--text2); }
+.share-legend-item { display: flex; align-items: center; gap: 5px; }
+.share-dot { width: 9px; height: 9px; border-radius: 999px; flex: none; }
+
+/* 산정방식 모달: 스탯 가중치 막대 */
+.weight-bars { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+.weight-row { display: grid; grid-template-columns: 44px 1fr 40px; align-items: center; gap: 8px; }
+.weight-label { font-size: 12.5px; font-weight: 700; color: var(--text2); }
+.weight-track { height: 10px; border-radius: 999px; background: var(--panel2); border: 1px solid var(--border); overflow: hidden; }
+.weight-fill { display: block; height: 100%; border-radius: 999px; }
+.weight-value { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+
+/* 산정방식 모달: 팀덱코/스덱코 적용범위 다이아몬드 그리드 */
+.scope-diagram { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px 0; }
+.scope-dots { display: grid; grid-template-columns: repeat(3, 16px); gap: 6px; }
+.scope-dot { width: 16px; height: 16px; border-radius: 5px; background: var(--accent); transform: rotate(45deg); }
+
 /* 공지사항: 날짜별 그룹 + 섹션 */
 .patchnotes { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
 .patchnote-day { padding: 16px 0; border-top: 1px solid var(--border); }

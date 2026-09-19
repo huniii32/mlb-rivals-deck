@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import patchnotes from "../data/patchnotes.json";
 import { getClientId, isRateLimited, isSupabaseOn, supabase, type PublicInquiry } from "../lib/supabase";
+import { FlowDiagram, ScopeDiagram, ShareBar, WeightBars } from "./ScoreDiagrams";
 
 interface Inquiry {
   id: string;
@@ -387,7 +388,7 @@ export function ScoreGuideModal({ close }: { close: () => void }) {
           </div>
           <p className="muted">엔진(engine.ts)이 실제로 계산하는 순서 그대로 정리했습니다.</p>
 
-          <div className="formula">자동합 → 최종 스탯 → 능력치(J) + 스킬점수(O) = 최종점(P) → 덱 총점</div>
+          <FlowDiagram steps={["자동합", "최종 스탯", "능력치(J)+스킬점수(O)", "최종점(P)", "덱 총점"]} />
 
           <h4>① 선수 스탯 자동합</h4>
           <div className="formula">기본 + 훈련 + 특훈 + 초월 + 강화 + 포훈 + 포지션훈련 + 시너지 + 라커룸 + 스킬보너스(+3) + 덱코 보너스</div>
@@ -401,11 +402,20 @@ export function ScoreGuideModal({ close }: { close: () => void }) {
           <div className="row" style={{ alignItems: "stretch", gap: 12 }}>
             <div className="card" style={{ flex: 1, margin: 0 }}>
               <b>타자</b>
+              <WeightBars color="var(--accent)" bars={[
+                { label: "파워", weight: 1.1 },
+                { label: "정확", weight: 0.9 },
+                { label: "선구", weight: 0.4 },
+              ]} />
               <div className="formula">(파워+P보너스)×1.1 + (정확+A보너스)×0.9 + 선구×0.4</div>
               <p className="muted">P·A보너스 = 타자케미(S1→+2, S→+1) + WBC에이스타자(S2→+2, S1→+2/+1, S→+1)</p>
             </div>
             <div className="card" style={{ flex: 1, margin: 0 }}>
               <b>투수</b>
+              <WeightBars color="#38bdf8" bars={[
+                { label: "변화", weight: 1.15 },
+                { label: "구위", weight: 1.2 },
+              ]} />
               <div className="formula">(변화+CHG)×1.15 + (구위+CTL)×1.2</div>
               <p className="muted">CHG·CTL = 커맨더·포수리드·투수케미·WBC에이스투수 등급별 가산</p>
             </div>
@@ -420,16 +430,23 @@ export function ScoreGuideModal({ close }: { close: () => void }) {
           <div className="row" style={{ alignItems: "stretch", gap: 12 }}>
             <div className="card" style={{ flex: 1, margin: 0 }}>
               <b>팀덱코</b> <span className="muted">— 전역 보너스</span>
+              <ScopeDiagram variant="uniform" label="다이아몬드 하나 = 9칸 전부 같은 보너스" />
               <p>다이아몬드 하나를 켜면 <b>라인업 전원</b>에게 같은 보너스가 붙습니다. (임계값 23단계, 200~600)</p>
             </div>
             <div className="card" style={{ flex: 1, margin: 0 }}>
               <b>스덱코</b> <span className="muted">— 포지션별 보너스</span>
+              <ScopeDiagram variant="varied" label="같은 다이아몬드도 포지션마다 보너스가 다름" />
               <p>포지션마다 조건·점수가 달라 <b>그 선수의 카드·타순·강화Lv·연도</b>에 따라 결과가 다릅니다. (임계값 29단계, 100~700)</p>
             </div>
           </div>
           <p>규칙 하나는 <code className="inline-code">[조건, 점수]</code> 목록을 위에서부터 검사해 <b>처음 참인 조건</b>의 점수만 채택합니다(첫 매치 우선). 스덱코 615·645·680은 다이아몬드 대신 <b>연도 입력칸</b>이 붙어, 선수 카드 연도가 입력 연도 기준 0~9년 이내면 보너스가 붙습니다.</p>
 
           <h4>⑤ 덱 총점</h4>
+          <ShareBar segments={[
+            { label: "선발", pct: 40, color: "var(--accent)" },
+            { label: "계투", pct: 10, color: "#f5c451" },
+            { label: "타자", pct: 50, color: "#38bdf8" },
+          ]} />
           <div className="formula">선발 = avg(SP1~5 중 이름있는 선수 P) × 10
 계투 = avg(RP1~3, CP1 중 이름있는 선수 P) × 10
 타자 = avg(9포지션 중 이름있는 선수 P) × 10
