@@ -48,7 +48,7 @@ function ScoreTable({ region, title, flags, yearInputs }: {
   );
 }
 
-function PlayerSummary({ p, res, tables }: {
+export function PlayerSummary({ p, res, tables }: {
   p: Deck["players"][number]; res: PlayerResult; tables: SkillTables;
 }) {
   const stats = p.kind === "batter" ? ["파워", "정확", "선구"] : ["변화", "구위"];

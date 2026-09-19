@@ -104,6 +104,7 @@ thead th {
 th, td { border-bottom: 1px solid var(--border); padding: 6px; text-align: left; }
 tbody tr { transition: background 0.1s ease; }
 tbody tr:hover { background: var(--panel2); }
+tr.clickable-row { cursor: pointer; }
 
 /* 타이포 */
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
