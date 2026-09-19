@@ -67,7 +67,8 @@ a { color: #38bdf8; }
 .brand small { font-size: 12px; font-weight: 600; color: var(--muted); }
 
 /* 카드·버튼·입력 */
-.card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 18px; margin-bottom: 14px; }
+.card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 18px; margin-bottom: 14px;
+  overflow-x: auto; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 input, select, button {
   font: inherit; font-size: 13.5px; padding: 7px 11px; border-radius: 10px;
@@ -329,4 +330,10 @@ button.dia-opt.on { border-color: #facc15; box-shadow: 0 0 14px rgba(250, 204, 2
   .dc-ovr { font-size: 17px; }
   .scoreboard > div { min-width: 0; padding: 6px 10px; }
   .grid { grid-template-columns: 1fr; }
+  .dia { width: 42px; height: 42px; }
+  .dia > span { font-size: 11px; }
+  .dia-pair { width: 96px; gap: 12px; }
+  .deckscore-row { gap: 12px; }
+  .ed-stats td, .ed-stats th { padding: 6px 4px; font-size: 12.5px; }
+  .ed-stats input { font-size: 12.5px; padding: 6px 4px; }
 }

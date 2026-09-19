@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import patchnotes from "../data/patchnotes.json";
-import { isSupabaseOn, supabase, type PublicInquiry } from "../lib/supabase";
+import { getClientId, isRateLimited, isSupabaseOn, supabase, type PublicInquiry } from "../lib/supabase";
 
 interface Inquiry {
   id: string;
@@ -62,6 +62,18 @@ export function InquiryModal({ close }: { close: () => void }) {
   };
   useEffect(() => {
     loadPub();
+    const sb = supabase;
+    if (!sb) return;
+    // 실시간 반영: 남이 글을 남기거나 관리자가 답변하면 자동 새로고침 (+30초 폴백 폴링)
+    const ch = sb
+      .channel("inquiries-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "inquiries" }, () => loadPub())
+      .subscribe();
+    const timer = setInterval(() => loadPub(), 30000);
+    return () => {
+      clearInterval(timer);
+      sb.removeChannel(ch);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -161,17 +173,19 @@ export function InquiryModal({ close }: { close: () => void }) {
     }
     if (remote && supabase) {
       try {
-        const { error } = await supabase.from("inquiries").insert({
-          name: (name.trim() || "익명").slice(0, 20),
-          body: t.slice(0, 2000),
+        const { error } = await supabase.rpc("insert_inquiry", {
+          p_client_id: getClientId(),
+          p_name: (name.trim() || "익명").slice(0, 20),
+          p_body: t.slice(0, 2000),
         });
         if (error) throw error;
         setName("");
         setText("");
         loadPub();
         return;
-      } catch {
-        alert("등록 실패 — 테이블·정책이 만들어졌는지 확인하세요.");
+      } catch (e) {
+        if (isRateLimited(e)) alert("너무 자주 글을 남기고 있어요 — 잠시 후 다시 시도하세요.");
+        else alert("등록 실패 — 마이그레이션 SQL(supabase_mig_rate_limit.sql)을 실행했는지 확인하세요.");
         return;
       }
     }

@@ -446,10 +446,8 @@ export interface DeckLike {
   yearInputs: Record<number, number | "">;
 }
 
-export function calcDeckTotal(
-  d: DeckLike,
-  tables: SkillTables,
-): { sp: number; rp: number; bt: number; total: number; named: number } {
+/** 덱의 선수별 계산 결과 (players와 같은 순서). 덱 비교·랭킹 등에서 재사용. */
+export function deckPlayerResults(d: DeckLike, tables: SkillTables): PlayerResult[] {
   const cardByRow: Record<number, string> = {};
   const orderByRow: Record<number, number> = {};
   const enhByRow: Record<number, number> = {};
@@ -464,7 +462,14 @@ export function calcDeckTotal(
     flags: d.flags, yearInputs: d.yearInputs,
     cardByRow, orderByRow, enhByRow, yearByRow, chem: d.chem,
   };
-  const res = d.players.map((p) => calcPlayer(p, ctx, tables));
+  return d.players.map((p) => calcPlayer(p, ctx, tables));
+}
+
+export function calcDeckTotal(
+  d: DeckLike,
+  tables: SkillTables,
+): { sp: number; rp: number; bt: number; total: number; named: number } {
+  const res = deckPlayerResults(d, tables);
   const avg = (v: number[]) => (v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0);
   const sp = avg(res.slice(9, 14).filter((_, i) => d.players[i + 9].name.trim()).map((r) => r.total)) * 10;
   const rp = avg(res.slice(14).filter((_, i) => d.players[i + 14].name.trim()).map((r) => r.total)) * 10;

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Deck } from "../App";
 import type { SkillTables } from "../lib/engine";
-import { calcDeckTotal } from "../lib/engine";
-import { isSupabaseOn, supabase, type PublicRank } from "../lib/supabase";
+import { calcDeckTotal, deckPlayerResults } from "../lib/engine";
+import { getClientId, isRateLimited, isSupabaseOn, supabase, type PublicRank } from "../lib/supabase";
 
 function encodeDeck(d: Deck): string {
   const json = JSON.stringify(d);
@@ -42,6 +42,7 @@ export function SharePanel({
   const [pub, setPub] = useState<PublicRank[]>([]);
   const [pubLoading, setPubLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [compareWith, setCompareWith] = useState<{ name: string; deck: Deck } | null>(null);
   // 내가 올린 공개글 id → { 삭제 토큰, 로컬 덱 id } (이 브라우저에만 보관)
   const [mine, setMine] = useState<Record<string, { token: string; deckId: string }>>(() => {
     try {
@@ -170,34 +171,51 @@ export function SharePanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 현재 덱을 전체 공개 랭킹에 등록 (삭제용 토큰 함께 저장)
+  // 현재 덱을 전체 공개 랭킹에 등록. 이미 등록해둔 덱이면(같은 deckId) 새 행 대신 기존 행을 갱신.
   const submitPub = async () => {
     if (!supabase || submitting) return;
     setSubmitting(true);
     try {
       const s = calcDeckTotal(active, tables);
+      const name = active.name.slice(0, 50);
+      const deckJson = JSON.parse(JSON.stringify(active)) as object;
+      const existing = Object.entries(mine).find(([, v]) => v.deckId === active.id);
+      if (existing) {
+        const [id, { token }] = existing;
+        const { data: ok, error } = await supabase.rpc("update_ranking", {
+          p_id: id, p_token: token, p_name: name,
+          p_total: s.total, p_sp: s.sp, p_rp: s.rp, p_bt: s.bt, p_named: s.named,
+          p_deck: deckJson,
+        });
+        if (error) throw error;
+        if (ok) {
+          loadPub();
+          alert("등록해둔 덱을 최신 내용으로 갱신했습니다.");
+          return;
+        }
+        // 서버에서 이미 지워진 행이면 로컬 매핑만 정리하고 새로 등록
+        const cleaned = { ...mine };
+        delete cleaned[id];
+        saveMine(cleaned);
+      }
       const token = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`) as string;
-      const { data, error } = await supabase.from("rankings").insert({
-        deck_name: active.name.slice(0, 50),
-        total: s.total,
-        sp: s.sp,
-        rp: s.rp,
-        bt: s.bt,
-        named: s.named,
-        deck_json: JSON.parse(JSON.stringify(active)) as object,
-        owner_token: token,
-      }).select("id").single();
+      const { data: newId, error } = await supabase.rpc("insert_ranking", {
+        p_client_id: getClientId(), p_name: name,
+        p_total: s.total, p_sp: s.sp, p_rp: s.rp, p_bt: s.bt, p_named: s.named,
+        p_deck: deckJson, p_token: token,
+      });
       if (error) throw error;
-      if (data && typeof data.id === "string") {
-        const next = { ...mine, [data.id]: { token, deckId: active.id } };
+      if (typeof newId === "string") {
+        const next = { ...mine, [newId]: { token, deckId: active.id } };
         saveMine(next);
         loadPub(next);
       } else {
         loadPub();
       }
       alert("전체 랭킹에 등록됐습니다.");
-    } catch {
-      alert("등록 실패 — 테이블·정책이 만들어졌는지 확인하세요.");
+    } catch (e) {
+      if (isRateLimited(e)) alert("너무 자주 등록하고 있어요 — 잠시 후 다시 시도하세요.");
+      else alert("등록 실패 — 마이그레이션 SQL(supabase_mig_rate_limit.sql)을 실행했는지 확인하세요.");
     } finally {
       setSubmitting(false);
     }
@@ -259,7 +277,11 @@ export function SharePanel({
           <>
             <div className="row">
               <button className="primary" disabled={submitting} onClick={submitPub}>
-                {submitting ? "등록 중…" : `내 덱(${active.name}) 등록하기`}
+                {submitting
+                  ? "처리 중…"
+                  : Object.values(mine).some((v) => v.deckId === active.id)
+                    ? `내 덱(${active.name}) 갱신하기`
+                    : `내 덱(${active.name}) 등록하기`}
               </button>
               <button disabled={pubLoading} onClick={() => loadPub()}>새로고침</button>
             </div>
@@ -284,6 +306,7 @@ export function SharePanel({
                       <td style={{ whiteSpace: "nowrap" }}>
                         <button onClick={() => previewPub(r)}>보기</button>{" "}
                         <button onClick={() => importPub(r)}>가져오기</button>{" "}
+                        <button onClick={() => { const d = pubDeck(r); if (d) setCompareWith({ name: r.deck_name, deck: d }); }}>비교</button>{" "}
                         {mine[r.id] && <button onClick={() => deletePub(r.id)}>삭제</button>}
                       </td>
                     </tr>
@@ -310,13 +333,21 @@ export function SharePanel({
                 <td>{r.named}/18</td>
                 <td style={{ whiteSpace: "nowrap" }}>
                   <button onClick={() => onPreviewDeck(r.deck)}>보기</button>{" "}
-                  {r.deck.id !== activeId && <button onClick={() => onSelectDeck(r.deck.id)}>선택</button>}
+                  {r.deck.id !== activeId && <button onClick={() => onSelectDeck(r.deck.id)}>선택</button>}{" "}
+                  {r.deck.id !== activeId && <button onClick={() => setCompareWith({ name: r.deck.name, deck: r.deck })}>비교</button>}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {compareWith && (
+        <DeckCompareCard
+          myName={active.name} myDeck={active}
+          otherName={compareWith.name} otherDeck={compareWith.deck}
+          tables={tables} onClose={() => setCompareWith(null)}
+        />
+      )}
       <div className="card">
         <h3>덱 공유하기</h3>
         <p className="muted">현재 덱({active.name})을 링크에 담아 공유. 받는 쪽은 링크를 열어 가져오면 자기 덱 목록에 추가됨.</p>
@@ -332,6 +363,57 @@ export function SharePanel({
         </div>
         <p className="muted">불특정다수 전체 랭킹(서버 집계)은 백엔드가 필요해서 아직 없음. 링크 공유로 덱 자랑은 가능.</p>
       </div>
+    </div>
+  );
+}
+
+/** 내 덱 vs 남 덱(공개 랭킹·내 다른 덱) 1:1 비교: 포지션별 최종점 차이표 */
+function DeckCompareCard({
+  myName, myDeck, otherName, otherDeck, tables, onClose,
+}: {
+  myName: string; myDeck: Deck; otherName: string; otherDeck: Deck;
+  tables: SkillTables; onClose: () => void;
+}) {
+  const mine = deckPlayerResults(myDeck, tables);
+  const other = deckPlayerResults(otherDeck, tables);
+  const mySum = calcDeckTotal(myDeck, tables);
+  const otherSum = calcDeckTotal(otherDeck, tables);
+  const diffStyle = (d: number) => (d === 0 ? undefined : { color: d > 0 ? "var(--good)" : "var(--danger)" });
+  const fmtDiff = (d: number) => `${d > 0 ? "+" : ""}${d.toFixed(1)}`;
+  const rows = myDeck.players.map((p, i) => {
+    const op = otherDeck.players[i];
+    const mt = mine[i]?.total ?? 0;
+    const ot = other[i]?.total ?? 0;
+    return { pos: p.pos, myName: p.name || "-", myTotal: mt, otherName: op?.name || "-", otherTotal: ot, diff: mt - ot };
+  });
+  const totalDiff = mySum.total - otherSum.total;
+  return (
+    <div className="card">
+      <div className="row" style={{ justifyContent: "space-between" }}>
+        <h3 style={{ margin: 0 }}>덱 비교: {myName} vs {otherName}</h3>
+        <button onClick={onClose}>닫기 ✕</button>
+      </div>
+      <table style={{ marginTop: 8 }}>
+        <thead><tr><th>포지션</th><th>{myName}</th><th>{otherName}</th><th>차이</th></tr></thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i}>
+              <td>{r.pos}</td>
+              <td>{r.myName} <b>{r.myTotal.toFixed(1)}</b></td>
+              <td>{r.otherName} <b>{r.otherTotal.toFixed(1)}</b></td>
+              <td style={diffStyle(r.diff)}><b>{fmtDiff(r.diff)}</b></td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td><b>총점</b></td>
+            <td><b>{mySum.total.toFixed(1)}</b></td>
+            <td><b>{otherSum.total.toFixed(1)}</b></td>
+            <td style={diffStyle(totalDiff)}><b>{fmtDiff(totalDiff)}</b></td>
+          </tr>
+        </tfoot>
+      </table>
     </div>
   );
 }
