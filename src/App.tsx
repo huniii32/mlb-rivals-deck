@@ -9,7 +9,7 @@ import { TableEditor } from "./components/TableEditor";
 import { NewsTab } from "./components/NewsTab";
 import { SharePanel } from "./components/SharePanel";
 import { ResultPanel } from "./components/ResultPanel";
-import { InquiryModal, PatchNotesModal } from "./components/SiteModals";
+import { InquiryModal, PatchNotesModal, ScoreGuideModal } from "./components/SiteModals";
 import { DeckPreviewModal } from "./components/DeckPreview";
 import { parseExcelDeck } from "./lib/excelImport";
 import "./styles.css";
@@ -149,7 +149,7 @@ export default function App() {
   const [selected, setSelected] = useState<number | null>(null);
   const [tab, setTab] = useState<"lineup" | "skills" | "ranking" | "news">("lineup");
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "dark");
-  const [modal, setModal] = useState<"inquiry" | "notices" | null>(null);
+  const [modal, setModal] = useState<"inquiry" | "notices" | "guide" | null>(null);
   const [preview, setPreview] = useState<Deck | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const xlRef = useRef<HTMLInputElement>(null);
@@ -355,6 +355,7 @@ export default function App() {
             {theme === "dark" ? "☀️ 라이트" : "🌙 다크"}
           </button>
           <button onClick={() => setModal("inquiry")}>✉️ 문의하기</button>
+          <button onClick={() => setModal("guide")}>🧮 산정방식</button>
           <button onClick={() => setModal("notices")}>📢 공지사항</button>
         </div>
       </header>
@@ -432,6 +433,7 @@ export default function App() {
       )}
 
       {modal === "inquiry" && <InquiryModal close={() => setModal(null)} />}
+      {modal === "guide" && <ScoreGuideModal close={() => setModal(null)} />}
       {modal === "notices" && <PatchNotesModal close={() => setModal(null)} />}
       {preview && <DeckPreviewModal deck={preview} tables={tables} close={() => setPreview(null)} />}
 
