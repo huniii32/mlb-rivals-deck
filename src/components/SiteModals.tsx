@@ -338,8 +338,7 @@ export function PatchNotesModal({ close }: { close: () => void }) {
   const notes = patchnotes as {
     date: string;
     version: string;
-    title: string;
-    items: string[];
+    sections: { title: string; items: string[] }[];
   }[];
   return (
     <div className="modal-overlay" onClick={close}>
@@ -349,19 +348,27 @@ export function PatchNotesModal({ close }: { close: () => void }) {
             <h3 style={{ margin: 0 }}>공지사항 · 패치 내역</h3>
             <button onClick={close}>닫기 ✕</button>
           </div>
-          {notes.map((n) => (
-            <div key={n.version} style={{ marginTop: 14 }}>
-              <b>
-                {n.version} · {n.title}
-              </b>{" "}
-              <span className="muted">{n.date}</span>
-              <ul style={{ margin: "6px 0 0", paddingLeft: 20 }}>
-                {n.items.map((it, i) => (
-                  <li key={i}>{it}</li>
+          <p className="muted">같은 날 여러 번 업데이트해도 버전은 하루에 하나입니다.</p>
+          <div className="patchnotes">
+            {notes.map((n) => (
+              <div key={n.version} className="patchnote-day">
+                <div className="patchnote-day-head">
+                  <span className="pill">{n.version}</span>
+                  <span className="muted">{n.date}</span>
+                </div>
+                {n.sections.map((s, i) => (
+                  <div key={i} className="patchnote-section">
+                    <div className="patchnote-section-title">{s.title}</div>
+                    <ul>
+                      {s.items.map((it, j) => (
+                        <li key={j}>{it}</li>
+                      ))}
+                    </ul>
+                  </div>
                 ))}
-              </ul>
-            </div>
-          ))}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
