@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Deck } from "../App";
 import type { SkillTables } from "../lib/engine";
-import { calcDeckTotal, deckPlayerResults } from "../lib/engine";
+import { calcDeckTotal } from "../lib/engine";
+import { DeckCompareModal } from "./DeckCompare";
 import { getClientId, isRateLimited, isSupabaseOn, supabase, type PublicRank } from "../lib/supabase";
 
 function encodeDeck(d: Deck): string {
@@ -342,10 +343,10 @@ export function SharePanel({
         </table>
       </div>
       {compareWith && (
-        <DeckCompareCard
+        <DeckCompareModal
           myName={active.name} myDeck={active}
           otherName={compareWith.name} otherDeck={compareWith.deck}
-          tables={tables} onClose={() => setCompareWith(null)}
+          tables={tables} close={() => setCompareWith(null)}
         />
       )}
       <div className="card">
@@ -363,57 +364,6 @@ export function SharePanel({
         </div>
         <p className="muted">불특정다수 전체 랭킹(서버 집계)은 백엔드가 필요해서 아직 없음. 링크 공유로 덱 자랑은 가능.</p>
       </div>
-    </div>
-  );
-}
-
-/** 내 덱 vs 남 덱(공개 랭킹·내 다른 덱) 1:1 비교: 포지션별 최종점 차이표 */
-function DeckCompareCard({
-  myName, myDeck, otherName, otherDeck, tables, onClose,
-}: {
-  myName: string; myDeck: Deck; otherName: string; otherDeck: Deck;
-  tables: SkillTables; onClose: () => void;
-}) {
-  const mine = deckPlayerResults(myDeck, tables);
-  const other = deckPlayerResults(otherDeck, tables);
-  const mySum = calcDeckTotal(myDeck, tables);
-  const otherSum = calcDeckTotal(otherDeck, tables);
-  const diffStyle = (d: number) => (d === 0 ? undefined : { color: d > 0 ? "var(--good)" : "var(--danger)" });
-  const fmtDiff = (d: number) => `${d > 0 ? "+" : ""}${d.toFixed(1)}`;
-  const rows = myDeck.players.map((p, i) => {
-    const op = otherDeck.players[i];
-    const mt = mine[i]?.total ?? 0;
-    const ot = other[i]?.total ?? 0;
-    return { pos: p.pos, myName: p.name || "-", myTotal: mt, otherName: op?.name || "-", otherTotal: ot, diff: mt - ot };
-  });
-  const totalDiff = mySum.total - otherSum.total;
-  return (
-    <div className="card">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <h3 style={{ margin: 0 }}>덱 비교: {myName} vs {otherName}</h3>
-        <button onClick={onClose}>닫기 ✕</button>
-      </div>
-      <table style={{ marginTop: 8 }}>
-        <thead><tr><th>포지션</th><th>{myName}</th><th>{otherName}</th><th>차이</th></tr></thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i}>
-              <td>{r.pos}</td>
-              <td>{r.myName} <b>{r.myTotal.toFixed(1)}</b></td>
-              <td>{r.otherName} <b>{r.otherTotal.toFixed(1)}</b></td>
-              <td style={diffStyle(r.diff)}><b>{fmtDiff(r.diff)}</b></td>
-            </tr>
-          ))}
-        </tbody>
-        <tfoot>
-          <tr>
-            <td><b>총점</b></td>
-            <td><b>{mySum.total.toFixed(1)}</b></td>
-            <td><b>{otherSum.total.toFixed(1)}</b></td>
-            <td style={diffStyle(totalDiff)}><b>{fmtDiff(totalDiff)}</b></td>
-          </tr>
-        </tfoot>
-      </table>
     </div>
   );
 }

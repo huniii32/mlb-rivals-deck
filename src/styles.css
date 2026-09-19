@@ -210,6 +210,9 @@ span.pcard { cursor: pointer; }
 .gc-team { font-size: 10px; font-weight: 800; letter-spacing: 0.05em; color: #ffd166;
   border: 1px solid rgba(255, 209, 102, 0.7); border-radius: 4px; padding: 0 4px;
   background: rgba(0, 0, 0, 0.45); }
+.gc-diff { position: absolute; top: 3px; left: 6px; z-index: 2; font-size: 10.5px; font-weight: 800;
+  padding: 1px 5px; border-radius: 4px; background: rgba(0, 0, 0, 0.55);
+  font-variant-numeric: tabular-nums; }
 .gc-artbox { width: 100%; height: 78px; margin-top: -16px; overflow: hidden; border-radius: 2px; }
 .gc-art { width: 100%; height: 100%; display: block; }
 .gc-img { width: 100%; height: 78px; object-fit: cover; object-position: top; display: block; }

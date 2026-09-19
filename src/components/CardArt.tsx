@@ -151,10 +151,10 @@ export function PlayerArt({ kind, accent }: { kind: Kind; accent: string }) {
 }
 
 export function GameCard({
-  pos, name, team, card, score, filled, kind, artUrl, onClick,
+  pos, name, team, card, score, filled, kind, artUrl, onClick, diff,
 }: {
   pos: string; name: string; team: string; card: string; score: number; filled: boolean;
-  kind: Kind; artUrl?: string; onClick: () => void;
+  kind: Kind; artUrl?: string; onClick: () => void; diff?: number;
 }) {
   const gc = gradeColor(card);
   if (!filled) {
@@ -180,6 +180,11 @@ export function GameCard({
           <span className="dc-pos">{pos}</span>
         </span>
       </span>
+      {diff !== undefined && diff !== 0 && (
+        <b className="gc-diff" style={{ color: diff > 0 ? "var(--good)" : "var(--danger)" }}>
+          {diff > 0 ? "+" : ""}{diff.toFixed(1)}
+        </b>
+      )}
       <span className="gc-artbox">
         {artUrl
           ? <img className="gc-img" src={artUrl} alt={name} />

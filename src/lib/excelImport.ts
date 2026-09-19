@@ -54,6 +54,8 @@ function blank(excelRow: number, kind: Kind, pos: string): PlayerInput {
     extra: ["", "", ""],
     synergy: ["", "", ""],
     locker: ["", "", ""],
+    blackPos: ["", "", ""],
+    blackBoost: ["", "", ""],
     skillB: true,
     skills: ["", "", "", ""],
     finalOv: ["", "", ""],

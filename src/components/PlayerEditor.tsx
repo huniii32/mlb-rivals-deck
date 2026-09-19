@@ -1,5 +1,5 @@
 import type { Kind, PlayerInput, PlayerResult, SkillTables } from "../lib/engine";
-import { LOOKUP, skillScore, suggestSkills } from "../lib/engine";
+import { LOOKUP, isSigBlackCard, skillScore, suggestSkills } from "../lib/engine";
 import { PlayerArt, gradeColor } from "./CardArt";
 import { Num } from "./inputs";
 
@@ -16,8 +16,12 @@ export function PlayerEditor({
   const kind: Kind = p.kind;
   const stats = kind === "batter" ? ["파워", "정확", "선구"] : ["변화", "구위"];
   const n = kind === "batter" ? 3 : 2;
-  const setArr = (field: "base" | "train" | "spec" | "extra" | "synergy" | "locker" | "finalOv", i: number, v: number | "") => {
-    const arr = [...p[field]] as [number | "", number | "", number | ""];
+  const isBlack = isSigBlackCard(p.card);
+  const setArr = (
+    field: "base" | "train" | "spec" | "extra" | "synergy" | "locker" | "blackPos" | "blackBoost" | "finalOv",
+    i: number, v: number | "",
+  ) => {
+    const arr = [...(p[field] ?? ["", "", ""])] as [number | "", number | "", number | ""];
     arr[i] = v;
     update({ [field]: arr } as Partial<PlayerInput>);
   };
@@ -71,7 +75,10 @@ export function PlayerEditor({
       <div className="ed-sec">스탯 (최종열에 직접 적으면 수동 고정 · 지우면 자동)</div>
       <table className="ed-stats">
         <thead>
-          <tr><th>스탯</th><th>기본</th><th>훈련</th><th>특훈(리셋포함)</th><th title="포훈Lv로 자동 계산되는 포훈표 수치와 별개. 여기엔 게임 화면의 포지션훈련 '보너스' 수치만 입력(전체 포훈 수치 아님)">포지션훈련</th><th>시너지</th><th>라커룸</th><th>초월</th><th>강화</th><th>포훈</th><th>덱코</th><th>자동합</th><th>최종</th></tr>
+          <tr><th>스탯</th><th>기본</th><th>훈련</th><th>특훈(리셋포함)</th><th title="포훈Lv로 자동 계산되는 포훈표 수치와 별개. 여기엔 게임 화면의 포지션훈련 '보너스' 수치만 입력(전체 포훈 수치 아님)">포지션훈련</th><th>시너지</th><th>라커룸</th>
+            {isBlack && <th title="시그니처 블랙 전용 — 조견표가 없어 게임 화면 수치를 직접 입력">블랙포지션</th>}
+            {isBlack && <th title="시그니처 블랙 전용 — 조견표가 없어 게임 화면 수치를 직접 입력">블랙부스트</th>}
+            <th>초월</th><th>강화</th><th>포훈</th><th>덱코</th><th>자동합</th><th>최종</th></tr>
         </thead>
         <tbody>
           {stats.map((s, i) => (
@@ -83,6 +90,8 @@ export function PlayerEditor({
               <td><Num value={p.extra[i]} width={56} onChange={(v) => setArr("extra", i, v)} /></td>
               <td><Num value={p.synergy[i]} width={56} onChange={(v) => setArr("synergy", i, v)} /></td>
               <td><Num value={p.locker[i]} width={56} onChange={(v) => setArr("locker", i, v)} /></td>
+              {isBlack && <td><Num value={p.blackPos?.[i] ?? ""} width={56} onChange={(v) => setArr("blackPos", i, v)} /></td>}
+              {isBlack && <td><Num value={p.blackBoost?.[i] ?? ""} width={56} onChange={(v) => setArr("blackBoost", i, v)} /></td>}
               <td className="calc">+{res.trans[i] ?? 0}</td>
               <td className="calc">+{res.enh[i] ?? 0}</td>
               <td className="calc">+{res.poh[i] ?? 0}</td>

@@ -22,7 +22,7 @@ const DEF_ROW: Record<string, number> = {
 };
 
 export function LineupView({
-  batters, pitchers, bRes, pRes, onSelect, art,
+  batters, pitchers, bRes, pRes, onSelect, art, diff,
 }: {
   batters: PlayerInput[];
   pitchers: PlayerInput[];
@@ -30,6 +30,7 @@ export function LineupView({
   pRes: PlayerResult[];
   onSelect: (excelRow: number) => void;
   art: Record<number, string>;
+  diff?: Record<number, number>;
 }) {
   const byPos = new Map(batters.map((p, i) => [p.pos.trim().toUpperCase(), { p, r: bRes[i] }]));
   const avg = (v: number[]) => (v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0);
@@ -115,6 +116,7 @@ export function LineupView({
                 score={hit?.r.total ?? 0}
                 filled={!!hit?.p.name.trim()}
                 artUrl={hit ? art[hit.p.excelRow] : undefined}
+                diff={hit ? diff?.[hit.p.excelRow] : undefined}
                 onClick={() => onSelect(hit?.p.excelRow ?? DEF_ROW[pos] ?? 11)}
               />
             </div>
@@ -125,14 +127,14 @@ export function LineupView({
       <div className="prow">
         {pitchers.slice(0, 5).map((p, i) => (
           <GameCard key={p.excelRow} pos={p.pos} kind="pitcher" name={p.name} team={p.team} card={p.card} score={pRes[i].total}
-            filled={!!p.name.trim()} artUrl={art[p.excelRow]} onClick={() => onSelect(p.excelRow)} />
+            filled={!!p.name.trim()} artUrl={art[p.excelRow]} diff={diff?.[p.excelRow]} onClick={() => onSelect(p.excelRow)} />
         ))}
       </div>
       <h4>불펜</h4>
       <div className="prow">
         {pitchers.slice(5).map((p, i) => (
           <GameCard key={p.excelRow} pos={p.pos} kind="pitcher" name={p.name} team={p.team} card={p.card} score={pRes[i + 5].total}
-            filled={!!p.name.trim()} artUrl={art[p.excelRow]} onClick={() => onSelect(p.excelRow)} />
+            filled={!!p.name.trim()} artUrl={art[p.excelRow]} diff={diff?.[p.excelRow]} onClick={() => onSelect(p.excelRow)} />
         ))}
       </div>
       <p className="muted">카드 그림은 자체 제작 일러스트. 이미지 URL을 직접 넣으면 그걸 대신 표시.</p>

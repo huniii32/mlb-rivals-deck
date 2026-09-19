@@ -37,6 +37,8 @@ function blankPlayer(excelRow: number, kind: Kind, pos: string, order: number | 
     extra: ["", "", ""],
     synergy: ["", "", ""],
     locker: ["", "", ""],
+    blackPos: ["", "", ""],
+    blackBoost: ["", "", ""],
     skillB: false,
     skills: ["", "", "", ""],
     finalOv: ["", "", ""],
@@ -83,6 +85,8 @@ function loadDecks(): { decks: Deck[]; activeId: string } {
             team: p.team ?? "",
             synergy: p.synergy ?? ["", "", ""],
             locker: p.locker ?? ["", "", ""],
+            blackPos: p.blackPos ?? ["", "", ""],
+            blackBoost: p.blackBoost ?? ["", "", ""],
             skills: (p.skills ?? ["", "", "", ""]).map((s) =>
               migrateSkillName(p.kind, s)) as [string, string, string, string],
           });
@@ -329,6 +333,8 @@ export default function App() {
         team: p.team ?? "",
         synergy: p.synergy ?? ["", "", ""],
         locker: p.locker ?? ["", "", ""],
+        blackPos: p.blackPos ?? ["", "", ""],
+        blackBoost: p.blackBoost ?? ["", "", ""],
         skills: (p.skills ?? ["", "", "", ""]).map((s) =>
           migrateSkillName(p.kind, s)) as [string, string, string, string],
       })),

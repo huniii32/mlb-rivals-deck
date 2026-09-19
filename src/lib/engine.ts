@@ -76,6 +76,10 @@ export interface PlayerInput {
   extra: [number | "", number | "", number | ""];
   synergy: [number | "", number | "", number | ""]; // 게임 육성수치 시너지 행
   locker: [number | "", number | "", number | ""]; // 게임 육성수치 라커룸(+효과) 행
+  // 시그니처 블랙 등급 전용 수동 보너스칸(조견표 미확보라 수치 직접입력, extra/synergy와 같은 방식).
+  // 구버전 덱·공유링크 호환을 위해 optional로 둠 — 없으면 0으로 취급.
+  blackPos?: [number | "", number | "", number | ""];
+  blackBoost?: [number | "", number | "", number | ""];
   skillB: boolean; // 레거시(AQ): 항상 +3 적용이라 무시됨. 구 덱링크 호환용.
   skills: [string, string, string, string];
   finalOv: [number | "", number | "", number | ""];
@@ -206,6 +210,9 @@ export function skillScore(
 }
 
 const normKey = (s: string): string => s.replace(/\s+/g, "");
+
+/** 카드가 시그니처 블랙 계열(시그니처 블랙/WBC/FA 전부 포함)인지 — 공백 무시 매칭 */
+export const isSigBlackCard = (card: string): boolean => normKey(card).includes("시그니처블랙");
 const normSkill = (s: string): string => s.replace(/\s+/g, "").toLowerCase();
 
 /** 구 스킬명 → 현행명. 저장된 덱·표에 옛 이름이 남아있으면 로드 시 치환. */
@@ -381,7 +388,8 @@ export function calcPlayer(
     const ar = 3;
     const a =
       num(p.base[i]) + num(p.train[i]) + num(p.spec[i]) +
-      (t ?? 0) + (e ?? 0) + (h ?? 0) + num(p.extra[i]) + num(p.synergy[i]) + num(p.locker[i]) + ar + (deckSums[i] ?? 0);
+      (t ?? 0) + (e ?? 0) + (h ?? 0) + num(p.extra[i]) + num(p.synergy[i]) + num(p.locker[i]) +
+      num(p.blackPos?.[i]) + num(p.blackBoost?.[i]) + ar + (deckSums[i] ?? 0);
     auto.push(Math.round(a * 100) / 100);
     const ov = p.finalOv[i];
     manual.push(ov !== "");
