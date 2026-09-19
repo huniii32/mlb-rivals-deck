@@ -9,11 +9,6 @@ export function SkillCompare({ tables }: { tables: SkillTables }) {
   const [skillsA, setSkillsA] = useState<string[]>(["", "", "", ""]);
   const [skillsB, setSkillsB] = useState<string[]>(["", "", "", ""]);
 
-  const names = (k: Kind) => [
-    ...tables.customs.filter((c) => c.kind === k).map((c) => c.name),
-    ...(k === "batter" ? LOOKUP.batter : LOOKUP.pitcher).map((s) => s.name),
-  ];
-
   const calc = (k: Kind, skills: string[]) => {
     const scores = skills.map((s) => (s.trim() ? skillScore(k, s, tables) : 0));
     const unknown = skills.filter((s, i) => s.trim() && scores[i] === null);
@@ -46,7 +41,7 @@ export function SkillCompare({ tables }: { tables: SkillTables }) {
           return (
             <label key={i}>슬롯{i + 1} {sc !== null && v.trim() !== "" && <b>+{sc}</b>}
               {sc === null && <b className="pill bad-pill">표없음</b>}
-              <input list={`cmp-${label}-${kind}`} value={v} placeholder="스킬 검색"
+              <input value={v} placeholder="스킬 검색"
                 onChange={(e) => {
                   const n = [...skills];
                   n[i] = e.target.value;
@@ -71,9 +66,6 @@ export function SkillCompare({ tables }: { tables: SkillTables }) {
           );
         })}
       </div>
-      <datalist id={`cmp-${label}-${kind}`}>
-        {names(kind).map((x) => <option key={x} value={x} />)}
-      </datalist>
       <div className="score-sm" style={{ marginTop: 8 }}>
         합계: {r.total === null ? <span className="bad">표없음 있음</span> : <b>{r.total.toFixed(1)}</b>}
       </div>

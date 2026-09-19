@@ -236,14 +236,6 @@ export default function App() {
   const update = (excelRow: number, p: Partial<PlayerInput>) =>
     patchDeck({ players: players.map((x) => (x.excelRow === excelRow ? { ...x, ...p } : x)) });
 
-  const customNames: Record<Kind, string[]> = useMemo(
-    () => ({
-      batter: tables.customs.filter((c) => c.kind === "batter").map((c) => c.name),
-      pitcher: tables.customs.filter((c) => c.kind === "pitcher").map((c) => c.name),
-    }),
-    [tables],
-  );
-
   const selPlayer = selected === null ? null : players.find((p) => p.excelRow === selected) ?? null;
   const selRes = selPlayer ? results[players.indexOf(selPlayer)] : null;
 
@@ -451,7 +443,6 @@ export default function App() {
               res={selRes}
               update={(patch) => update(selPlayer.excelRow, patch)}
               close={() => setSelected(null)}
-              customNames={customNames[selPlayer.kind]}
               tables={tables}
             />
           </div>

@@ -5,19 +5,17 @@ import { Num } from "./inputs";
 
 /** 라인업에서 포지션 클릭 시 열리는 단일 선수 편집 팝업 */
 export function PlayerEditor({
-  p, res, update, close, customNames, tables,
+  p, res, update, close, tables,
 }: {
   p: PlayerInput;
   res: PlayerResult;
   update: (patch: Partial<PlayerInput>) => void;
   close: () => void;
-  customNames: string[];
   tables: SkillTables;
 }) {
   const kind: Kind = p.kind;
   const stats = kind === "batter" ? ["파워", "정확", "선구"] : ["변화", "구위"];
   const n = kind === "batter" ? 3 : 2;
-  const listId = `ed-skills-${kind}-${p.excelRow}`;
   const setArr = (field: "base" | "train" | "spec" | "extra" | "synergy" | "locker" | "finalOv", i: number, v: number | "") => {
     const arr = [...p[field]] as [number | "", number | "", number | ""];
     arr[i] = v;
@@ -107,7 +105,7 @@ export function PlayerEditor({
           return (
             <label key={i}>스킬{i + 1} {sc !== null && <b className="pill">+{sc}</b>}
               {sc === null && v.trim() && <b className="pill bad-pill">표없음</b>}
-              <input list={listId} value={v} placeholder="스킬 검색"
+              <input value={v} placeholder="스킬 검색"
                 onChange={(e) => setSkill(i, e.target.value)} />
               <span className="muted sug">
                 {sug.length > 0 && (
@@ -122,10 +120,6 @@ export function PlayerEditor({
             </label>
           );
         })}
-        <datalist id={listId}>
-          {customNames.map((x) => <option key={`c${x}`} value={x} />)}
-          {skillList.map((s) => <option key={s.name} value={s.name} />)}
-        </datalist>
       </div>
 
       <div className="ed-sec">카드 그림</div>
