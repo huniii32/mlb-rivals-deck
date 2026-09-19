@@ -109,6 +109,8 @@ tr.clickable-row { cursor: pointer; }
 /* 타이포 */
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .muted { color: var(--muted); font-size: 12.5px; }
+.tight-list { margin: 6px 0 0; padding-left: 18px; }
+.tight-list li { margin: 2px 0; }
 .score { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 .score-sm { font-size: 19px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .warn { background: rgba(127, 29, 29, 0.25); border: 1px solid #7f1d1d; border-radius: 10px; padding: 10px 12px; margin-top: 10px; font-size: 13px; color: #fecaca; }

@@ -92,24 +92,9 @@ export function DeckCompareModal({
           </div>
         </div>
 
-        {selIdx !== null && (
-          <>
-            <div className="card" style={{ paddingBottom: 4 }}>
-              <div className="row" style={{ justifyContent: "space-between" }}>
-                <h4 style={{ margin: 0 }}>{myDeck.players[selIdx].pos} 상세 비교 — 스탯별로 뭐가 부족한지 확인</h4>
-                <button onClick={() => setSelIdx(null)}>닫기 ✕</button>
-              </div>
-            </div>
-            <div className="compare-cols">
-              <PlayerSummary p={myDeck.players[selIdx]} res={mine[selIdx]} tables={tables} />
-              <PlayerSummary p={otherDeck.players[selIdx]} res={other[selIdx]} tables={tables} />
-            </div>
-          </>
-        )}
-
         <div className="card">
           <h3>포지션별 상세</h3>
-          <p className="muted">행을 클릭하면 위에 스탯별 비교가 뜹니다.</p>
+          <p className="muted">행을 클릭하면 스탯별 비교 팝업이 뜹니다.</p>
           <table style={{ marginTop: 8 }}>
             <thead><tr><th>포지션</th><th>{myName}</th><th>{otherName}</th><th>차이</th></tr></thead>
             <tbody>
@@ -125,6 +110,23 @@ export function DeckCompareModal({
           </table>
         </div>
       </div>
+
+      {selIdx !== null && (
+        <div className="modal-overlay" onClick={(e) => { e.stopPropagation(); setSelIdx(null); }}>
+          <div className="modal-box" style={{ width: "min(1000px, 100%)" }} onClick={(e) => e.stopPropagation()}>
+            <div className="card" style={{ paddingBottom: 4 }}>
+              <div className="row" style={{ justifyContent: "space-between" }}>
+                <h4 style={{ margin: 0 }}>{myDeck.players[selIdx].pos} 상세 비교 — 스탯별로 뭐가 부족한지 확인</h4>
+                <button onClick={() => setSelIdx(null)}>닫기 ✕</button>
+              </div>
+            </div>
+            <div className="compare-cols">
+              <PlayerSummary p={myDeck.players[selIdx]} res={mine[selIdx]} tables={tables} />
+              <PlayerSummary p={otherDeck.players[selIdx]} res={other[selIdx]} tables={tables} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
