@@ -66,14 +66,14 @@ export function PlayerEditor({
         <label>강화Lv<Num value={p.enhLv} onChange={(v) => update({ enhLv: v })} /></label>
         <label>포훈Lv<Num value={p.pohLv} onChange={(v) => update({ pohLv: v })} /></label>
         {kind === "batter" && (
-          <label>타순<Num value={p.order} onChange={(v) => update({ order: v })} /></label>
+          <label title="덱스코어 일부 보너스가 타순 1~2 / 3~5 / 6번 이하 조건을 봅니다">타순(덱코 조건)<Num value={p.order} onChange={(v) => update({ order: v })} /></label>
         )}
       </div>
 
       <div className="ed-sec">스탯 (최종열에 직접 적으면 수동 고정 · 지우면 자동)</div>
       <table className="ed-stats">
         <thead>
-          <tr><th>스탯</th><th>기본</th><th>훈련</th><th>특훈(리셋포함)</th><th>포지션훈련</th><th>시너지</th><th>라커룸</th><th>초월</th><th>강화</th><th>포훈</th><th>덱코</th><th>자동합</th><th>최종</th></tr>
+          <tr><th>스탯</th><th>기본</th><th>훈련</th><th>특훈(리셋포함)</th><th title="포훈Lv로 자동 계산되는 포훈표 수치와 별개. 여기엔 게임 화면의 포지션훈련 '보너스' 수치만 입력(전체 포훈 수치 아님)">포지션훈련</th><th>시너지</th><th>라커룸</th><th>초월</th><th>강화</th><th>포훈</th><th>덱코</th><th>자동합</th><th>최종</th></tr>
         </thead>
         <tbody>
           {stats.map((s, i) => (

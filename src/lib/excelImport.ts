@@ -20,6 +20,16 @@ const PITCHER_ROWS = [22, 23, 24, 25, 26, 27, 28, 29, 30];
 const FALLBACK_POS = ["C", "1B", "2B", "3B", "SS", "LF", "CF", "RF", "DH",
   "SP1", "SP2", "SP3", "SP4", "SP5", "RP1", "RP2", "RP3", "CP1"];
 
+// 라인업 화면·덱코 규칙·포훈표는 전부 이 18개 라벨을 키로 쓴다. 사용자 엑셀의 B열
+// 자유서식 텍스트(우익수/RF(우)/공백 등)를 그대로 pos로 쓰면 다이아몬드·포훈표 매칭이
+// 깨져 "포지션이 밀린 것처럼" 보인다 → 정규화만 하고 캐노니컬 라벨은 항상 FALLBACK_POS로 고정.
+const POS_ALIAS: Record<string, string> = {
+  "포수": "C", "1루수": "1B", "2루수": "2B", "3루수": "3B", "유격수": "SS",
+  "좌익수": "LF", "중견수": "CF", "우익수": "RF", "지명타자": "DH", "지타": "DH",
+  "선발1": "SP1", "선발2": "SP2", "선발3": "SP3", "선발4": "SP4", "선발5": "SP5",
+  "구원1": "RP1", "구원2": "RP2", "구원3": "RP3", "마무리": "CP1", "CP": "CP1",
+};
+
 type Cell = { t?: string; v?: unknown; f?: unknown };
 
 function num(c: Cell | undefined, noFormula = false): number | "" {
@@ -50,6 +60,30 @@ function blank(excelRow: number, kind: Kind, pos: string): PlayerInput {
   };
 }
 
+function canonPos(raw: string): string {
+  const k = raw.replace(/\s+/g, "").toUpperCase();
+  return POS_ALIAS[raw.replace(/\s+/g, "")] ?? POS_ALIAS[k] ?? k;
+}
+
+/** 기대 행에서 라벨이 하나도 안 맞으면, 위/아래로 몇 칸 밀렸는지 찾아본다.
+ *  (사용자 엑셀에 행 삽입/삭제가 있어도 실제 스탯은 밀린 행에서 정확히 읽도록) */
+function blockOffset(
+  at: (col: string, row: number) => Cell | undefined,
+  rows: number[],
+  labels: string[],
+): number {
+  const score = (k: number) =>
+    rows.filter((r, i) => canonPos(str(at("B", r + k))) === labels[i]).length;
+  if (score(0) === rows.length) return 0;
+  let best = 0;
+  let bestScore = score(0);
+  for (const k of [-1, 1, -2, 2, -3, 3, -4, 4, -5, 5]) {
+    const s = score(k);
+    if (s > bestScore) { bestScore = s; best = k; }
+  }
+  return bestScore >= 5 ? best : 0;
+}
+
 /** 시트명 변형(공백·대소문자·한영)까지 잡는 라인업 시트 탐색. */
 export function findLineupSheetName(wb: XLSX.WorkBook): string | undefined {
   const names = wb.SheetNames ?? [];
@@ -70,11 +104,19 @@ export async function parseExcelDeck(file: File): Promise<ExcelDeckData> {
   const at = (col: string, row: number): Cell | undefined =>
     (sheet[`${col}${row}`] as Cell | undefined) ?? undefined;
 
+  // 사용자 엑셀에 행 삽입/삭제가 있어도(라벨이 기대 행과 안 맞으면) 실제 데이터가
+  // 있는 행을 찾아 읽는다. 정상 파일이면 오프셋 0으로 기존과 동일하게 동작.
+  const bOff = blockOffset(at, BATTER_ROWS, FALLBACK_POS.slice(0, 9));
+  const pOff = blockOffset(at, PITCHER_ROWS, FALLBACK_POS.slice(9));
+  if (bOff || pOff) console.warn(`라인업 행 오프셋 보정: 타자 ${bOff}, 투수 ${pOff}`);
+
   const players: PlayerInput[] = [];
-  [...BATTER_ROWS.map((r) => ({ r, kind: "batter" as Kind })),
-   ...PITCHER_ROWS.map((r) => ({ r, kind: "pitcher" as Kind }))].forEach(({ r, kind }, i) => {
+  [...BATTER_ROWS.map((row) => ({ row, r: row + bOff, kind: "batter" as Kind })),
+   ...PITCHER_ROWS.map((row) => ({ row, r: row + pOff, kind: "pitcher" as Kind }))].forEach(({ row, r, kind }, i) => {
     const isB = kind === "batter";
-    const p = blank(r, kind, str(at("B", r)) || FALLBACK_POS[i]);
+    // pos는 항상 캐노니컬 라벨 고정 — 다이아몬드 배치·포훈표 매칭이 B열 자유서식 텍스트에
+    // 흔들리지 않도록 한다 (그게 "포지션이 밀려 보이는" 증상의 실제 원인이었음).
+    const p = blank(row, kind, FALLBACK_POS[i]);
     const o = num(at("C", r));
     p.order = isB ? o : "";
     p.card = str(at("D", r));

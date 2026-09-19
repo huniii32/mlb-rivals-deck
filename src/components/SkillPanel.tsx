@@ -139,6 +139,10 @@ export function SkillPanel({
     delete o[`${k}:${name}`];
     setTables({ ...tables, overrides: o });
   };
+  const removeCustom = (k: Kind, name: string) => {
+    if (!confirm(`'${name}' 스킬을 삭제할까요?`)) return;
+    setTables({ ...tables, customs: tables.customs.filter((c) => !(c.kind === k && c.name === name)) });
+  };
   const add = () => {
     const name = nName.trim();
     if (!name || nScore === "") return;
@@ -183,7 +187,10 @@ export function SkillPanel({
                     onChange={(e) => setScore(s.kind, s.name, Number(e.target.value), !!s.custom)}
                   />
                 </td>
-                <td>{s.edited && <button onClick={() => resetScore(s.kind, s.name)}>원복</button>}</td>
+                <td>
+                  {s.edited && <button onClick={() => resetScore(s.kind, s.name)}>원복</button>}
+                  {s.custom && <button onClick={() => removeCustom(s.kind, s.name)}>삭제</button>}
+                </td>
               </tr>
             ))}
           </tbody>

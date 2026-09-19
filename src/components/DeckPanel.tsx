@@ -99,7 +99,8 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
             </button>
           ))}
         </div>
-        <p className="muted">행마다 좌·우 중 하나만 선택 (다시 누르면 해제). 게임 덱스코어 화면과 같은 방식. 연도행: 선수 연도가 입력 연도 이후 0~9년 이내면 +1.</p>
+        <p className="muted">행마다 좌·우 중 하나만 선택 (다시 누르면 해제). 게임 덱스코어 화면과 같은 방식. 연도행: 선수 연도가 입력 연도 이후 0~9년 이내면 +1.
+          {" "}팀 덱 스코어 다이아몬드는 팀 전원에게 같은 보너스를 줍니다. 포지션마다 값이 다른 건 그 선수의 타순·카드·강화Lv·연도 조건 때문입니다.</p>
         <div className="deckscore-rows">
           {list.map((g) => {
             const onL = !!flags[`${g.row}-${g.region}-L`];

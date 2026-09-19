@@ -142,9 +142,11 @@ function evVal(c: Cond, ctx: EvalCtx): string | number | boolean {
 export function deckBonus(
   excelRow: number,
   ctx: EvalCtx,
+  kind: Kind,
 ): { sums: number[]; hits: { threshold: number | null; region: string; stat: string; pts: number }[] } {
   const sums = [0, 0, 0];
   const hits: { threshold: number | null; region: string; stat: string; pts: number }[] = [];
+  const stats = kind === "batter" ? BATTER_STATS : PITCHER_STATS;
   for (const r of DECK.rules) {
     if (r.r !== excelRow) continue;
     let pts = 0;
@@ -159,7 +161,9 @@ export function deckBonus(
       const idx = RULE_STAT_IDX[r.s] ?? -1;
       if (idx >= 0) {
         sums[idx] += pts;
-        hits.push({ threshold: r.t, region: r.g === 0 ? "팀덱코" : "스덱코", stat: r.s, pts });
+        // 규칙 라벨(r.s)은 엑셀 원본 표기(파워/정확/선구)라 투수 행에서도 그대로 나옴.
+        // 실제로는 idx로 매핑되므로(변화=0,구위=1) 표시는 kind에 맞는 스탯명을 써야 함.
+        hits.push({ threshold: r.t, region: r.g === 0 ? "팀덱코" : "스덱코", stat: stats[idx] ?? r.s, pts });
       }
     }
   }
@@ -353,7 +357,7 @@ export function calcPlayer(
   const trans: (number | null)[] = [];
   const enh: (number | null)[] = [];
   const poh: (number | null)[] = [];
-  const { sums: deckSums, hits } = deckBonus(p.excelRow, ctx);
+  const { sums: deckSums, hits } = deckBonus(p.excelRow, ctx, p.kind);
   for (let i = 0; i < 3; i++) {
     const stat = stats[i] ?? stats[0];
     let t: number | null = null;
