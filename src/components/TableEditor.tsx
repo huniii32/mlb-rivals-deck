@@ -16,6 +16,7 @@ export function TableEditor({
   const merged = getTable(kind, tables);
   const keys = Object.keys(merged).sort().filter((k) => !q || k.includes(q));
   const levels = TABLE_LEVELS[kind];
+  const from = kind === "transcend" ? 0 : 1; // 레벨 표기 시작값
   const cur: number[] = sel
     ? [...(merged[sel] ?? [])]
     : [];
@@ -40,7 +41,7 @@ export function TableEditor({
   return (
     <div className="card">
       <div className="row">
-        {(["enhance", "transcend", "pohoon"] as TableKind[]).map((k) => (
+        {(Object.keys(TABLE_LABEL) as TableKind[]).map((k) => (
           <button key={k} className={kind === k ? "on" : ""} onClick={() => { setKind(k); setSel(""); }}>
             {TABLE_LABEL[k]}표
           </button>
@@ -57,12 +58,12 @@ export function TableEditor({
       {sel && (
         <div style={{ marginTop: 8 }}>
           <div className="muted" style={{ marginBottom: 4 }}>
-            {sel} — 레벨별 보너스 ({kind === "transcend" ? "0~15" : "1~20"})
+            {sel} — 레벨별 보너스 ({`${from}~${from + levels - 1}`})
           </div>
           <div className="row">
             {cur.slice(0, levels).map((v, i) => (
               <label key={i} style={{ display: "flex", flexDirection: "column", fontSize: 11 }} className="muted">
-                {kind === "transcend" ? i : i + 1}
+                {from + i}
                 <Num value={v} width={56} onChange={(nv) => saveCell(i, nv)} />
               </label>
             ))}

@@ -9,13 +9,37 @@ export const supabase: SupabaseClient | null =
 
 export const isSupabaseOn = () => supabase !== null;
 
+/** 실시간 채널이 놓칠 때를 대비한 폴백 폴링 주기 */
+const POLL_MS = 30000;
+export const MAX_NAME = 20;
+export const MAX_BODY = 2000;
+export const RANK_COLS = "id,deck_name,total,sp,rp,bt,named,deck_json,created_at";
+
+export const uuid = (): string =>
+  crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+
+/** 테이블 변경 실시간 구독 + 30초 폴백 폴링. 반환값은 cleanup. 미연동이면 아무것도 안 함. */
+export function watchTable(table: string, cb: () => void): () => void {
+  const sb = supabase;
+  if (!sb) return () => {};
+  const ch = sb
+    .channel(`${table}-live`)
+    .on("postgres_changes", { event: "*", schema: "public", table }, () => cb())
+    .subscribe();
+  const timer = setInterval(() => cb(), POLL_MS);
+  return () => {
+    clearInterval(timer);
+    sb.removeChannel(ch);
+  };
+}
+
 /** 이 브라우저의 익명 식별자 (한 번 생성해서 재사용). 서버 쪽 등록 간격 제한(스팸 방지)에 사용. */
 export function getClientId(): string {
   const KEY = "rivals-client-id";
   try {
     let id = localStorage.getItem(KEY);
     if (!id) {
-      id = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+      id = uuid();
       localStorage.setItem(KEY, id);
     }
     return id;

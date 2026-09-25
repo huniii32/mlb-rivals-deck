@@ -1,8 +1,8 @@
 import type { Kind, PlayerInput, PlayerResult, SkillTables } from "../lib/engine";
-import { LOOKUP, fmtScore, isSigBlackCard, skillScore } from "../lib/engine";
+import { BATTER_STATS, LOOKUP, PITCHER_STATS, isSigBlackCard } from "../lib/engine";
 import { PlayerArt, gradeColor } from "./CardArt";
 import { Num } from "./inputs";
-import { SkillInput } from "./SkillInput";
+import { SkillSlot } from "./SkillInput";
 
 /** 라인업에서 포지션 클릭 시 열리는 단일 선수 편집 팝업 */
 export function PlayerEditor({
@@ -15,8 +15,7 @@ export function PlayerEditor({
   tables: SkillTables;
 }) {
   const kind: Kind = p.kind;
-  const stats = kind === "batter" ? ["파워", "정확", "선구"] : ["변화", "구위"];
-  const n = kind === "batter" ? 3 : 2;
+  const stats = kind === "batter" ? BATTER_STATS : PITCHER_STATS;
   const isBlack = isSigBlackCard(p.card);
   const setArr = (
     field: "base" | "train" | "spec" | "extra" | "synergy" | "locker" | "blackPos" | "blackBoost" | "finalOv",
@@ -107,19 +106,10 @@ export function PlayerEditor({
 
       <div className="ed-sec">스킬</div>
       <div className="ed-skills">
-        {([0, 1, 2, 3] as const).map((i) => {
-          const v = p.skills[i];
-          const sc = v.trim() ? skillScore(kind, v, tables) : 0;
-          return (
-            <label key={i}>
-              <span className="sk-head">스킬{i + 1}
-                {sc !== null && v.trim() !== "" && <b className="pill">+{fmtScore(sc)}</b>}
-                {sc === null && <b className="pill bad-pill">표없음</b>}
-              </span>
-              <SkillInput kind={kind} value={v} tables={tables} onChange={(nv) => setSkill(i, nv)} />
-            </label>
-          );
-        })}
+        {([0, 1, 2, 3] as const).map((i) => (
+          <SkillSlot key={i} label="스킬" n={i + 1} kind={kind} value={p.skills[i]} tables={tables}
+            onChange={(nv) => setSkill(i, nv)} />
+        ))}
       </div>
 
       <div className="ed-sec">카드 그림</div>

@@ -1,29 +1,23 @@
 import { useState } from "react";
 import type { Chem } from "../lib/engine";
 import { LOOKUP, allThresholds, referencedFlags } from "../lib/engine";
+import { LINEUP, YEAR_ANCHOR } from "../lib/deck";
 
-const CHEM_LABELS: [keyof Chem, string, string][] = [
-  ["commander", "커맨더", "commander"],
-  ["catcher", "포수리드", "catcher"],
-  ["pitchChem", "투수케미스트리", "pitchChem"],
-  ["batChem", "타자케미스트리", "batChem"],
-  ["wbcP", "WBC에이스(투수)", "wbcP"],
-  ["wbcB", "WBC에이스(타자)", "wbcB"],
+const CHEM_LABELS: [keyof Chem, string][] = [
+  ["commander", "커맨더"],
+  ["catcher", "포수리드"],
+  ["pitchChem", "투수케미스트리"],
+  ["batChem", "타자케미스트리"],
+  ["wbcP", "WBC에이스(투수)"],
+  ["wbcB", "WBC에이스(타자)"],
 ];
 
-const POS_LABEL: Record<number, string> = {
-  11: "C", 12: "1B", 13: "2B", 14: "3B", 15: "SS", 16: "LF", 17: "CF", 18: "RF", 19: "DH",
-  22: "SP1", 23: "SP2", 24: "SP3", 25: "SP4", 26: "SP5",
-  27: "RP1", 28: "RP2", 29: "RP3", 30: "CP1",
-};
+const POS_LABEL: Record<number, string> = Object.fromEntries(LINEUP.map((l) => [l.row, l.pos]));
 
 function rowLabel(row: number): string {
   if (row === 10) return "전체";
   return POS_LABEL[row] ?? `행${row}`;
 }
-
-// 연도 입력행 -> 스덱코 임계값 행 옆에 표시 (규칙: 33→615, 35→645, 37→680)
-export const YEAR_ANCHOR: Record<number, number> = { 615: 33, 645: 35, 680: 37 };
 
 export function ChemPanel({ chem, setChem }: {
   chem: Chem;
@@ -33,10 +27,10 @@ export function ChemPanel({ chem, setChem }: {
     <div className="card">
       <h3>케미스트리 (투수·타자·WBC·커맨더·포수리드)</h3>
       <div className="row">
-        {CHEM_LABELS.map(([k, label, opt]) => (
+        {CHEM_LABELS.map(([k, label]) => (
           <label key={k}>{label}{" "}
             <select value={chem[k]} onChange={(e) => setChem({ ...chem, [k]: e.target.value })}>
-              {(LOOKUP.chem[opt] ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
+              {(LOOKUP.chem[k] ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
           </label>
         ))}
@@ -59,7 +53,6 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
   // (region, row)별 L/R 묶기. 게임 화면처럼 행마다 좌·우 둘 중 하나만 선택.
   const rows = new Map<string, { region: string; row: number; threshold: number | null; sides: ("L" | "R")[] }>();
   for (const f of all) {
-    if (f.region !== "team" && f.region !== "spec") continue;
     const k = `${f.region}-${f.row}`;
     const g = rows.get(k) ?? { region: f.region, row: f.row, threshold: f.threshold, sides: [] };
     if (!g.sides.includes(f.side as "L" | "R")) g.sides.push(f.side as "L" | "R");

@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Deck } from "../App";
+import { isDeck, type Deck } from "../lib/deck";
 import type { SkillTables } from "../lib/engine";
 import { calcDeckTotal } from "../lib/engine";
 import { DeckCompareModal } from "./DeckCompare";
-import { errMessage, getClientId, isMissingRpc, isRateLimited, isSupabaseOn, supabase, type PublicRank } from "../lib/supabase";
+import { errMessage, getClientId, isMissingRpc, isRateLimited, isSupabaseOn, RANK_COLS, supabase, uuid, watchTable, type PublicRank } from "../lib/supabase";
+
+const MY_RANKS_KEY = "rivals-my-ranks-v1";
 
 function encodeDeck(d: Deck): string {
   const json = JSON.stringify(d);
@@ -13,18 +15,32 @@ function encodeDeck(d: Deck): string {
   return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-export function decodeDeck(code: string): Deck | null {
+function decodeDeck(code: string): Deck | null {
   try {
     const b64 = code.replace(/-/g, "+").replace(/_/g, "/");
     const bin = atob(b64);
     const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
     const json = new TextDecoder().decode(bytes);
-    const d = JSON.parse(json) as Deck;
-    if (!d || !Array.isArray(d.players) || d.players.length !== 18) return null;
-    return d;
+    const d = JSON.parse(json) as unknown;
+    return isDeck(d) ? d : null;
   } catch {
     return null;
   }
+}
+
+const pubDeck = (r: PublicRank): Deck | null => (isDeck(r.deck_json) ? r.deck_json : null);
+
+/** 랭킹 행 갱신/등록 rpc 공통 인자: 총점 스냅샷 + 덱 JSON (s는 서버 행과 비교용) */
+function rankArgs(d: Deck, tables: SkillTables) {
+  const s = calcDeckTotal(d, tables);
+  return {
+    s,
+    args: {
+      p_name: d.name.slice(0, 50),
+      p_total: s.total, p_sp: s.sp, p_rp: s.rp, p_bt: s.bt, p_named: s.named,
+      p_deck: JSON.parse(JSON.stringify(d)) as object,
+    },
+  };
 }
 
 /** 공유 + 내 덱 랭킹 + 전체 공개 랭킹 */
@@ -47,7 +63,7 @@ export function SharePanel({
   // 내가 올린 공개글 id → { 삭제 토큰, 로컬 덱 id } (이 브라우저에만 보관)
   const [mine, setMine] = useState<Record<string, { token: string; deckId: string }>>(() => {
     try {
-      const raw = JSON.parse(localStorage.getItem("rivals-my-ranks-v1") || "{}") as Record<string, unknown>;
+      const raw = JSON.parse(localStorage.getItem(MY_RANKS_KEY) || "{}") as Record<string, unknown>;
       const out: Record<string, { token: string; deckId: string }> = {};
       for (const [k, v] of Object.entries(raw)) {
         if (typeof v === "string") out[k] = { token: v, deckId: "" };
@@ -63,7 +79,7 @@ export function SharePanel({
   });
   const saveMine = (next: Record<string, { token: string; deckId: string }>) => {
     setMine(next);
-    localStorage.setItem("rivals-my-ranks-v1", JSON.stringify(next));
+    localStorage.setItem(MY_RANKS_KEY, JSON.stringify(next));
   };
   // 실시간 콜백에서 최신 값을 쓰기 위한 ref
   const decksRef = useRef(decks);
@@ -90,7 +106,7 @@ export function SharePanel({
     const m = text.match(/#d=([A-Za-z0-9\-_]+)/);
     const deck = decodeDeck(m ? m[1] : text.trim());
     if (!deck) {
-      alert("공유 코드解析 실패");
+      alert("공유 코드 해석 실패");
       return;
     }
     onImportDeck(deck);
@@ -108,11 +124,10 @@ export function SharePanel({
     if (!supabase) return;
     setPubLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("rankings")
-        .select("id,deck_name,total,sp,rp,bt,named,deck_json,created_at")
-        .order("total", { ascending: false })
-        .limit(50);
+      const sb = supabase; // 클로저 안에서 null 좁히기 유지용
+      const fetchRank = () =>
+        sb.from("rankings").select(RANK_COLS).order("total", { ascending: false }).limit(50);
+      const { data, error } = await fetchRank();
       if (error) throw error;
       const rows = (data ?? []) as PublicRank[];
       setPub(rows);
@@ -126,15 +141,12 @@ export function SharePanel({
         if (!link?.token || !link.deckId) continue;
         const local = decksNow.find((d) => d.id === link.deckId);
         if (!local) continue;
-        const s = calcDeckTotal(local, tablesNow);
-        const name = local.name.slice(0, 50);
-        if (r.deck_name === name && Number(r.total) === s.total && Number(r.sp) === s.sp &&
+        const { s, args } = rankArgs(local, tablesNow);
+        if (r.deck_name === args.p_name && Number(r.total) === s.total && Number(r.sp) === s.sp &&
             Number(r.rp) === s.rp && Number(r.bt) === s.bt && r.named === s.named) continue;
         try {
           const { data: ok, error: uerr } = await supabase.rpc("update_ranking", {
-            p_id: r.id, p_token: link.token, p_name: name,
-            p_total: s.total, p_sp: s.sp, p_rp: s.rp, p_bt: s.bt, p_named: s.named,
-            p_deck: JSON.parse(JSON.stringify(local)) as object,
+            p_id: r.id, p_token: link.token, ...args,
           });
           if (!uerr && ok) changed = true;
         } catch {
@@ -142,11 +154,7 @@ export function SharePanel({
         }
       }
       if (changed) {
-        const { data: again } = await supabase
-          .from("rankings")
-          .select("id,deck_name,total,sp,rp,bt,named,deck_json,created_at")
-          .order("total", { ascending: false })
-          .limit(50);
+        const { data: again } = await fetchRank();
         if (again) setPub(again as PublicRank[]);
       }
     } catch {
@@ -157,19 +165,8 @@ export function SharePanel({
   };
   useEffect(() => {
     loadPub();
-    const sb = supabase;
-    if (!sb) return;
-    // 실시간 반영: 남이 올리면 자동 새로고침 (+30초 폴백 폴링)
-    const ch = sb
-      .channel("rankings-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "rankings" }, () => loadPub())
-      .subscribe();
-    const timer = setInterval(() => loadPub(), 30000);
-    return () => {
-      clearInterval(timer);
-      sb.removeChannel(ch);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // 실시간 반영: 남이 올리면 자동 새로고침
+    return watchTable("rankings", loadPub);
   }, []);
 
   // 현재 덱을 전체 공개 랭킹에 등록. 이미 등록해둔 덱이면(같은 deckId) 새 행 대신 기존 행을 갱신.
@@ -177,16 +174,12 @@ export function SharePanel({
     if (!supabase || submitting) return;
     setSubmitting(true);
     try {
-      const s = calcDeckTotal(active, tables);
-      const name = active.name.slice(0, 50);
-      const deckJson = JSON.parse(JSON.stringify(active)) as object;
+      const { args } = rankArgs(active, tables);
       const existing = Object.entries(mine).find(([, v]) => v.deckId === active.id);
       if (existing) {
         const [id, { token }] = existing;
         const { data: ok, error } = await supabase.rpc("update_ranking", {
-          p_id: id, p_token: token, p_name: name,
-          p_total: s.total, p_sp: s.sp, p_rp: s.rp, p_bt: s.bt, p_named: s.named,
-          p_deck: deckJson,
+          p_id: id, p_token: token, ...args,
         });
         if (error) throw error;
         if (ok) {
@@ -199,11 +192,9 @@ export function SharePanel({
         delete cleaned[id];
         saveMine(cleaned);
       }
-      const token = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`) as string;
+      const token = uuid();
       const { data: newId, error } = await supabase.rpc("insert_ranking", {
-        p_client_id: getClientId(), p_name: name,
-        p_total: s.total, p_sp: s.sp, p_rp: s.rp, p_bt: s.bt, p_named: s.named,
-        p_deck: deckJson, p_token: token,
+        p_client_id: getClientId(), p_token: token, ...args,
       });
       if (error) throw error;
       if (typeof newId === "string") {
@@ -246,28 +237,10 @@ export function SharePanel({
     }
   };
 
-  const importPub = (r: PublicRank) => {
+  const withPubDeck = (r: PublicRank, fn: (d: Deck) => void) => {
     const d = pubDeck(r);
-    if (!d) {
-      alert("덱 형식이 아닙니다.");
-      return;
-    }
-    onImportDeck(d);
-  };
-
-  const pubDeck = (r: PublicRank): Deck | null => {
-    const d = r.deck_json as Deck | null;
-    if (!d || !Array.isArray(d.players) || d.players.length !== 18) return null;
-    return d;
-  };
-
-  const previewPub = (r: PublicRank) => {
-    const d = pubDeck(r);
-    if (!d) {
-      alert("덱 형식이 아닙니다.");
-      return;
-    }
-    onPreviewDeck(d);
+    if (d) fn(d);
+    else alert("덱 형식이 아닙니다.");
   };
 
   return (
@@ -307,8 +280,8 @@ export function SharePanel({
                         {new Date(r.created_at).toLocaleDateString("ko-KR")}
                       </td>
                       <td style={{ whiteSpace: "nowrap" }}>
-                        <button onClick={() => previewPub(r)}>보기</button>{" "}
-                        <button onClick={() => importPub(r)}>가져오기</button>{" "}
+                        <button onClick={() => withPubDeck(r, onPreviewDeck)}>보기</button>{" "}
+                        <button onClick={() => withPubDeck(r, onImportDeck)}>가져오기</button>{" "}
                         <button onClick={() => { const d = pubDeck(r); if (d) setCompareWith({ name: r.deck_name, deck: d }); }}>비교</button>{" "}
                         {mine[r.id] && <button onClick={() => deletePub(r.id)}>삭제</button>}
                       </td>

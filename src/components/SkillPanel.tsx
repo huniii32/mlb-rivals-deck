@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Kind, SkillTables } from "../lib/engine";
 import { LOOKUP, fmtScore, skillScore } from "../lib/engine";
-import { SkillInput } from "./SkillInput";
+import { SkillSlot } from "./SkillInput";
 
 /** 스킬 1 vs 2 비교: 양쪽 4슬롯 합산 대결 */
 export function SkillCompare({ tables }: { tables: SkillTables }) {
@@ -36,24 +36,14 @@ export function SkillCompare({ tables }: { tables: SkillTables }) {
         </span>
       </div>
       <div className="ed-skills" style={{ marginTop: 8 }}>
-        {([0, 1, 2, 3] as const).map((i) => {
-          const v = skills[i];
-          const sc = v.trim() ? skillScore(kind, v, tables) : 0;
-          return (
-            <label key={i}>
-              <span className="sk-head">슬롯{i + 1}
-                {sc !== null && v.trim() !== "" && <b className="pill">+{fmtScore(sc)}</b>}
-                {sc === null && <b className="pill bad-pill">표없음</b>}
-              </span>
-              <SkillInput kind={kind} value={v} tables={tables}
-                onChange={(nv) => {
-                  const n = [...skills];
-                  n[i] = nv;
-                  setSkills(n);
-                }} />
-            </label>
-          );
-        })}
+        {([0, 1, 2, 3] as const).map((i) => (
+          <SkillSlot key={i} label="슬롯" n={i + 1} kind={kind} value={skills[i]} tables={tables}
+            onChange={(nv) => {
+              const n = [...skills];
+              n[i] = nv;
+              setSkills(n);
+            }} />
+        ))}
       </div>
       <div className="score-sm" style={{ marginTop: 8 }}>
         합계: {r.total === null ? <span className="bad">표없음 있음</span> : <b>{r.total.toFixed(1)}</b>}

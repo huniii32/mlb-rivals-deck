@@ -77,3 +77,24 @@ export function SkillInput({ kind, value, onChange, tables }: {
     </span>
   );
 }
+
+/** 스킬 슬롯 1칸: 라벨 + 점수/표없음 pill + 입력 (팝업 에디터·스킬 비교 공용) */
+export function SkillSlot({ label, n, kind, value, tables, onChange }: {
+  label: string;
+  n: number;
+  kind: Kind;
+  value: string;
+  tables: SkillTables;
+  onChange: (v: string) => void;
+}) {
+  const sc = value.trim() ? skillScore(kind, value, tables) : 0;
+  return (
+    <label>
+      <span className="sk-head">{label}{n}
+        {sc !== null && value.trim() !== "" && <b className="pill">+{fmtScore(sc)}</b>}
+        {sc === null && <b className="pill bad-pill">표없음</b>}
+      </span>
+      <SkillInput kind={kind} value={value} tables={tables} onChange={onChange} />
+    </label>
+  );
+}
