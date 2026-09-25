@@ -24,8 +24,19 @@ export function getClientId(): string {
   }
 }
 
-export const isRateLimited = (e: unknown): boolean =>
-  e instanceof Error && e.message.includes("rate_limited");
+/** postgrest 에러는 Error 인스턴스가 아닌 plain object({code,message,...}) 라서 message 를 직접 읽는다 */
+export const errMessage = (e: unknown): string =>
+  typeof e === "object" && e !== null && typeof (e as { message?: unknown }).message === "string"
+    ? (e as { message: string }).message
+    : String(e);
+
+export const isRateLimited = (e: unknown): boolean => errMessage(e).includes("rate_limited");
+
+/** RPC 함수가 DB에 없음 (마이그레이션 미실행) */
+export const isMissingRpc = (e: unknown): boolean => {
+  const code = typeof e === "object" && e !== null ? (e as { code?: unknown }).code : undefined;
+  return code === "PGRST202" || code === "42883" || errMessage(e).includes("Could not find the function");
+};
 
 export interface PublicRank {
   id: string;

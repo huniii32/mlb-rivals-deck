@@ -3,7 +3,7 @@ import type { Deck } from "../App";
 import type { SkillTables } from "../lib/engine";
 import { calcDeckTotal } from "../lib/engine";
 import { DeckCompareModal } from "./DeckCompare";
-import { getClientId, isRateLimited, isSupabaseOn, supabase, type PublicRank } from "../lib/supabase";
+import { errMessage, getClientId, isMissingRpc, isRateLimited, isSupabaseOn, supabase, type PublicRank } from "../lib/supabase";
 
 function encodeDeck(d: Deck): string {
   const json = JSON.stringify(d);
@@ -215,8 +215,10 @@ export function SharePanel({
       }
       alert("전체 랭킹에 등록됐습니다.");
     } catch (e) {
+      console.error(e);
       if (isRateLimited(e)) alert("너무 자주 등록하고 있어요 — 잠시 후 다시 시도하세요.");
-      else alert("등록 실패 — 마이그레이션 SQL(supabase_mig_rate_limit.sql)을 실행했는지 확인하세요.");
+      else if (isMissingRpc(e)) alert("등록 실패 — 마이그레이션 SQL(supabase_mig_rate_limit.sql)을 실행했는지 확인하세요.");
+      else alert(`등록 실패: ${errMessage(e)}`);
     } finally {
       setSubmitting(false);
     }

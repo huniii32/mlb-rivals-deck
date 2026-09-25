@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import patchnotes from "../data/patchnotes.json";
-import { getClientId, isRateLimited, isSupabaseOn, supabase, type PublicInquiry } from "../lib/supabase";
+import { errMessage, getClientId, isMissingRpc, isRateLimited, isSupabaseOn, supabase, type PublicInquiry } from "../lib/supabase";
 import { FlowDiagram, ScopeDiagram, ShareBar, WeightBars } from "./ScoreDiagrams";
 
 interface Inquiry {
@@ -185,8 +185,10 @@ export function InquiryModal({ close }: { close: () => void }) {
         loadPub();
         return;
       } catch (e) {
+        console.error(e);
         if (isRateLimited(e)) alert("너무 자주 글을 남기고 있어요 — 잠시 후 다시 시도하세요.");
-        else alert("등록 실패 — 마이그레이션 SQL(supabase_mig_rate_limit.sql)을 실행했는지 확인하세요.");
+        else if (isMissingRpc(e)) alert("등록 실패 — 마이그레이션 SQL(supabase_mig_rate_limit.sql)을 실행했는지 확인하세요.");
+        else alert(`등록 실패: ${errMessage(e)}`);
         return;
       }
     }
