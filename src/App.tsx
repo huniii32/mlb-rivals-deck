@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Chem, Kind, PlayerInput, SkillTables } from "./lib/engine";
-import { calcPlayer, flagDefaults, migrateSkillName } from "./lib/engine";
+import type { Kind, PlayerInput, SkillTables } from "./lib/engine";
+import { deckPlayerResults, flagDefaults, migrateSkillName } from "./lib/engine";
+import type { Deck } from "./lib/deck";
+import { DEFAULT_CHEM, LINEUP, YEAR_ANCHOR, blankPlayer, isDeck, newId, normalizePlayer } from "./lib/deck";
 import { LineupView } from "./components/LineupView";
 import { PlayerEditor } from "./components/PlayerEditor";
 import { ChemPanel, DeckScorePanel } from "./components/DeckPanel";
@@ -9,7 +11,9 @@ import { TableEditor } from "./components/TableEditor";
 import { NewsTab } from "./components/NewsTab";
 import { SharePanel } from "./components/SharePanel";
 import { ResultPanel } from "./components/ResultPanel";
-import { InquiryModal, PatchNotesModal, ScoreGuideModal } from "./components/SiteModals";
+import { InquiryModal } from "./components/InquiryModal";
+import { PatchNotesModal } from "./components/PatchNotesModal";
+import { ScoreGuideModal } from "./components/ScoreGuideModal";
 import { DeckPreviewModal } from "./components/DeckPreview";
 import { parseExcelDeck } from "./lib/excelImport";
 import "./styles.css";
@@ -19,54 +23,15 @@ const TABLES_KEY = "rivals-tables-v1";
 const THEME_KEY = "rivals-theme";
 const LEGACY_KEY = "rivals-deck-v2";
 
-const BATTER_DEF: [number, string, number][] = [
-  [11, "C", 9], [12, "1B", 5], [13, "2B", 2], [14, "3B", 6], [15, "SS", 7],
-  [16, "LF", 4], [17, "CF", 8], [18, "RF", 1], [19, "DH", 3],
-];
-const PITCHER_DEF: [number, string][] = [
-  [22, "SP1"], [23, "SP2"], [24, "SP3"], [25, "SP4"], [26, "SP5"],
-  [27, "RP1"], [28, "RP2"], [29, "RP3"], [30, "CP1"],
-];
-
-function blankPlayer(excelRow: number, kind: Kind, pos: string, order: number | ""): PlayerInput {
-  return {
-    excelRow, kind, pos, order,
-    card: "", name: "", team: "", year: "", enName: "", photoUrl: "",
-    base: ["", "", ""], train: ["", "", ""], spec: ["", "", ""],
-    transLv: "", enhLv: "", pohLv: "",
-    extra: ["", "", ""],
-    synergy: ["", "", ""],
-    locker: ["", "", ""],
-    blackPos: ["", "", ""],
-    blackBoost: ["", "", ""],
-    skillB: false,
-    skills: ["", "", "", ""],
-    finalOv: ["", "", ""],
-  };
-}
-
-export interface Deck {
-  id: string;
-  name: string;
-  updatedAt: number;
-  players: PlayerInput[];
-  chem: Chem;
-  flags: Record<string, boolean>;
-  yearInputs: Record<number, number | "">;
-}
-
 function blankDeck(name: string): Deck {
   return {
-    id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+    id: newId(),
     name,
     updatedAt: Date.now(),
-    players: [
-      ...BATTER_DEF.map(([r, pos, o]) => blankPlayer(r, "batter", pos, o)),
-      ...PITCHER_DEF.map(([r, pos]) => blankPlayer(r, "pitcher", pos, "")),
-    ],
-    chem: { commander: "S", catcher: "S", pitchChem: "S", batChem: "S", wbcP: "S", wbcB: "S1" },
+    players: LINEUP.map((l) => blankPlayer(l.row, l.kind, l.pos, l.order)),
+    chem: { ...DEFAULT_CHEM },
     flags: flagDefaults(),
-    yearInputs: { 33: "", 35: "", 37: "" },
+    yearInputs: Object.fromEntries(Object.values(YEAR_ANCHOR).map((r) => [r, ""])) as Deck["yearInputs"],
   };
 }
 
@@ -78,24 +43,10 @@ function loadDecks(): { decks: Deck[]; activeId: string } {
       if (Array.isArray(s.decks) && s.decks.length) {
         const decks = s.decks.map((d) => {
           const base = blankDeck(d.name || "내 덱");
-          const norm = (p: PlayerInput): PlayerInput => ({
-            ...p,
-            enName: p.enName ?? "",
-            photoUrl: p.photoUrl ?? "",
-            team: p.team ?? "",
-            synergy: p.synergy ?? ["", "", ""],
-            locker: p.locker ?? ["", "", ""],
-            blackPos: p.blackPos ?? ["", "", ""],
-            blackBoost: p.blackBoost ?? ["", "", ""],
-            skills: (p.skills ?? ["", "", "", ""]).map((s) =>
-              migrateSkillName(p.kind, s)) as [string, string, string, string],
-          });
           return {
             ...base,
             ...d,
-            players: Array.isArray(d.players) && d.players.length === 18
-              ? (d.players as PlayerInput[]).map(norm)
-              : base.players,
+            players: isDeck(d) ? d.players.map(normalizePlayer) : base.players,
           };
         });
         const activeId = decks.some((d) => d.id === s.activeId) ? s.activeId : decks[0].id;
@@ -107,7 +58,7 @@ function loadDecks(): { decks: Deck[]; activeId: string } {
     if (legacy) {
       const s = JSON.parse(legacy) as Partial<Deck>;
       const d = blankDeck("내 덱 1");
-      if (Array.isArray(s.players) && s.players.length === 18) d.players = s.players as PlayerInput[];
+      if (isDeck(s)) d.players = s.players;
       if (s.chem) d.chem = { ...d.chem, ...s.chem };
       if (s.flags) d.flags = { ...d.flags, ...s.flags };
       if (s.yearInputs) d.yearInputs = { ...d.yearInputs, ...s.yearInputs };
@@ -153,7 +104,7 @@ export default function App() {
   const [selected, setSelected] = useState<number | null>(null);
   const [tab, setTab] = useState<"lineup" | "skills" | "ranking" | "news">("lineup");
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "dark");
-  const [modal, setModal] = useState<"inquiry" | "notices" | "guide" | null>(null);
+  const [modal, setModal] = useState<"inquiry" | "patch" | "guide" | null>(null);
   const [preview, setPreview] = useState<Deck | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const xlRef = useRef<HTMLInputElement>(null);
@@ -187,37 +138,7 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // 카드 그림: 수동 이미지 URL만 사용, 없으면 자체 일러스트
-  const artByRow: Record<number, string> = useMemo(() => {
-    const out: Record<number, string> = {};
-    for (const p of players) {
-      if (p.photoUrl.trim()) out[p.excelRow] = p.photoUrl.trim();
-    }
-    return out;
-  }, [players]);
-
-  const ctx = useMemo(() => {
-    const cardByRow: Record<number, string> = {};
-    const orderByRow: Record<number, number> = {};
-    const enhByRow: Record<number, number> = {};
-    const yearByRow: Record<number, number> = {};
-    for (const p of players) {
-      cardByRow[p.excelRow] = p.card;
-      orderByRow[p.excelRow] = typeof p.order === "number" ? p.order : 0;
-      enhByRow[p.excelRow] = typeof p.enhLv === "number" ? p.enhLv : 0;
-      yearByRow[p.excelRow] = typeof p.year === "number" ? p.year : 0;
-    }
-    return { flags, yearInputs, cardByRow, orderByRow, enhByRow, yearByRow, chem };
-  }, [players, flags, yearInputs, chem]);
-
-  const results = useMemo(
-    () => players.map((p) => calcPlayer(p, ctx, tables)),
-    [players, ctx, tables],
-  );
-  const batters = players.slice(0, 9);
-  const pitchers = players.slice(9);
-  const bRes = results.slice(0, 9);
-  const pRes = results.slice(9);
+  const results = useMemo(() => deckPlayerResults(deck, tables), [deck, tables]);
 
   const patchDeck = (patch: Partial<Deck>) =>
     setDecks(decks.map((d) => (d.id === deck.id ? { ...d, ...patch, updatedAt: Date.now() } : d)));
@@ -318,7 +239,7 @@ export default function App() {
   };
 
   const addDeckData = (d: Deck, fallbackName: string) => {
-    if (!d || !Array.isArray(d.players) || d.players.length !== 18) {
+    if (!isDeck(d)) {
       alert("덱 형식이 아닙니다.");
       return;
     }
@@ -326,19 +247,8 @@ export default function App() {
     const nd: Deck = {
       ...base,
       ...d,
-      players: (d.players as PlayerInput[]).map((p) => ({
-        ...p,
-        enName: p.enName ?? "",
-        photoUrl: p.photoUrl ?? "",
-        team: p.team ?? "",
-        synergy: p.synergy ?? ["", "", ""],
-        locker: p.locker ?? ["", "", ""],
-        blackPos: p.blackPos ?? ["", "", ""],
-        blackBoost: p.blackBoost ?? ["", "", ""],
-        skills: (p.skills ?? ["", "", "", ""]).map((s) =>
-          migrateSkillName(p.kind, s)) as [string, string, string, string],
-      })),
-      id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+      players: d.players.map(normalizePlayer),
+      id: newId(),
       updatedAt: Date.now(),
     };
     setDecks((prev) => [...prev, nd]);
@@ -362,7 +272,7 @@ export default function App() {
           </button>
           <button onClick={() => setModal("inquiry")}>✉️ 문의하기</button>
           <button onClick={() => setModal("guide")}>🧮 산정방식</button>
-          <button onClick={() => setModal("notices")}>📢 공지사항</button>
+          <button onClick={() => setModal("patch")}>📢 공지사항</button>
         </div>
       </header>
 
@@ -398,10 +308,7 @@ export default function App() {
       {tab === "lineup" && (
         <div className="lineup-layout">
           <div>
-            <LineupView
-              batters={batters} pitchers={pitchers} bRes={bRes} pRes={pRes}
-              onSelect={setSelected} art={artByRow}
-            />
+            <LineupView players={players} results={results} onSelect={setSelected} />
             <ChemPanel
               chem={chem} setChem={(c) => patchDeck({ chem: c })}
             />
@@ -434,13 +341,13 @@ export default function App() {
             onImportDeck={(d) => addDeckData(d, "공유받은 덱")}
             onPreviewDeck={(d) => setPreview(d)}
           />
-          <ResultPanel batters={batters} pitchers={pitchers} bRes={bRes} pRes={pRes} />
+          <ResultPanel players={players} results={results} />
         </>
       )}
 
       {modal === "inquiry" && <InquiryModal close={() => setModal(null)} />}
       {modal === "guide" && <ScoreGuideModal close={() => setModal(null)} />}
-      {modal === "notices" && <PatchNotesModal close={() => setModal(null)} />}
+      {modal === "patch" && <PatchNotesModal close={() => setModal(null)} />}
       {preview && <DeckPreviewModal deck={preview} tables={tables} close={() => setPreview(null)} />}
 
       {selPlayer && selRes && (

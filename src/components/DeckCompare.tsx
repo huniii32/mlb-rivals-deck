@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Deck } from "../App";
+import type { Deck } from "../lib/deck";
 import type { SkillTables } from "../lib/engine";
 import { calcDeckTotal, deckPlayerResults } from "../lib/engine";
 import { LineupView } from "./LineupView";
@@ -7,12 +7,6 @@ import { PlayerSummary } from "./DeckPreview";
 
 const diffStyle = (d: number) => (d === 0 ? undefined : { color: d > 0 ? "var(--good)" : "var(--danger)" });
 const fmtDiff = (d: number) => `${d > 0 ? "+" : ""}${d.toFixed(1)}`;
-
-const artOf = (d: Deck): Record<number, string> => {
-  const out: Record<number, string> = {};
-  for (const p of d.players) if (p.photoUrl.trim()) out[p.excelRow] = p.photoUrl.trim();
-  return out;
-};
 
 /** 내 덱 vs 남 덱(공개 랭킹·내 다른 덱) 1:1 비교 팝업: 라인업 두 개를 좌우로 보여줌
  *  (좁은 화면에선 .compare-cols가 세로로 쌓이도록 styles.css에서 처리) */
@@ -76,19 +70,11 @@ export function DeckCompareModal({
         <div className="compare-cols">
           <div>
             <h4 style={{ margin: "0 0 8px" }}>{myName}</h4>
-            <LineupView
-              batters={myDeck.players.slice(0, 9)} pitchers={myDeck.players.slice(9)}
-              bRes={mine.slice(0, 9)} pRes={mine.slice(9)}
-              onSelect={selectByExcelRow} art={artOf(myDeck)} diff={myDiff}
-            />
+            <LineupView players={myDeck.players} results={mine} onSelect={selectByExcelRow} diff={myDiff} />
           </div>
           <div>
             <h4 style={{ margin: "0 0 8px" }}>{otherName}</h4>
-            <LineupView
-              batters={otherDeck.players.slice(0, 9)} pitchers={otherDeck.players.slice(9)}
-              bRes={other.slice(0, 9)} pRes={other.slice(9)}
-              onSelect={selectByExcelRow} art={artOf(otherDeck)} diff={otherDiff}
-            />
+            <LineupView players={otherDeck.players} results={other} onSelect={selectByExcelRow} diff={otherDiff} />
           </div>
         </div>
 

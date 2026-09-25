@@ -1,4 +1,7 @@
+import { useEffect, useRef } from "react";
 import type { PlayerInput, PlayerResult } from "../lib/engine";
+import { deckTotals } from "../lib/engine";
+import { LINEUP } from "../lib/deck";
 import { GameCard } from "./CardArt";
 
 // 게임 라인업 화면처럼 다이아몬드 위에 카드 배치.
@@ -6,41 +9,48 @@ import { GameCard } from "./CardArt";
 // 카드 그림은 자체 제작 일러스트. 수동 이미지 URL이 있으면 그걸 우선 표시.
 
 const DIAMOND: [string, number, number][] = [
-  ["CF", 50, 14],
-  ["LF", 23, 21],
-  ["RF", 77, 21],
-  ["SS", 40, 32],
-  ["2B", 60, 32],
-  ["3B", 23, 41],
-  ["1B", 77, 41],
-  ["C", 50, 69],
-  ["DH", 72, 69],
+  ["CF", 50, 12],
+  ["LF", 21, 18],
+  ["RF", 79, 18],
+  ["SS", 38, 37],
+  ["2B", 62, 37],
+  ["3B", 21, 44],
+  ["1B", 79, 44],
+  ["C", 50, 74],
+  ["DH", 74, 74],
 ];
 
-const DEF_ROW: Record<string, number> = {
-  C: 11, "1B": 12, "2B": 13, "3B": 14, SS: 15, LF: 16, CF: 17, RF: 18, DH: 19,
-};
+// 공칭 크기(110px) 카드가 겹치지 않고 들어가는 필드 폭 = 740px. 그보다 좁으면 카드를 비율로 축소(--k).
+const FIELD_NOMINAL_W = 740;
+
+const DEF_ROW: Record<string, number> = Object.fromEntries(LINEUP.map((l) => [l.pos, l.row]));
+
+// 수동 이미지 URL이 있으면 그것, 없으면 자체 일러스트(undefined)
+const artOf = (p: PlayerInput) => p.photoUrl.trim() || undefined;
 
 export function LineupView({
-  batters, pitchers, bRes, pRes, onSelect, art, diff,
+  players, results, onSelect, diff,
 }: {
-  batters: PlayerInput[];
-  pitchers: PlayerInput[];
-  bRes: PlayerResult[];
-  pRes: PlayerResult[];
+  players: PlayerInput[]; // 18명 (타자 9 + 투수 9)
+  results: PlayerResult[];
   onSelect: (excelRow: number) => void;
-  art: Record<number, string>;
   diff?: Record<number, number>;
 }) {
-  const byPos = new Map(batters.map((p, i) => [p.pos.trim().toUpperCase(), { p, r: bRes[i] }]));
-  const avg = (v: number[]) => (v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0);
-  const sp = pRes.slice(0, 5).filter((_, i) => pitchers[i].name.trim()).map((r) => r.total);
-  const rp = pRes.slice(5).filter((_, i) => pitchers[i + 5].name.trim()).map((r) => r.total);
-  const bt = bRes.filter((_, i) => batters[i].name.trim()).map((r) => r.total);
-  const dSP = avg(sp) * 10;
-  const dRP = avg(rp) * 10;
-  const dBT = avg(bt) * 10;
-  const total = dSP * 0.4 + dRP * 0.1 + dBT * 0.5;
+  const batters = players.slice(0, 9);
+  const pitchers = players.slice(9);
+  const byPos = new Map(batters.map((p, i) => [p.pos.trim().toUpperCase(), { p, r: results[i] }]));
+  const { sp: dSP, rp: dRP, bt: dBT, total } = deckTotals(players, results);
+
+  const fieldRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = fieldRef.current;
+    if (!el) return;
+    const fit = () => el.style.setProperty("--k", String(Math.min(1, el.clientWidth / FIELD_NOMINAL_W)));
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   return (
     <div className="card stadium">
@@ -53,7 +63,7 @@ export function LineupView({
           <div><span>타자</span><b>{dBT.toFixed(1)}</b></div>
         </div>
       </div>
-      <div className="diamond">
+      <div className="diamond" ref={fieldRef}>
         <svg viewBox="0 0 100 81" preserveAspectRatio="none">
           <defs>
             <radialGradient id="grass" cx="50%" cy="112%" r="135%">
@@ -115,9 +125,9 @@ export function LineupView({
                 card={hit?.p.card ?? ""}
                 score={hit?.r.total ?? 0}
                 filled={!!hit?.p.name.trim()}
-                artUrl={hit ? art[hit.p.excelRow] : undefined}
+                artUrl={hit ? artOf(hit.p) : undefined}
                 diff={hit ? diff?.[hit.p.excelRow] : undefined}
-                onClick={() => onSelect(hit?.p.excelRow ?? DEF_ROW[pos] ?? 11)}
+                onClick={() => onSelect(hit?.p.excelRow ?? DEF_ROW[pos])}
               />
             </div>
           );
@@ -126,15 +136,15 @@ export function LineupView({
       <h4>선발</h4>
       <div className="prow">
         {pitchers.slice(0, 5).map((p, i) => (
-          <GameCard key={p.excelRow} pos={p.pos} kind="pitcher" name={p.name} team={p.team} card={p.card} score={pRes[i].total}
-            filled={!!p.name.trim()} artUrl={art[p.excelRow]} diff={diff?.[p.excelRow]} onClick={() => onSelect(p.excelRow)} />
+          <GameCard key={p.excelRow} pos={p.pos} kind="pitcher" name={p.name} team={p.team} card={p.card} score={results[9 + i].total}
+            filled={!!p.name.trim()} artUrl={artOf(p)} diff={diff?.[p.excelRow]} onClick={() => onSelect(p.excelRow)} />
         ))}
       </div>
       <h4>불펜</h4>
       <div className="prow">
         {pitchers.slice(5).map((p, i) => (
-          <GameCard key={p.excelRow} pos={p.pos} kind="pitcher" name={p.name} team={p.team} card={p.card} score={pRes[i + 5].total}
-            filled={!!p.name.trim()} artUrl={art[p.excelRow]} diff={diff?.[p.excelRow]} onClick={() => onSelect(p.excelRow)} />
+          <GameCard key={p.excelRow} pos={p.pos} kind="pitcher" name={p.name} team={p.team} card={p.card} score={results[14 + i].total}
+            filled={!!p.name.trim()} artUrl={artOf(p)} diff={diff?.[p.excelRow]} onClick={() => onSelect(p.excelRow)} />
         ))}
       </div>
       <p className="muted">카드 그림은 자체 제작 일러스트. 이미지 URL을 직접 넣으면 그걸 대신 표시.</p>

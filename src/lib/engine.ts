@@ -12,14 +12,13 @@ export const PITCHER_STATS = ["변화", "구위"];
 // 덱코 규칙의 스탯 표기(파워/정확/선구)를 선수 스탯 인덱스로 매핑
 const RULE_STAT_IDX: Record<string, number> = { 파워: 0, 정확: 1, 선구: 2 };
 
-export interface Lookup {
+interface Lookup {
   batter: { name: string; score: number }[];
   pitcher: { name: string; score: number }[];
   enhance: Record<string, number[]>;
   pohoon: Record<string, number[]>;
   transcend: Record<string, number[]>;
   cards: string[];
-  years: number[];
   chem: Record<string, string[]>;
 }
 export const LOOKUP = lookup as Lookup;
@@ -31,7 +30,7 @@ interface DeckData {
 }
 const DECK = deckdata as unknown as DeckData;
 
-export type Cond =
+type Cond =
   | { t: "num"; v: number }
   | { t: "str"; v: string }
   | { t: "flag"; row: number; region: string; side: string }
@@ -40,7 +39,6 @@ export type Cond =
   | { t: "order"; row: number }
   | { t: "enh"; row: number }
   | { t: "year"; row: number }
-  | { t: "numcell"; row: number; col: string }
   | { t: "not"; x: Cond }
   | { t: "and"; items: Cond[] }
   | { t: "or"; items: Cond[] }
@@ -85,13 +83,14 @@ export interface PlayerInput {
   finalOv: [number | "", number | "", number | ""];
 }
 
-export interface EvalCtx {
+interface EvalCtx {
   flags: Record<string, boolean>;
   yearInputs: Record<number, number | "">;
   cardByRow: Record<number, string>;
   orderByRow: Record<number, number>;
   enhByRow: Record<number, number>;
   yearByRow: Record<number, number>;
+  chem: Chem;
 }
 
 const num = (v: number | "" | null | undefined): number =>
@@ -110,7 +109,6 @@ function evVal(c: Cond, ctx: EvalCtx): string | number | boolean {
     case "order": return ctx.orderByRow[c.row] ?? 0;
     case "enh": return ctx.enhByRow[c.row] ?? 0;
     case "year": return ctx.yearByRow[c.row] ?? 0;
-    case "numcell": return 0;
     case "not": return !evVal(c.x, ctx);
     case "and": return c.items.every((x) => !!evVal(x, ctx));
     case "or": return c.items.some((x) => !!evVal(x, ctx));
@@ -143,7 +141,7 @@ function evVal(c: Cond, ctx: EvalCtx): string | number | boolean {
 }
 
 /** 덱코 보너스 합계 (스탯 인덱스별). 적중 내역도 반환(설명용). */
-export function deckBonus(
+function deckBonus(
   excelRow: number,
   ctx: EvalCtx,
   kind: Kind,
@@ -209,6 +207,9 @@ export function skillScore(
   return found ? found.score : null;
 }
 
+/** 점수 표시용: 소수 둘째자리까지 반올림, 끝의 0은 생략 (15.899999878 → 15.9) */
+export const fmtScore = (n: number): string => String(Math.round(n * 100) / 100);
+
 const normKey = (s: string): string => s.replace(/\s+/g, "");
 
 /** 카드가 시그니처 블랙 계열(시그니처 블랙/WBC/FA 전부 포함)인지 — 공백 무시 매칭 */
@@ -216,7 +217,7 @@ export const isSigBlackCard = (card: string): boolean => normKey(card).includes(
 const normSkill = (s: string): string => s.replace(/\s+/g, "").toLowerCase();
 
 /** 구 스킬명 → 현행명. 저장된 덱·표에 옛 이름이 남아있으면 로드 시 치환. */
-export const SKILL_RENAMES: Record<string, string> = {
+const SKILL_RENAMES: Record<string, string> = {
   "batter:[S0] 리그 주도자 (-)": "[S0] 리그의 주도자 (-)",
   "batter:[S1] 리그 주도자 (-)": "[S1] 리그의 주도자 (-)",
   "batter:[S2] 리그 주도자 (-)": "[S2] 리그의 주도자 (-)",
@@ -305,7 +306,6 @@ function splitCardStat(key: string): [string, string] | null {
 }
 
 function tableBonus(
-  base: Record<string, number[]>,
   key: string,
   lv: number | "",
   kind: TableKind,
@@ -371,9 +371,9 @@ export function calcPlayer(
     let e: number | null = null;
     let h: number | null = null;
     if (i < n) {
-      const tr = tableBonus(LOOKUP.transcend, p.card + stat, p.transLv, "transcend", tables);
-      const en = tableBonus(LOOKUP.enhance, p.card + stat, p.enhLv, "enhance", tables);
-      const ph = tableBonus(LOOKUP.pohoon, p.pos + stat, p.pohLv, "pohoon", tables);
+      const tr = tableBonus(p.card + stat, p.transLv, "transcend", tables);
+      const en = tableBonus(p.card + stat, p.enhLv, "enhance", tables);
+      const ph = tableBonus(p.pos + stat, p.pohLv, "pohoon", tables);
       if (tr.miss && p.transLv !== "") warnings.push(`${stat} 초월표에 '${p.card}' 없음`);
       if (en.miss && p.enhLv !== "") warnings.push(`${stat} 강화표에 '${p.card}' 없음`);
       if (ph.miss && p.pohLv !== "") warnings.push(`${stat} 포훈표에 '${p.pos}' 없음`);
@@ -396,8 +396,7 @@ export function calcPlayer(
     final.push(ov === "" ? auto[i] : (ov as number));
   }
 
-  const ch = ctx as EvalCtx & { chem: Chem };
-  const chem = ch.chem;
+  const chem = ctx.chem;
   let ability: number;
   if (p.kind === "batter") {
     const pb =
@@ -446,8 +445,7 @@ export function calcPlayer(
   };
 }
 
-/** 덱 전체 총점 (선발/계투/타자 평균×10, 가중합). 이름 있는 선수만 평균. */
-export interface DeckLike {
+interface DeckLike {
   players: PlayerInput[];
   chem: Chem;
   flags: Record<string, boolean>;
@@ -466,37 +464,39 @@ export function deckPlayerResults(d: DeckLike, tables: SkillTables): PlayerResul
     enhByRow[p.excelRow] = typeof p.enhLv === "number" ? p.enhLv : 0;
     yearByRow[p.excelRow] = typeof p.year === "number" ? p.year : 0;
   }
-  const ctx: EvalCtx & { chem: Chem } = {
+  const ctx: EvalCtx = {
     flags: d.flags, yearInputs: d.yearInputs,
     cardByRow, orderByRow, enhByRow, yearByRow, chem: d.chem,
   };
   return d.players.map((p) => calcPlayer(p, ctx, tables));
 }
 
+/** 덱 총점 가중치 (선발/계투/타자) */
+export const DECK_WEIGHTS = { sp: 0.4, rp: 0.1, bt: 0.5 };
+
+/** 덱 전체 총점 (선발/계투/타자 평균×10, 가중합). 이름 있는 선수만 평균. players는 18명(타자9+투수9) 순서. */
+export function deckTotals(
+  players: PlayerInput[],
+  results: PlayerResult[],
+): { sp: number; rp: number; bt: number; total: number } {
+  const avg10 = (from: number, to?: number) => {
+    const v = results.slice(from, to).filter((_, i) => players[from + i].name.trim()).map((r) => r.total);
+    return (v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0) * 10;
+  };
+  const sp = avg10(9, 14);
+  const rp = avg10(14);
+  const bt = avg10(0, 9);
+  return { sp, rp, bt, total: sp * DECK_WEIGHTS.sp + rp * DECK_WEIGHTS.rp + bt * DECK_WEIGHTS.bt };
+}
+
 export function calcDeckTotal(
   d: DeckLike,
   tables: SkillTables,
 ): { sp: number; rp: number; bt: number; total: number; named: number } {
-  const res = deckPlayerResults(d, tables);
-  const avg = (v: number[]) => (v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0);
-  const sp = avg(res.slice(9, 14).filter((_, i) => d.players[i + 9].name.trim()).map((r) => r.total)) * 10;
-  const rp = avg(res.slice(14).filter((_, i) => d.players[i + 14].name.trim()).map((r) => r.total)) * 10;
-  const bt = avg(res.slice(0, 9).filter((_, i) => d.players[i].name.trim()).map((r) => r.total)) * 10;
-  const named =
-    res.slice(0, 9).filter((_, i) => d.players[i].name.trim()).length +
-    res.slice(9).filter((_, i) => d.players[i + 9].name.trim()).length;
-  return { sp, rp, bt, total: sp * 0.4 + rp * 0.1 + bt * 0.5, named };
+  const named = d.players.filter((p) => p.name.trim()).length;
+  return { ...deckTotals(d.players, deckPlayerResults(d, tables)), named };
 }
 
-/** 스킬 비교 계산기: 4개 스킬 합. 4번째 없으면 3개 합. */
-export function skillCompare(kind: Kind, skills: string[], tables: SkillTables): number | null {
-  const scores = skills.map((s) => (s.trim() ? skillScore(kind, s, tables) : 0));
-  if (scores.slice(0, 3).some((s) => s === null)) return null;
-  return (scores[0] ?? 0) + (scores[1] ?? 0) + (scores[2] ?? 0) + (scores[3] ?? 0);
-}
-
-/** 덱코 패널에 보여줄 참조 플래그 목록 (규칙에서 실제 참조된 것만).
- *  행별 임계값(게임 화면의 POINT 숫자)은 해당 플래그를 참조하는 첫 규칙의 t에서 가져온다. */
 /** 덱코표 전체 임계값 (AT=팀, AX=스펙). 규칙 미참조 행(팀 330/345 등)도 포함. */
 export function allThresholds(region: "team" | "spec"): { row: number; threshold: number }[] {
   const col = region === "team" ? "AT" : "AX";
@@ -508,6 +508,8 @@ export function allThresholds(region: "team" | "spec"): { row: number; threshold
   return out.sort((a, b) => a.threshold - b.threshold);
 }
 
+/** 덱코 패널에 보여줄 참조 플래그 목록 (규칙에서 실제 참조된 것만).
+ *  행별 임계값(게임 화면의 POINT 숫자)은 해당 플래그를 참조하는 첫 규칙의 t에서 가져온다. */
 export function referencedFlags(): { row: number; region: string; side: string; threshold: number | null }[] {
   const seen = new Map<string, { row: number; region: string; side: string; threshold: number | null }>();
   const walk = (c: Cond | null) => {

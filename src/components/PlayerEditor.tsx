@@ -1,7 +1,8 @@
 import type { Kind, PlayerInput, PlayerResult, SkillTables } from "../lib/engine";
-import { LOOKUP, isSigBlackCard, skillScore, suggestSkills } from "../lib/engine";
+import { BATTER_STATS, LOOKUP, PITCHER_STATS, isSigBlackCard } from "../lib/engine";
 import { PlayerArt, gradeColor } from "./CardArt";
 import { Num } from "./inputs";
+import { SkillSlot } from "./SkillInput";
 
 /** 라인업에서 포지션 클릭 시 열리는 단일 선수 편집 팝업 */
 export function PlayerEditor({
@@ -14,8 +15,7 @@ export function PlayerEditor({
   tables: SkillTables;
 }) {
   const kind: Kind = p.kind;
-  const stats = kind === "batter" ? ["파워", "정확", "선구"] : ["변화", "구위"];
-  const n = kind === "batter" ? 3 : 2;
+  const stats = kind === "batter" ? BATTER_STATS : PITCHER_STATS;
   const isBlack = isSigBlackCard(p.card);
   const setArr = (
     field: "base" | "train" | "spec" | "extra" | "synergy" | "locker" | "blackPos" | "blackBoost" | "finalOv",
@@ -30,15 +30,14 @@ export function PlayerEditor({
     arr[i] = v;
     update({ skills: arr });
   };
-  const skillList = kind === "batter" ? LOOKUP.batter : LOOKUP.pitcher;
 
   return (
-    <div className="card editor">
+    <div className="card card-ov editor">
       <div className="ed-head">
         <div className="ed-art" style={{ borderColor: gradeColor(p.card) }}>
           {p.photoUrl.trim()
             ? <img src={p.photoUrl.trim()} alt={p.name} />
-            : <PlayerArt kind={kind} accent={gradeColor(p.card)} />}
+            : <PlayerArt kind={kind} pos={p.pos} team={p.team} card={p.card} />}
         </div>
         <div className="ed-title">
           <div className="ed-name">{p.name || "신규 선수"}</div>
@@ -73,6 +72,7 @@ export function PlayerEditor({
       </div>
 
       <div className="ed-sec">스탯 (최종열에 직접 적으면 수동 고정 · 지우면 자동)</div>
+      <div style={{ overflowX: "auto" }}>
       <table className="ed-stats">
         <thead>
           <tr><th>스탯</th><th>기본</th><th>훈련</th><th>특훈(리셋포함)</th><th title="포훈Lv로 자동 계산되는 포훈표 수치와 별개. 여기엔 게임 화면의 포지션훈련 '보너스' 수치만 입력(전체 포훈 수치 아님)">포지션훈련</th><th>시너지</th><th>라커룸</th>
@@ -102,33 +102,14 @@ export function PlayerEditor({
           ))}
         </tbody>
       </table>
+      </div>
 
       <div className="ed-sec">스킬</div>
       <div className="ed-skills">
-        {([0, 1, 2, 3] as const).map((i) => {
-          const v = p.skills[i];
-          const sc = v.trim() ? skillScore(kind, v, tables) : 0;
-          const exact = v.trim() !== "" && (tables.customs.some((c) => c.kind === kind && c.name === v.trim()) ||
-            skillList.some((s) => s.name === v.trim()));
-          const sug = !exact && v.trim() ? suggestSkills(kind, v, tables, 3) : [];
-          return (
-            <label key={i}>스킬{i + 1} {sc !== null && <b className="pill">+{sc}</b>}
-              {sc === null && v.trim() && <b className="pill bad-pill">표없음</b>}
-              <input value={v} placeholder="스킬 검색"
-                onChange={(e) => setSkill(i, e.target.value)} />
-              <span className="muted sug">
-                {sug.length > 0 && (
-                  <>혹시: {sug.map((s, j) => (
-                    <span key={s}>
-                      <a href="#" onClick={(e) => { e.preventDefault(); setSkill(i, s); }}>{s}</a>
-                      {j < sug.length - 1 ? " · " : ""}
-                    </span>
-                  ))}</>
-                )}
-              </span>
-            </label>
-          );
-        })}
+        {([0, 1, 2, 3] as const).map((i) => (
+          <SkillSlot key={i} label="스킬" n={i + 1} kind={kind} value={p.skills[i]} tables={tables}
+            onChange={(nv) => setSkill(i, nv)} />
+        ))}
       </div>
 
       <div className="ed-sec">카드 그림</div>

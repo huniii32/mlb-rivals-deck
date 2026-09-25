@@ -1,7 +1,6 @@
 /* Rivals Deck — 스포티 다크 프리미엄 + 라이트 */
 :root, [data-theme="dark"] {
   --bg: #0a101d;
-  --bg-soft: #0e1626;
   --panel: #131c30;
   --panel2: #182238;
   --input: #0c1322;
@@ -17,11 +16,9 @@
   --shadow: 0 12px 32px rgba(2, 6, 17, 0.55);
   --card-grad: linear-gradient(165deg, #22314e 0%, #131c30 55%, #0c1322 100%);
   --topbar: rgba(10, 16, 29, 0.82);
-  --field-line: #38bdf8;
 }
 [data-theme="light"] {
   --bg: #eef2f7;
-  --bg-soft: #e6ecf4;
   --panel: #ffffff;
   --panel2: #f4f7fb;
   --input: #ffffff;
@@ -37,7 +34,6 @@
   --shadow: 0 12px 28px rgba(30, 45, 75, 0.14);
   --card-grad: linear-gradient(165deg, #ffffff 0%, #eef3f9 100%);
   --topbar: rgba(255, 255, 255, 0.86);
-  --field-line: #0284c9;
 }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -69,6 +65,8 @@ a { color: #38bdf8; }
 /* 카드·버튼·입력 */
 .card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 18px; margin-bottom: 14px;
   overflow-x: auto; }
+/* 드롭다운(.sk-list)이 카드 밖으로 나가야 하는 카드: 잘림/내부 스크롤 방지 */
+.card-ov { overflow: visible; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 input, select, button {
   font: inherit; font-size: 13.5px; padding: 7px 11px; border-radius: 10px;
@@ -116,15 +114,11 @@ tr.clickable-row { cursor: pointer; }
 .warn { background: rgba(127, 29, 29, 0.25); border: 1px solid #7f1d1d; border-radius: 10px; padding: 10px 12px; margin-top: 10px; font-size: 13px; color: #fecaca; }
 [data-theme="light"] .warn { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
 .bad { color: var(--danger); }
-h1 { font-size: 20px; margin: 0; letter-spacing: -0.02em; }
-h2 { font-size: 16px; margin: 26px 0 10px; letter-spacing: -0.015em; }
 h3 { margin: 2px 0 10px; font-size: 16px; letter-spacing: -0.015em; }
 h4 { margin: 12px 0 6px; font-size: 13.5px; }
-details.card summary { cursor: pointer; font-size: 14px; }
 
 /* 라인업 + 우측 덱코 사이드바 */
 .lineup-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 14px; align-items: start; }
-.lineup-layout aside h2 { margin-top: 0; }
 .lineup-layout aside .card { padding: 14px; }
 @media (max-width: 1024px) {
   .lineup-layout { grid-template-columns: minmax(0, 1fr); }
@@ -153,9 +147,9 @@ details.card summary { cursor: pointer; font-size: 14px; }
 .scoreboard .sb-total b { font-size: 26px; color: #ffd166; }
 [data-theme="light"] .scoreboard .sb-total b { color: #b45309; }
 
-.diamond { position: relative; width: 100%; aspect-ratio: 100/84; margin: 6px 0 10px; padding-top: 60px; }
+.diamond { position: relative; width: 100%; aspect-ratio: 100/90; margin: 6px 0 10px; padding-top: 60px; }
 .diamond svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-.dslot { position: absolute; transform: translate(-50%, -50%); }
+.dslot { position: absolute; transform: translate(-50%, -50%) scale(var(--k, 1)); }
 
 /* 선수 카드 */
 .pcard {
@@ -173,41 +167,28 @@ details.card summary { cursor: pointer; font-size: 14px; }
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), transparent 38%);
 }
 .pcard.empty { border-style: dashed; opacity: 0.65; min-height: 66px; box-shadow: none; }
-.pcard-pos { position: absolute; top: 3px; left: 6px; font-size: 11px; font-weight: 800; color: #7dd3fc; z-index: 1; }
-[data-theme="light"] .pcard-pos { color: #1d4ed8; }
-.pcard-score { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.pcard-name { font-size: 13.5px; font-weight: 700; }
-.pcard-grade { font-size: 11px; color: var(--muted); }
-.pcard-img { width: calc(100% + 6px); height: 68px; object-fit: cover; object-position: top; margin: -5px -3px 1px; }
-.pcard a { color: inherit; text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.pcard-edit { position: absolute; bottom: 3px; right: 3px; font-size: 10px; padding: 2px 6px; z-index: 1; }
-span.pcard { cursor: pointer; }
 /* 도감식 카드 */
+/* 라인업 카드 지오메트리(110x150, 그림 하단 48px)는 LineupView.tsx의 FIELD_NOMINAL_W와 함께 조정 */
 .dcard { width: 110px; min-height: 150px; padding: 0; justify-content: flex-start; }
 .dcard.empty { min-height: 84px; justify-content: center; }
-.dc-top { display: flex; width: 100%; align-items: flex-start; justify-content: space-between; padding: 3px 5px 0; z-index: 1; }
-.dc-ovr { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6); }
 .dc-pos { font-size: 10px; font-weight: 800; background: rgba(0, 0, 0, 0.55); border-radius: 4px; padding: 1px 5px; color: #7dd3fc; }
 .dc-pos.alone { font-size: 12px; }
-.dc-team { font-size: 10px; font-weight: 800; letter-spacing: 0.05em; color: var(--muted);
-  align-self: flex-start; padding: 0 6px; z-index: 1; }
 .dc-name { font-size: 13px; font-weight: 800; background: rgba(0, 0, 0, 0.55); width: 100%;
   padding: 2px 4px; margin-top: auto; }
 [data-theme="light"] .dc-name { background: rgba(15, 23, 42, 0.72); color: #f8fafc; }
 .dc-grade { font-size: 10px; font-weight: 700; color: #e2e8f0; padding-bottom: 3px; position: relative; z-index: 1;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.dcard a { width: 100%; }
 .prow { display: flex; gap: 12px; flex-wrap: wrap; }
 
 /* 게임식 일러스트 카드 (파란 메탈 프레임 + 금빛 불꽃) */
 .gcard {
   padding: 3px; justify-content: flex-start;
-  border: 1px solid #60a5fa;
-  background: linear-gradient(165deg, #7db4fb 0%, #1d4ed8 30%, #172554 70%, #3b82f6 100%);
+  /* 프레임 색은 카드 등급(--gf-a/b/c)에서 온다. 변수가 없으면 기존 파란 프레임 그대로 */
+  border: 1px solid var(--gf-a, #60a5fa);
+  background: linear-gradient(165deg, var(--gf-a, #7db4fb) 0%, var(--gf-b, #1d4ed8) 30%, var(--gf-c, #172554) 70%, var(--gf-b, #3b82f6) 100%);
 }
 .gc-top { display: flex; width: 100%; align-items: flex-start; justify-content: space-between; padding: 2px 4px 0; z-index: 1; position: relative; }
-.gc-ovr { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+.gc-ovr { font-size: 18px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
   color: #ffd166; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8); }
 .gc-tags { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
 .gc-team { font-size: 10px; font-weight: 800; letter-spacing: 0.05em; color: #ffd166;
@@ -216,9 +197,11 @@ span.pcard { cursor: pointer; }
 .gc-diff { position: absolute; top: 3px; left: 6px; z-index: 2; font-size: 10.5px; font-weight: 800;
   padding: 1px 5px; border-radius: 4px; background: rgba(0, 0, 0, 0.55);
   font-variant-numeric: tabular-nums; }
-.gc-artbox { width: 100%; height: 78px; margin-top: -16px; overflow: hidden; border-radius: 2px; }
-.gc-art { width: 100%; height: 100%; display: block; }
-.gc-img { width: 100%; height: 78px; object-fit: cover; object-position: top; display: block; }
+/* 일러스트: 카드 상단부터 이름 띠 바로 위까지 채움 (bottom = 이름 띠 25 + gap 2 + 등급 18 + padding 3 = 48px) */
+.gcard .dc-grade { min-height: 18px; } /* 등급이 비어도 줄 높이 유지 → 그림 아래 틈 방지 (.gc-artbox bottom 48px 기준) */
+.gc-artbox { position: absolute; inset: 0 0 48px; z-index: 0; overflow: hidden; }
+.gc-artbox .gc-art { position: static; width: 100%; height: 100%; display: block; } /* .diamond svg 절대배치 규칙보다 우선 */
+.gc-artbox .gc-img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
 .gc-name { font-size: 14px; font-weight: 800; color: #ffffff; background: rgba(0, 0, 0, 0.72); width: 100%;
   padding: 2px 4px; margin-top: auto; letter-spacing: 0.02em; position: relative; z-index: 1;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -226,12 +209,37 @@ span.pcard { cursor: pointer; }
 .ed-art img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
 .ed-art .gc-art { width: 100%; height: 100%; }
 
-/* 스킬 제안 한 줄 고정 (입력 중 레이아웃 점프 방지) */
-.sug { display: block; height: 22px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* 스킬 비교 결과 박스 */
+.cmp-result {
+  margin: 4px auto 28px; width: fit-content; max-width: 100%; padding: 10px 28px;
+  border: 2px solid var(--good); border-radius: 12px; background: var(--accent-soft);
+  font-size: 18px; font-weight: 800; text-align: center; color: var(--text);
+}
+.cmp-result.tie, .cmp-result.idle { border-color: var(--border2); background: var(--panel2); }
+.cmp-result.idle { font-size: 14px; font-weight: 600; color: var(--muted); }
+
+/* 스킬 슬롯 이름 + 점수 뱃지 한 줄 (뱃지 유무와 상관없이 높이 고정 → 입력칸 위치 안 흔들림) */
+.sk-head { display: flex; align-items: center; min-height: 22px; }
+
+/* 스킬 입력 콤보박스: 목록은 입력칸 아래에 떠서 레이아웃을 밀지 않는다 */
+.sk-combo { position: relative; display: block; }
+.sk-list {
+  position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 20;
+  margin: 0; padding: 4px; list-style: none; max-height: 260px; overflow-y: auto;
+  background: var(--panel); border: 1px solid var(--border2); border-radius: 10px; box-shadow: var(--shadow);
+}
+.sk-list li {
+  display: flex; justify-content: space-between; gap: 10px; padding: 7px 9px;
+  border-radius: 7px; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer;
+}
+.sk-list li.on { background: var(--accent-soft); color: var(--text); }
+.sk-list li b { color: var(--good); font-variant-numeric: tabular-nums; flex: none; }
+.sk-list .sk-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sk-list .sk-empty { color: var(--muted); cursor: default; }
 
 /* 스킬표 높이 고정 (검색 시 레이아웃 점프 방지) */
 .skill-table-wrap { height: 480px; overflow-y: auto; margin-top: 8px; }
-.skill-table-wrap thead th { position: sticky; top: 0; z-index: 2; }
+.skill-table-wrap thead th { z-index: 2; }
 
 /* 팝업 */
 .modal-overlay {
@@ -258,7 +266,7 @@ span.pcard { cursor: pointer; }
   border-bottom: 1px solid var(--border); padding-bottom: 5px; margin: 16px 0 10px; }
 .ed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
 .ed-grid label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--muted); font-weight: 700; }
-.ed-grid input, .ed-grid select, .ed-grid button { width: 100%; font-size: 14px; padding: 8px 9px; color: var(--text2); }
+.ed-grid input, .ed-grid select, .ed-grid button { width: 100%; font-size: 14px; padding: 8px 9px; }
 .ed-stats td, .ed-stats th { padding: 7px 6px; font-size: 14px; }
 .ed-stats tbody tr:hover { background: var(--panel2); }
 .ed-stats tr.manual { background: var(--accent-soft); }
@@ -281,6 +289,12 @@ span.pcard { cursor: pointer; }
   background: var(--panel2); border: 1px solid var(--border);
   border-radius: 5px; padding: 1px 6px; font-size: 0.92em;
 }
+.ed-result { display: flex; gap: 0; margin-top: 16px; border: 1px solid var(--border2);
+  border-radius: 12px; overflow: hidden; }
+.ed-result div { flex: 1; text-align: center; padding: 12px 4px; background: var(--panel2); }
+.ed-result div + div { border-left: 1px solid var(--border); }
+.ed-result span { display: block; font-size: 12px; font-weight: 700; color: var(--muted); }
+.ed-result b { font-size: 24px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 
 /* 산정방식 모달: 흐름도 */
 .flow-diagram { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 10px 0; }
@@ -319,6 +333,14 @@ span.pcard { cursor: pointer; }
 .patchnote-day:first-child { padding-top: 4px; border-top: none; }
 .patchnote-day-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .patchnote-day-head .pill { margin-left: 0; font-size: 12px; padding: 2px 10px; }
+/* 버전별 접기/펼치기(<details>): 접힌 상태에선 섹션 제목을 한 줄 요약으로 */
+summary.patchnote-day-head { cursor: pointer; list-style: none; margin-bottom: 0; }
+summary.patchnote-day-head::-webkit-details-marker { display: none; }
+summary.patchnote-day-head::before { content: "▸"; color: var(--muted); }
+details[open] > summary.patchnote-day-head { margin-bottom: 10px; }
+details[open] > summary.patchnote-day-head::before { content: "▾"; }
+.patchnote-brief { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+details[open] .patchnote-brief { display: none; }
 .patchnote-section { margin: 0 0 12px 2px; }
 .patchnote-section:last-child { margin-bottom: 0; }
 .patchnote-section-title {
@@ -331,12 +353,6 @@ span.pcard { cursor: pointer; }
 }
 .patchnote-section ul { margin: 0; padding-left: 20px; }
 .patchnote-section li { margin: 3px 0; line-height: 1.55; }
-.ed-result { display: flex; gap: 0; margin-top: 16px; border: 1px solid var(--border2);
-  border-radius: 12px; overflow: hidden; }
-.ed-result div { flex: 1; text-align: center; padding: 12px 4px; background: var(--panel2); }
-.ed-result div + div { border-left: 1px solid var(--border); }
-.ed-result span { display: block; font-size: 12px; font-weight: 700; color: var(--muted); }
-.ed-result b { font-size: 24px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 
 /* 덱스코어 (게임 화면식: 임계값 + 좌/우 다이아몬드 택1) */
 .deckscore-tabs { display: flex; gap: 8px; margin-bottom: 4px; }
@@ -369,7 +385,6 @@ span.pcard { cursor: pointer; }
   font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 .dia-th { border-color: #60a5fa; }
-.dia-empty { display: none; }
 button.dia-opt { cursor: pointer; padding: 0; }
 button.dia-opt:not(.on) {
   border-color: #475569; background: linear-gradient(135deg, #1e293b, #0f172a);
@@ -392,10 +407,6 @@ button.dia-opt.on { border-color: #facc15; box-shadow: 0 0 14px rgba(250, 204, 2
 @media (min-width: 960px) {
   .compare-cols { flex-direction: row; }
   .compare-cols > div { flex: 1; }
-  .compare-cols .dcard { width: 66px; min-height: 88px; }
-  .compare-cols .diamond { padding-top: 50px; }
-  .compare-cols .gc-artbox, .compare-cols .gc-img { height: 40px; }
-  .compare-cols .gc-ovr, .compare-cols .dc-ovr { font-size: 15px; }
   .compare-cols .scoreboard > div { min-width: 0; padding: 5px 8px; }
   .compare-cols .scoreboard b { font-size: 15px; }
   .compare-cols .scoreboard .sb-total b { font-size: 19px; }
@@ -406,12 +417,9 @@ button.dia-opt.on { border-color: #facc15; box-shadow: 0 0 14px rgba(250, 204, 2
   .topbar { margin: 0 -12px 12px; padding: 10px 12px; }
   .brand small { display: none; }
   .pcard { width: 68px; min-height: 90px; }
-  .pcard-score { font-size: 17px; }
   .diamond { padding-top: 52px; }
   .dcard { width: 70px; min-height: 92px; }
-  .gc-artbox, .gc-img { height: 42px; }
-  .gc-ovr { font-size: 17px; }
-  .dc-ovr { font-size: 17px; }
+  .gc-ovr { font-size: 14px; }
   .scoreboard > div { min-width: 0; padding: 6px 10px; }
   .grid { grid-template-columns: 1fr; }
   .dia { width: 42px; height: 42px; }
@@ -421,3 +429,8 @@ button.dia-opt.on { border-color: #facc15; box-shadow: 0 0 14px rgba(250, 204, 2
   .ed-stats td, .ed-stats th { padding: 6px 4px; font-size: 12.5px; }
   .ed-stats input { font-size: 12.5px; padding: 6px 4px; }
 }
+
+/* 다이아몬드 안 카드는 항상 공칭 크기 — 작은 화면은 .dslot의 scale(--k)로 축소 (위의 모바일/비교 오버라이드보다 우선) */
+.diamond .dcard { width: 110px; min-height: 150px; }
+.diamond .dcard.empty { min-height: 84px; }
+.diamond .gc-ovr { font-size: 18px; }

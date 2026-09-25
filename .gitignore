@@ -5,3 +5,9 @@ dist/
 
 # scraped seed data (regenerable, repo-root data/ only)
 /data/
+
+# python / editor / vite cache
+__pycache__/
+*.pyc
+.DS_Store
+.vite/

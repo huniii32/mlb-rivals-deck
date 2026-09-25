@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
-import type { Deck } from "../App";
-import type { PlayerResult, SkillTables } from "../lib/engine";
-import { calcPlayer, allThresholds, flagDefaults, referencedFlags, skillScore } from "../lib/engine";
+import type { Chem, PlayerResult, SkillTables } from "../lib/engine";
+import { allThresholds, deckPlayerResults, flagDefaults, fmtScore, referencedFlags, skillScore } from "../lib/engine";
 import { LineupView } from "./LineupView";
-import { YEAR_ANCHOR } from "./DeckPanel";
+import type { Deck } from "../lib/deck";
+import { DEFAULT_CHEM, YEAR_ANCHOR } from "../lib/deck";
 
 // 엑셀 덱코표식 읽기 전용 표: 임계값 + 좌/우 O
 function ScoreTable({ region, title, flags, yearInputs }: {
@@ -83,7 +83,7 @@ export function PlayerSummary({ p, res, tables }: {
               <tr key={i}>
                 <td>스킬{i + 1}</td>
                 <td>{s.trim() || "-"}</td>
-                <td>{s.trim() === "" ? "-" : sc === null ? <b className="pill bad-pill">표없음</b> : <b>+{sc}</b>}</td>
+                <td>{s.trim() === "" ? "-" : sc === null ? <b className="pill bad-pill">표없음</b> : <b>+{fmtScore(sc)}</b>}</td>
               </tr>
             );
           })}
@@ -107,41 +107,14 @@ export function DeckPreviewModal({ deck, tables, close }: {
 }) {
   const [sel, setSel] = useState<number | null>(null);
   const flags = useMemo(() => ({ ...flagDefaults(), ...deck.flags }), [deck]);
-  const chem = useMemo(() => {
-    const d = deck.chem;
-    return {
-      commander: d.commander || "S",
-      catcher: d.catcher || "S",
-      pitchChem: d.pitchChem || "S",
-      batChem: d.batChem || "S",
-      wbcP: d.wbcP || "S",
-      wbcB: d.wbcB || "S1",
-    };
-  }, [deck]);
-  const ctx = useMemo(() => {
-    const cardByRow: Record<number, string> = {};
-    const orderByRow: Record<number, number> = {};
-    const enhByRow: Record<number, number> = {};
-    const yearByRow: Record<number, number> = {};
-    for (const p of deck.players) {
-      cardByRow[p.excelRow] = p.card;
-      orderByRow[p.excelRow] = typeof p.order === "number" ? p.order : 0;
-      enhByRow[p.excelRow] = typeof p.enhLv === "number" ? p.enhLv : 0;
-      yearByRow[p.excelRow] = typeof p.year === "number" ? p.year : 0;
-    }
-    return { flags, yearInputs: deck.yearInputs, cardByRow, orderByRow, enhByRow, yearByRow, chem };
-  }, [deck, flags, chem]);
-  const results = useMemo(
-    () => deck.players.map((p) => calcPlayer(p, ctx, tables)),
-    [deck, ctx, tables],
+  const chem = useMemo(
+    () => Object.fromEntries(Object.entries(DEFAULT_CHEM).map(([k, v]) => [k, deck.chem[k as keyof Chem] || v])) as Chem,
+    [deck],
   );
-  const art = useMemo(() => {
-    const out: Record<number, string> = {};
-    for (const p of deck.players) {
-      if (p.photoUrl.trim()) out[p.excelRow] = p.photoUrl.trim();
-    }
-    return out;
-  }, [deck]);
+  const results = useMemo(
+    () => deckPlayerResults({ ...deck, flags, chem }, tables),
+    [deck, flags, chem, tables],
+  );
 
   const selPlayer = sel === null ? null : deck.players.find((p) => p.excelRow === sel) ?? null;
   const selRes = selPlayer ? results[deck.players.indexOf(selPlayer)] : null;
@@ -159,11 +132,7 @@ export function DeckPreviewModal({ deck, tables, close }: {
             타자케미 {chem.batChem} · WBC투 {chem.wbcP} · WBC타 {chem.wbcB} (읽기 전용)
           </p>
         </div>
-        <LineupView
-          batters={deck.players.slice(0, 9)} pitchers={deck.players.slice(9)}
-          bRes={results.slice(0, 9)} pRes={results.slice(9)}
-          onSelect={setSel} art={art}
-        />
+        <LineupView players={deck.players} results={results} onSelect={setSel} />
         {selPlayer && selRes && <PlayerSummary p={selPlayer} res={selRes} tables={tables} />}
         <div className="grid" style={{ alignItems: "start" }}>
           <ScoreTable region="team" title="팀덱코" flags={flags} yearInputs={deck.yearInputs} />

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Kind, SkillTables } from "../lib/engine";
-import { LOOKUP, skillScore, suggestSkills } from "../lib/engine";
+import { LOOKUP, fmtScore, skillScore } from "../lib/engine";
+import { SkillSlot } from "./SkillInput";
 
 /** 스킬 1 vs 2 비교: 양쪽 4슬롯 합산 대결 */
 export function SkillCompare({ tables }: { tables: SkillTables }) {
@@ -25,46 +26,24 @@ export function SkillCompare({ tables }: { tables: SkillTables }) {
     skills: string[], setSkills: (s: string[]) => void,
     r: ReturnType<typeof calc>, hl: boolean,
   ) => (
-    <div className="card" style={hl ? { borderColor: "var(--good)" } : undefined}>
+    <div className="card card-ov" style={hl ? { borderColor: "var(--good)" } : undefined}>
       <div className="row" style={{ justifyContent: "space-between" }}>
         <h3 style={{ margin: 0 }}>{label} {hl && diff !== null && diff !== 0 && <span className="pill">승리</span>}</h3>
         <span>
           <button className={kind === "batter" ? "on" : ""} onClick={() => setKind("batter")}>타자</button>{" "}
-          <button className={kind === "pitcher" ? "on" : ""} onClick={() => setKind("pitcher")}>투수</button>
+          <button className={kind === "pitcher" ? "on" : ""} onClick={() => setKind("pitcher")}>투수</button>{" "}
+          <button onClick={() => setSkills(["", "", "", ""])} disabled={skills.every((s) => !s)}>초기화</button>
         </span>
       </div>
       <div className="ed-skills" style={{ marginTop: 8 }}>
-        {([0, 1, 2, 3] as const).map((i) => {
-          const v = skills[i];
-          const sc = v.trim() ? skillScore(kind, v, tables) : 0;
-          const sug = v.trim() && sc === null ? suggestSkills(kind, v, tables, 3) : [];
-          return (
-            <label key={i}>슬롯{i + 1} {sc !== null && v.trim() !== "" && <b>+{sc}</b>}
-              {sc === null && <b className="pill bad-pill">표없음</b>}
-              <input value={v} placeholder="스킬 검색"
-                onChange={(e) => {
-                  const n = [...skills];
-                  n[i] = e.target.value;
-                  setSkills(n);
-                }} />
-              <span className="muted sug">
-                {sug.length > 0 && (
-                  <>혹시: {sug.map((s, j) => (
-                    <span key={s}>
-                      <a href="#" onClick={(e) => {
-                        e.preventDefault();
-                        const n = [...skills];
-                        n[i] = s;
-                        setSkills(n);
-                      }}>{s}</a>
-                      {j < sug.length - 1 ? " · " : ""}
-                    </span>
-                  ))}</>
-                )}
-              </span>
-            </label>
-          );
-        })}
+        {([0, 1, 2, 3] as const).map((i) => (
+          <SkillSlot key={i} label="슬롯" n={i + 1} kind={kind} value={skills[i]} tables={tables}
+            onChange={(nv) => {
+              const n = [...skills];
+              n[i] = nv;
+              setSkills(n);
+            }} />
+        ))}
       </div>
       <div className="score-sm" style={{ marginTop: 8 }}>
         합계: {r.total === null ? <span className="bad">표없음 있음</span> : <b>{r.total.toFixed(1)}</b>}
@@ -79,9 +58,9 @@ export function SkillCompare({ tables }: { tables: SkillTables }) {
         {side("①", kindA, setKindA, skillsA, setSkillsA, a, diff !== null && diff > 0)}
         {side("②", kindB, setKindB, skillsB, setSkillsB, b, diff !== null && diff < 0)}
       </div>
-      <p className="muted" style={{ textAlign: "center" }}>
+      <div className={`cmp-result${diff === null ? " idle" : diff === 0 ? " tie" : ""}`}>
         {diff === null ? "스킬을 입력하면 합산 대결" : diff === 0 ? "동점" : diff > 0 ? `①이 ${diff.toFixed(1)}점 높음` : `②가 ${(-diff).toFixed(1)}점 높음`}
-      </p>
+      </div>
     </div>
   );
 }
@@ -175,7 +154,7 @@ export function SkillPanel({
                 <td>
                   <input
                     type="number" step="0.01" style={{ width: 90 }}
-                    value={s.score}
+                    value={fmtScore(s.score)}
                     onChange={(e) => setScore(s.kind, s.name, Number(e.target.value), !!s.custom)}
                   />
                 </td>
