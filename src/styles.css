@@ -277,6 +277,7 @@ h4 { margin: 12px 0 6px; font-size: 13.5px; }
 .ed-skills input { width: 100%; font-size: 14px; padding: 8px 9px; }
 .pill { font-size: 11px; background: #166534; color: #fff; border-radius: 999px; padding: 1px 9px; margin-left: 5px; }
 .bad-pill { background: #7f1d1d; }
+.pill-idle { background: var(--panel2); color: var(--text2); border: 1px solid var(--border); }
 .formula {
   font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   font-size: 13px; white-space: pre-wrap; word-break: break-word;

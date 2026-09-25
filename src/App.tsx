@@ -16,6 +16,8 @@ import { PatchNotesModal } from "./components/PatchNotesModal";
 import { ScoreGuideModal } from "./components/ScoreGuideModal";
 import { DeckPreviewModal } from "./components/DeckPreview";
 import { parseExcelDeck } from "./lib/excelImport";
+import { deckSig, rankArgs, useRankSync } from "./lib/rankSync";
+import { buildBundle, parseDeckFile, withRank } from "./lib/deckFile";
 import "./styles.css";
 
 const DECKS_KEY = "rivals-decks-v1";
@@ -106,11 +108,13 @@ export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "dark");
   const [modal, setModal] = useState<"inquiry" | "patch" | "guide" | null>(null);
   const [preview, setPreview] = useState<Deck | null>(null);
+  const { links, setLinks, status } = useRankSync(decks, tables);
   const fileRef = useRef<HTMLInputElement>(null);
   const xlRef = useRef<HTMLInputElement>(null);
 
   const deck = decks.find((d) => d.id === activeId) ?? decks[0];
   const { players, chem, flags, yearInputs } = deck;
+  const activeLink = Object.values(links).some((l) => l.deckId === deck.id);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -188,22 +192,48 @@ export default function App() {
     setActiveId(rest[0].id);
     setSelected(null);
   };
-  const exportDeck = () => {
-    const blob = new Blob([JSON.stringify(deck, null, 2)], { type: "application/json" });
+  const download = (name: string, data: unknown) => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `${deck.name}.json`;
+    a.download = `${name}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
   };
+  // 랭킹 연동 덱은 다른 기기에서 같은 행을 갱신할 수 있게 id·토큰을 파일에만 담는다
+  const exportDeck = () => download(deck.name, withRank(deck, links));
+  const exportAll = () => download("내 덱 전체", buildBundle(decks, links));
   const importDeck = (f: File | undefined) => {
     if (!f) return;
     const rd = new FileReader();
     rd.onload = () => {
+      let entries: ReturnType<typeof parseDeckFile> = [];
       try {
-        addDeckData(JSON.parse(String(rd.result)) as Deck, "가져온 덱");
+        entries = parseDeckFile(JSON.parse(String(rd.result)));
       } catch {
+        // 아래에서 형식 오류로 안내
+      }
+      if (!entries.length) {
         alert("덱 파일 형식이 아닙니다.");
+        return;
+      }
+      const added = entries.map(({ deck: d, rank }) => ({ nd: buildDeck(d, "가져온 덱"), rank }));
+      setDecks((prev) => [...prev, ...added.map((a) => a.nd)]);
+      setActiveId(added[0].nd.id);
+      setSelected(null);
+      const linked = added.filter((a) => a.rank);
+      if (linked.length) {
+        // 가져온 상태를 이미 반영된 것으로 표시(옛 파일이 서버 최신본을 덮지 않게) — 이후 로컬 수정만 반영
+        setLinks((prev) => {
+          const next = { ...prev };
+          for (const { nd, rank } of linked) {
+            next[rank!.id] = { token: rank!.token, deckId: nd.id, sig: deckSig(rankArgs(nd, tables).args) };
+          }
+          return next;
+        });
+      }
+      if (added.length > 1 || linked.length) {
+        alert(`덱 ${added.length}개를 가져왔습니다${linked.length ? ` (랭킹 연동 ${linked.length}개)` : ""}.`);
       }
     };
     rd.readAsText(f);
@@ -238,19 +268,21 @@ export default function App() {
     }
   };
 
-  const addDeckData = (d: Deck, fallbackName: string) => {
-    if (!isDeck(d)) {
+  // 가져온 덱 데이터로 새 덱 만들기 (새 id, 선수 정규화). rank 같은 파일 전용 키는 parseDeckFile에서 이미 제거됨
+  const buildDeck = (d: Deck, fallbackName: string): Deck => ({
+    ...blankDeck(d.name || fallbackName),
+    ...d,
+    players: d.players.map(normalizePlayer),
+    id: newId(),
+    updatedAt: Date.now(),
+  });
+  const addDeckData = (d: unknown, fallbackName: string) => {
+    const entry = parseDeckFile(d)[0];
+    if (!entry) {
       alert("덱 형식이 아닙니다.");
       return;
     }
-    const base = blankDeck(d.name || fallbackName);
-    const nd: Deck = {
-      ...base,
-      ...d,
-      players: d.players.map(normalizePlayer),
-      id: newId(),
-      updatedAt: Date.now(),
-    };
+    const nd = buildDeck(entry.deck, fallbackName);
     setDecks((prev) => [...prev, nd]);
     setActiveId(nd.id);
     setSelected(null);
@@ -287,14 +319,21 @@ export default function App() {
           <button onClick={renameDeck}>이름변경</button>
           <button onClick={deleteDeck}>삭제</button>
           <button onClick={exportDeck}>내보내기</button>
+          <button onClick={exportAll} title="모든 덱을 파일 하나로 (랭킹 연동 정보 포함)">전체 내보내기</button>
           <button onClick={() => fileRef.current?.click()}>가져오기</button>
           <button onClick={() => xlRef.current?.click()}>엑셀 가져오기</button>
           <input ref={fileRef} type="file" accept=".json" style={{ display: "none" }}
             onChange={(e) => { importDeck(e.target.files?.[0]); e.target.value = ""; }} />
+          {activeLink && (
+            <span className={`pill ${status === "error" ? "bad-pill" : status === "ok" ? "" : "pill-idle"}`}>
+              🏆 랭킹 연동{status === "syncing" ? " · 반영 중…" : status === "ok" ? " · 방금 반영됨" : status === "error" ? " · 반영 실패(다음 수정 때 재시도)" : ""}
+            </span>
+          )}
           <input ref={xlRef} type="file" accept=".xlsx,.xlsm,.xls" style={{ display: "none" }}
             onChange={(e) => { importExcel(e.target.files?.[0]); e.target.value = ""; }} />
         </div>
-        <p className="muted">덱은 이 브라우저에만 저장됩니다 — 남이 내 덱을 볼 수 없고, 나도 남 덱을 못 봅니다. 기기 이동은 내보내기→가져오기로.</p>
+        <p className="muted">덱은 이 브라우저에만 저장됩니다 — 남이 내 덱을 볼 수 없고, 나도 남 덱을 못 봅니다. 기기 이동은 내보내기(현재 덱) 또는 전체 내보내기 → 가져오기로.</p>
+        <p className="muted">내보낸 파일에는 랭킹 수정 권한(비밀 토큰)이 들어 있어요 — 다른 사람에게 보내지 마세요.</p>
       </div>
 
       <div className="tabs">
@@ -337,6 +376,7 @@ export default function App() {
         <>
           <SharePanel
             decks={decks} tables={tables} activeId={deck.id}
+            links={links} setLinks={setLinks}
             onSelectDeck={(id) => { setActiveId(id); setSelected(null); }}
             onImportDeck={(d) => addDeckData(d, "공유받은 덱")}
             onPreviewDeck={(d) => setPreview(d)}
