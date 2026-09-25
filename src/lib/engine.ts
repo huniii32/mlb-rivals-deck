@@ -209,6 +209,9 @@ export function skillScore(
   return found ? found.score : null;
 }
 
+/** 점수 표시용: 소수 둘째자리까지 반올림, 끝의 0은 생략 (15.899999878 → 15.9) */
+export const fmtScore = (n: number): string => String(Math.round(n * 100) / 100);
+
 const normKey = (s: string): string => s.replace(/\s+/g, "");
 
 /** 카드가 시그니처 블랙 계열(시그니처 블랙/WBC/FA 전부 포함)인지 — 공백 무시 매칭 */

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { PlayerInput, PlayerResult } from "../lib/engine";
 import { GameCard } from "./CardArt";
 
@@ -6,16 +7,19 @@ import { GameCard } from "./CardArt";
 // 카드 그림은 자체 제작 일러스트. 수동 이미지 URL이 있으면 그걸 우선 표시.
 
 const DIAMOND: [string, number, number][] = [
-  ["CF", 50, 14],
-  ["LF", 23, 21],
-  ["RF", 77, 21],
-  ["SS", 40, 32],
-  ["2B", 60, 32],
-  ["3B", 23, 41],
-  ["1B", 77, 41],
-  ["C", 50, 69],
-  ["DH", 72, 69],
+  ["CF", 50, 12],
+  ["LF", 21, 18],
+  ["RF", 79, 18],
+  ["SS", 38, 37],
+  ["2B", 62, 37],
+  ["3B", 21, 44],
+  ["1B", 79, 44],
+  ["C", 50, 74],
+  ["DH", 74, 74],
 ];
+
+// 공칭 크기(110px) 카드가 겹치지 않고 들어가는 필드 폭 = 740px. 그보다 좁으면 카드를 비율로 축소(--k).
+const FIELD_NOMINAL_W = 740;
 
 const DEF_ROW: Record<string, number> = {
   C: 11, "1B": 12, "2B": 13, "3B": 14, SS: 15, LF: 16, CF: 17, RF: 18, DH: 19,
@@ -42,6 +46,17 @@ export function LineupView({
   const dBT = avg(bt) * 10;
   const total = dSP * 0.4 + dRP * 0.1 + dBT * 0.5;
 
+  const fieldRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = fieldRef.current;
+    if (!el) return;
+    const fit = () => el.style.setProperty("--k", String(Math.min(1, el.clientWidth / FIELD_NOMINAL_W)));
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <div className="card stadium">
       <div className="stadium-hd">
@@ -53,7 +68,7 @@ export function LineupView({
           <div><span>타자</span><b>{dBT.toFixed(1)}</b></div>
         </div>
       </div>
-      <div className="diamond">
+      <div className="diamond" ref={fieldRef}>
         <svg viewBox="0 0 100 81" preserveAspectRatio="none">
           <defs>
             <radialGradient id="grass" cx="50%" cy="112%" r="135%">

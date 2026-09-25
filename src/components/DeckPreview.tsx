@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import type { Deck } from "../App";
 import type { PlayerResult, SkillTables } from "../lib/engine";
-import { calcPlayer, allThresholds, flagDefaults, referencedFlags, skillScore } from "../lib/engine";
+import { calcPlayer, allThresholds, flagDefaults, fmtScore, referencedFlags, skillScore } from "../lib/engine";
 import { LineupView } from "./LineupView";
 import { YEAR_ANCHOR } from "./DeckPanel";
 
@@ -83,7 +83,7 @@ export function PlayerSummary({ p, res, tables }: {
               <tr key={i}>
                 <td>스킬{i + 1}</td>
                 <td>{s.trim() || "-"}</td>
-                <td>{s.trim() === "" ? "-" : sc === null ? <b className="pill bad-pill">표없음</b> : <b>+{sc}</b>}</td>
+                <td>{s.trim() === "" ? "-" : sc === null ? <b className="pill bad-pill">표없음</b> : <b>+{fmtScore(sc)}</b>}</td>
               </tr>
             );
           })}
