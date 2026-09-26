@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import type { Deck } from "./deck";
 import { calcDeckTotal, type SkillTables } from "./engine";
+import { loadOwnerCode, saveOwnerCode } from "./ownerCode";
 import { supabase } from "./supabase";
 
 const KEY = "rivals-my-ranks-v1";
 
-/** 서버 랭킹 행 하나와 연결된 로컬 덱. sig = 마지막으로 서버에 반영한 내용의 해시 */
-export interface RankLink { token: string; deckId: string; sig?: string }
+/** 서버 랭킹 행 하나와 연결된 로컬 덱. sig = 마지막으로 서버에 반영한 내용의 해시.
+ *  token(레거시, 행별 비밀) 또는 owned(내 덱 코드 소유) 중 하나 */
+export interface RankLink { token?: string; owned?: boolean; deckId: string; sig?: string }
 /** 키 = 서버 행 id (이 브라우저에만 보관) */
 export type RankLinks = Record<string, RankLink>;
 
@@ -17,11 +19,12 @@ export function loadLinks(): RankLinks {
     for (const [k, v] of Object.entries(raw)) {
       if (typeof v === "string") out[k] = { token: v, deckId: "" }; // 구형: 토큰만 저장
       else if (v && typeof v === "object") {
-        const o = v as { token?: unknown; deckId?: unknown; sig?: unknown };
-        if (typeof o.token === "string") {
-          out[k] = { token: o.token, deckId: typeof o.deckId === "string" ? o.deckId : "" };
-          if (typeof o.sig === "string") out[k].sig = o.sig;
-        }
+        const o = v as { token?: unknown; owned?: unknown; deckId?: unknown; sig?: unknown };
+        const deckId = typeof o.deckId === "string" ? o.deckId : "";
+        if (o.owned === true) out[k] = { owned: true, deckId };
+        else if (typeof o.token === "string") out[k] = { token: o.token, deckId };
+        else continue;
+        if (typeof o.sig === "string") out[k].sig = o.sig;
       }
     }
     return out;
@@ -51,22 +54,25 @@ export function deckSig(args: object): string {
   return `${(h >>> 0).toString(36)}.${json.length.toString(36)}`;
 }
 
-type Rpc = (fn: "update_ranking", args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+type Rpc = (fn: "update_ranking" | "update_ranking_owned", args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
 
 /** 바뀐 연동 덱만 서버에 반영. 성공=sig 갱신, 행이 사라짐(false)=연동 해제, 오류=그대로 두고 다음 기회에 재시도 */
 export async function syncLinks(opts: {
-  links: RankLinks; decks: Deck[]; tables: SkillTables; rpc: Rpc;
+  links: RankLinks; decks: Deck[]; tables: SkillTables; rpc: Rpc; code?: string;
 }): Promise<{ links: RankLinks; pushed: number; failed: number }> {
   const links = { ...opts.links };
   let pushed = 0, failed = 0;
   for (const [id, link] of Object.entries(opts.links)) {
     const deck = opts.decks.find((d) => d.id === link.deckId);
     if (!deck) continue;
+    if (link.owned && !opts.code) continue; // 코드 없으면 소유 글은 반영 불가 — 건너뜀
     const { args } = rankArgs(deck, opts.tables);
     const sig = deckSig(args);
     if (link.sig === sig) continue;
     try {
-      const { data, error } = await opts.rpc("update_ranking", { p_id: id, p_token: link.token, ...args });
+      const { data, error } = link.owned
+        ? await opts.rpc("update_ranking_owned", { p_id: id, p_code: opts.code, ...args })
+        : await opts.rpc("update_ranking", { p_id: id, p_token: link.token, ...args });
       if (error) failed++;
       else if (data) { links[id] = { ...link, sig }; pushed++; }
       else delete links[id];
@@ -83,12 +89,13 @@ const DEBOUNCE_MS = 3000;
 /** 앱 전역 자동 반영: 연동된 덱이 바뀌면 마지막 변경 3초 뒤 조용히 서버 행 갱신 */
 export function useRankSync(decks: Deck[], tables: SkillTables) {
   const [links, setLinksState] = useState(loadLinks);
+  const [code, setCodeState] = useState(loadOwnerCode);
   const [status, setStatusState] = useState<RankSyncStatus>("idle");
   const st = useRef<RankSyncStatus>("idle"); // run 클로저에서 최신 상태를 읽기 위한 ref
   const setStatus = (s: RankSyncStatus) => { st.current = s; setStatusState(s); };
   // 디바운스 콜백에서 최신 값을 쓰기 위한 ref
-  const cur = useRef({ decks, tables, links });
-  cur.current = { decks, tables, links };
+  const cur = useRef({ decks, tables, links, code });
+  cur.current = { decks, tables, links, code };
   const busy = useRef(false);
   const again = useRef(false);
 
@@ -98,6 +105,12 @@ export function useRankSync(decks: Deck[], tables: SkillTables) {
     cur.current.links = next;
     setLinksState(next);
     localStorage.setItem(KEY, JSON.stringify(next));
+  };
+
+  const setCode = (c: string) => {
+    cur.current.code = c;
+    setCodeState(c);
+    saveOwnerCode(c);
   };
 
   const run = async () => {
@@ -115,6 +128,7 @@ export function useRankSync(decks: Deck[], tables: SkillTables) {
         const res = await syncLinks({
           links: snap, decks: cur.current.decks, tables: cur.current.tables,
           rpc: async (fn, args) => await sb.rpc(fn, args),
+          code: cur.current.code ?? undefined,
         });
         // 실행 중 링크가 바뀌었을 수 있으니 결과(sig 갱신/해제)만 최신 링크에 합침
         if (res.pushed || Object.keys(res.links).length !== Object.keys(snap).length) {
@@ -139,7 +153,7 @@ export function useRankSync(decks: Deck[], tables: SkillTables) {
     if (!supabase || !linked) return;
     const t = setTimeout(run, DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [decks, tables, linked]);
+  }, [decks, tables, linked, code]);
 
-  return { links, setLinks, status };
+  return { links, setLinks, status, code, setCode };
 }

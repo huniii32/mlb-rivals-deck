@@ -108,7 +108,7 @@ export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "dark");
   const [modal, setModal] = useState<"inquiry" | "patch" | "guide" | null>(null);
   const [preview, setPreview] = useState<Deck | null>(null);
-  const { links, setLinks, status } = useRankSync(decks, tables);
+  const { links, setLinks, status, code, setCode } = useRankSync(decks, tables);
   const fileRef = useRef<HTMLInputElement>(null);
   const xlRef = useRef<HTMLInputElement>(null);
 
@@ -276,6 +276,12 @@ export default function App() {
     id: newId(),
     updatedAt: Date.now(),
   });
+  // 내 덱 코드로 서버에서 불러온 글: 새 로컬 덱 + 소유 연결 (sig 선반영 → 복원만으로는 서버에 쓰지 않음)
+  const restoreDeck = (d: Deck, rowId: string) => {
+    const nd = buildDeck(d, "불러온 덱");
+    setDecks((prev) => [...prev, nd]);
+    setLinks((prev) => ({ ...prev, [rowId]: { deckId: nd.id, owned: true, sig: deckSig(rankArgs(nd, tables).args) } }));
+  };
   const addDeckData = (d: unknown, fallbackName: string) => {
     const entry = parseDeckFile(d)[0];
     if (!entry) {
@@ -376,7 +382,7 @@ export default function App() {
         <>
           <SharePanel
             decks={decks} tables={tables} activeId={deck.id}
-            links={links} setLinks={setLinks}
+            links={links} setLinks={setLinks} code={code} setCode={setCode} onRestoreDeck={restoreDeck}
             onSelectDeck={(id) => { setActiveId(id); setSelected(null); }}
             onImportDeck={(d) => addDeckData(d, "공유받은 덱")}
             onPreviewDeck={(d) => setPreview(d)}
