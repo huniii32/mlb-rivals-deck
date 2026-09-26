@@ -6,9 +6,9 @@ export const BUNDLE_FORMAT = "rivals-decks-bundle";
 export interface RankRef { id: string; token: string }
 export interface DeckFileEntry { deck: Deck; rank?: RankRef }
 
+// 토큰 있는 레거시 연동만 파일에 담는다. 코드 소유 글(token 없음)과 내 덱 코드는 파일에 넣지 않음
 const rankOf = (deck: Deck, links: RankLinks): RankRef | undefined => {
-  const hit = Object.entries(links).find(([, l]) => l.deckId === deck.id);
-  return hit ? { id: hit[0], token: hit[1].token } : undefined;
+  for (const [id, l] of Object.entries(links)) if (l.deckId === deck.id && l.token) return { id, token: l.token };
 };
 
 /** 내보내기용: 연동 덱만 rank를 붙인다 (덱 상태 자체는 건드리지 않음) */
