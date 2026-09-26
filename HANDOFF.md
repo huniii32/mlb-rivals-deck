@@ -66,6 +66,52 @@
 - 마스터 용도: 자동완성 + 기본스탯. 스킬점수·덱코 계산은 엑셀 확보분으로 충분
 - 3만 행은 프론트 탑재 불가 → Supabase 등 DB + 검색 API 필요 (미구현)
 
+## 랭킹 글 소유권 · 기기 간 연동 (2026-09-26)
+### 진행 상태 (2026-09-26 갱신) — 방식 A(비밀코드) + 토큰 비공개화를 `feat/owner-codes` 브랜치에 구현함 (main 미병합·미배포)
+- SQL: `scripts/supabase_mig_owner_codes.sql` (PGlite 로컬 검증 121개 통과, 멱등·원자적). **운영 DB에는 사용자가 Supabase SQL Editor에서 직접 실행해야 함** — 실행 전엔 클라이언트를 배포하지 말 것(새 RPC 없음). 옛 RPC는 유지되므로 SQL만 먼저 실행해도 현재 배포본은 안 깨짐
+- 클라이언트: 랭킹 탭 "내 덱 코드" 카드(만들기·보기·복사·다른 기기에서 불러오기), `src/lib/ownerCode.ts`, `rankSync`의 owned 링크(`update_ranking_owned`, 코드는 기기 밖으로 RPC 인자로만 나감), 코드 만들기 시 기존 토큰 글 자동 claim(옛 토큰은 서버에서 폐기)
+- 실행 후 확인(읽기 전용 프로브): `select=*`에 owner_token 없음, `list_my_rankings`/`claim_ranking` 존재. 그 다음 병합·배포·공지(v0.7)
+- 알려진 한계: 이 수정 전에 이미 토큰을 긁어간 사람은 진짜 주인이 claim 하기 전까지 그 글을 고칠 수 있음(계정 없이는 불가피). `rankings.client_id` 공개 유지, `admin_check` 무차별 대입 가능(별도 조치 필요), client_id 위조로 레이트리밋 우회 가능
+- 아래는 설계 당시 기록(원문 유지)
+
+### (설계 기록) 방식만 정리했던 시점
+### 지금 구현된 것 (v0.6, main 배포됨)
+- 랭킹 행 ↔ 내 덱 연결은 이 브라우저 localStorage `rivals-my-ranks-v1` = `{ 행id: { token, deckId, sig } }` (`src/lib/rankSync.ts`)
+- 앱 전역 자동 반영 `useRankSync`: 연동 덱이 바뀌면 3초 뒤 `update_ranking` (sig=내용 해시가 같으면 요청 안 함, 행이 없으면 연동 해제)
+- 다른 기기: **파일로 이동** — 내보내기/전체 내보내기 파일에 `rank{id,token}` 포함, 가져오기에서 복원 (`src/lib/deckFile.ts`, 묶음 형식 `rivals-decks-bundle`). 가져온 직후엔 sig를 채워 옛 파일이 서버 최신본을 덮지 않게 함. 공유 링크(`#d=`)·서버로 가는 `p_deck`에는 rank 미포함(파싱 단계에서 제거)
+- 서버는 익명(로그인 없음)이라 "누가 올렸나"를 사람 단위로 못 알아봄 → 토큰이 유일한 소유 증명. 그래서 기기를 옮기려면 토큰을 옮겨야 함(파일)
+- 사용자는 "백엔드에서 알아서 되는 줄 알았다"고 함 → 파일 없는 방식을 원함. 아래 두 방식 중 택일 대기
+
+### ⚠ 발견된 보안 문제 (2026-09-26 확인, 기존부터 있던 것 — 이번 변경 무관, 아직 미수정)
+- `rankings.owner_token`이 **anon(공개 키)으로 읽힘**: `select=*` 응답에 `owner_token`·`client_id` 포함, 25행 전부 토큰 값이 조회됨(36자 UUID)
+- 결과: 누구나 남의 행을 `update_ranking`/`delete_ranking`으로 수정·삭제 가능 (RPC는 토큰만 확인). 내보내기 파일의 "토큰 비밀" 안내도 서버가 이미 노출 중이라 실효가 약함
+- 원인: `supabase_schema.sql`의 `rankings public read` 정책(select using true)이 전 컬럼에 적용. 앱은 `RANK_COLS`로 컬럼을 골라 읽지만 공개 API는 아무 컬럼이나 요청 가능
+- Realtime(postgres_changes)도 변경 행 전체를 보내므로 **컬럼 revoke만으로는 부족할 수 있음** → 토큰을 rankings 밖 별도 테이블로 분리하는 게 안전
+- 수정 방향(어느 방식을 택하든 선행 권장): ① `ranking_owners(ranking_id uuid pk references rankings on delete cascade, secret_hash text not null)` 생성, RLS 켜고 정책 없음 + anon/authenticated 권한 전부 revoke ② 기존 `owner_token`을 해시(`encode(digest(owner_token,'sha256'),'hex')`, pgcrypto)해서 이관 ③ `update_ranking`/`delete_ranking`을 `security definer`로 유지하되 `digest(p_token)`와 비교 ④ `rankings.owner_token` 컬럼 삭제 ⑤ `client_id`도 anon 읽기 차단(레이트리밋 전용). 기존 사용자 localStorage의 토큰은 그대로 유효(해시 비교라서)
+- 이 마이그레이션은 Supabase SQL Editor에서 사용자가 직접 실행해야 함 (에이전트는 DB 쓰기 권한 없음). 새 SQL 파일은 `scripts/supabase_mig_*.sql` 규칙으로
+
+### 방식 A — 비밀코드 (로그인 없음, 가벼움)
+- 아이디어: 사용자당 "내 덱 코드" 하나. 서버가 코드 해시로 내 글들을 알아봄. 다른 기기에서 코드 입력 → 파일 없이 연결
+- 스키마: `owners(id uuid pk, code_hash text unique, created_at)` + `rankings.owner_id` (또는 위 `ranking_owners`를 owner 단위로 확장). 기존 행은 토큰 해시로 남겨 두고, 새 코드로 "가져오기(claim)" 시 `claim_ranking(p_id, p_token, p_code)`로 이관
+- RPC: `create_owner()` → 서버가 고엔트로피 코드 생성(예: 4×4자, 약 80비트)해 1회만 반환 / `insert_ranking(p_code, ...)` / `update_ranking(p_id, p_code, ...)` / `delete_ranking(p_id, p_code)` / `list_my_rankings(p_code)` (내 행 id·이름·deck_json 반환 → 새 기기가 서버 행에서 로컬 덱을 만들어 연결, 파일 불필요)
+- 보안: **사용자가 정한 짧은 코드는 금지, 서버 생성 코드만** (무차별 대입 방지). 해시는 서버에서만 비교, 코드 조회 컬럼은 anon 차단. 실패 시도 제한(`client_id` 기준 테이블, 분당 N회) 필수
+- 클라이언트: 링크 저장 형식 `{ 행id: { deckId, sig } }` + 전역 `rivals-owner-code`. 등록 첫 시점에 코드 표시·복사 안내("잃어버리면 복구 불가"), 랭킹 탭에 "내 코드로 불러오기" 입력칸. 자동 반영 로직(`syncLinks`)은 토큰 → 코드로 인자만 교체
+- 장점: 로그인·이메일 없음, 사이트 성격 유지, 파일 불필요. 단점: 코드 분실=복구 불가, 코드 유출=글 탈취(전체 덱 공유하는 셈), SQL 추가 실행 필요
+- 작업량 추정: 중 (SQL 1개 + rankSync/SharePanel/App 수정 + 테스트 + 공지)
+
+### 방식 B — 계정 (Supabase Auth, 가장 편함·가장 큼)
+- 로그인: Google OAuth 또는 이메일 매직링크. `rankings.user_id uuid default auth.uid()`, RLS로 `update/delete using (user_id = auth.uid())` → 토큰 RPC 불필요. insert는 기존 레이트리밋 RPC 유지(로그인 필수로)
+- 기존 행 이전: 로그인 후 `claim_ranking(p_id, p_token)`이 토큰이 맞으면 `user_id`를 세팅 (미이전 행은 그대로 남음)
+- 덱까지 클라우드에 저장하려면 `user_decks` 테이블 추가(실제 다기기 동기화). 지금 "덱은 브라우저에만 저장, 남이 못 봄" 성격이 바뀜 → 개인정보·약관·이메일 보관 정책 고려
+- 소유자 작업(에이전트 불가): Supabase 대시보드에서 Auth provider 켜기, Google OAuth 클라이언트 발급, Site URL/Redirect URL에 `https://huniii32.github.io/mlb-rivals-deck/` 등록
+- 장점: 잃어버릴 비밀 없음, 운영자 차단·정리 가능, 다기기 자동. 단점: 작업 큼, 로그인 마찰, 정적 호스팅에서 세션·리다이렉트 처리
+
+### 권장 순서 (결정은 사용자)
+1. **보안 수정(토큰 비공개화) 먼저** — 어떤 방식이든 선행. 이걸 안 하면 A·B 모두 무의미
+2. 그다음 방식 A(비밀코드) — 사이트 성격을 유지하면서 파일 없이 해결
+3. 사용자·운영 규모가 커지거나 클라우드 저장이 필요해지면 방식 B 검토 (A의 코드→계정 이전 경로 설계해 둘 것)
+- 열린 질문: ① 보안 수정 SQL을 언제 실행할지 ② A/B 중 무엇 ③ 이미 중복된 글(#17 등)은 수동 정리 vs 운영자용 정리 도구(관리자 비밀번호 기반 삭제 RPC가 문의판엔 있음, 랭킹엔 없음)
+
 ## 다음 할 일
 1. ~~이 PC에 Steam 없음 → Steam 설치 + MLB 9 Innings Rivals 26 (15GB) 다운로드 필요 (사용자 차례)~~ 설치 확인됨 (2026-09-13)
 2. MITM 노트북 단독 캡처 (진행 중, 2026-09-13): mitmproxy 12.2.3 설치·CA 생성됨. 사용자 차례 = CA 인증서 설치(`~\.mitmproxy\mitmproxy-ca-cert.cer` → 신뢰 루트) → 프록시 ON → `mitmdump -p 8080 -w C:\project\tools\rivals.mitm` → 게임 도감 스크롤 → 프록시 OFF
