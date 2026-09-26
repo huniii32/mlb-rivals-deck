@@ -67,10 +67,10 @@
 - 3만 행은 프론트 탑재 불가 → Supabase 등 DB + 검색 API 필요 (미구현)
 
 ## 랭킹 글 소유권 · 기기 간 연동 (2026-09-26)
-### 진행 상태 (2026-09-26 갱신) — 방식 A(비밀코드) + 토큰 비공개화를 `feat/owner-codes` 브랜치에 구현함 (main 미병합·미배포)
+### 진행 상태 (2026-09-26 갱신) — 방식 A(비밀코드) + 토큰 비공개화: SQL 운영 적용 확인(읽기 전용 프로브), 클라이언트 main 병합·배포됨
 - SQL: `scripts/supabase_mig_owner_codes.sql` (PGlite 로컬 검증 121개 통과, 멱등·원자적). **운영 DB에는 사용자가 Supabase SQL Editor에서 직접 실행해야 함** — 실행 전엔 클라이언트를 배포하지 말 것(새 RPC 없음). 옛 RPC는 유지되므로 SQL만 먼저 실행해도 현재 배포본은 안 깨짐
 - 클라이언트: 랭킹 탭 "내 덱 코드" 카드(만들기·보기·복사·다른 기기에서 불러오기), `src/lib/ownerCode.ts`, `rankSync`의 owned 링크(`update_ranking_owned`, 코드는 기기 밖으로 RPC 인자로만 나감), 코드 만들기 시 기존 토큰 글 자동 claim(옛 토큰은 서버에서 폐기)
-- 실행 후 확인(읽기 전용 프로브): `select=*`에 owner_token 없음, `list_my_rankings`/`claim_ranking` 존재. 그 다음 병합·배포·공지(v0.7)
+- 실행 후 확인(읽기 전용 프로브): `select=*`에 owner_token 없음, `list_my_rankings`/`claim_ranking` 존재. 그 다음 병합·배포·공지(오늘 v0.6에 이어서 반영)
 - 알려진 한계: 이 수정 전에 이미 토큰을 긁어간 사람은 진짜 주인이 claim 하기 전까지 그 글을 고칠 수 있음(계정 없이는 불가피). `rankings.client_id` 공개 유지, `admin_check` 무차별 대입 가능(별도 조치 필요), client_id 위조로 레이트리밋 우회 가능
 - 아래는 설계 당시 기록(원문 유지)
 
