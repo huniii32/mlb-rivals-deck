@@ -36,6 +36,7 @@ export function ChemPanel({ chem, setChem }: {
         ))}
       </div>
       <p className="muted">스킬의 커맨더·포수리드는 타자 능력치에만 반영, 투수 버프는 여기서 선택한 값으로 자동 반영(원본 로직 동일).</p>
+      {chem.pitchChem === "S2" && <p className="warn">투수 케미스트리 S2의 팀 버프 수치가 확인되지 않아 계산에 포함되지 않습니다. 게임 수치 확인이 필요합니다.</p>}
     </div>
   );
 }

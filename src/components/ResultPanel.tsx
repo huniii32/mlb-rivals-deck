@@ -6,7 +6,7 @@ export function ResultPanel({ players, results }: { players: PlayerInput[]; resu
   const { sp: dSP, rp: dRP, bt: dBT, total } = deckTotals(players, results);
 
   const ranking = players
-    .map((p, i) => ({ name: p.name || p.pos, pos: p.pos, score: results[i].total }))
+    .map((p, i) => ({ name: p.name.trim(), pos: p.pos, score: results[i].total }))
     .filter((r) => r.name).sort((a, b) => b.score - a.score);
 
   // 엑셀 BB/BD 덱코 합계 대응: 좌/우 선택에 따라 바뀌는 스탯별 합계

@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { isDeck, type Deck } from "../lib/deck";
 import type { SkillTables } from "../lib/engine";
 import { calcDeckTotal } from "../lib/engine";
 import { formatCode, normalizeCode } from "../lib/ownerCode";
 import { deckSig, rankArgs, type RankLinks } from "../lib/rankSync";
+import { bindRank, findRankTarget, rankingNameKey } from "../lib/rankSubmit";
 import { DeckCompareModal } from "./DeckCompare";
 import { errMessage, getClientId, isMissingRpc, isRateLimited, isSupabaseOn, RANK_COLS, supabase, uuid, watchTable, type PublicRank } from "../lib/supabase";
 
@@ -53,6 +54,8 @@ export function SharePanel({
   const [input, setInput] = useState("");
   const [pub, setPub] = useState<PublicRank[]>([]);
   const [pubLoading, setPubLoading] = useState(false);
+  const [pubError, setPubError] = useState("");
+  const submitLock = useRef(false);
   const [submitting, setSubmitting] = useState(false);
   const [showCode, setShowCode] = useState(false);
   const [restoreIn, setRestoreIn] = useState("");
@@ -92,13 +95,14 @@ export function SharePanel({
   const loadPub = async () => {
     if (!supabase) return;
     setPubLoading(true);
+    setPubError("");
     try {
       const { data, error } = await supabase
         .from("rankings").select(RANK_COLS).order("total", { ascending: false }).limit(50);
       if (error) throw error;
       setPub((data ?? []) as PublicRank[]);
     } catch {
-      // 조회 실패는 조용히 무시 (미연동·RLS 전 상태)
+      setPubError("랭킹을 불러오지 못했습니다. 연결 상태를 확인하고 새로고침하세요.");
     } finally {
       setPubLoading(false);
     }
@@ -111,12 +115,29 @@ export function SharePanel({
 
   // 현재 덱을 전체 공개 랭킹에 등록. 이미 등록해둔 덱이면(같은 deckId) 새 행 대신 기존 행을 갱신.
   const submitPub = async () => {
-    if (!supabase || submitting) return;
+    if (!supabase || submitLock.current) return;
+    if (!active.name.trim()) { alert("덱 이름을 입력하세요."); return; }
+    if (active.name.trim().length > 50) { alert("랭킹 덱 이름은 50자 이내로 입력하세요."); return; }
+    if (!active.players.some(p => p.name.trim())) { alert("선수를 한 명 이상 등록하세요."); return; }
+    submitLock.current = true;
     setSubmitting(true);
     try {
       const { args } = rankArgs(active, tables);
-      let base = links;
-      const existing = Object.entries(links).find(([, v]) => v.deckId === active.id);
+      let candidates = links;
+      let ownRows = pub;
+      // 상위 50위 밖의 내 글도 조회하여 재가져오기/기기 이동 후 이름으로 연결한다.
+      if (code) {
+        const { data, error } = await supabase.rpc("list_my_rankings", { p_code: code });
+        if (error) throw error;
+        ownRows = (data ?? []) as PublicRank[];
+        candidates = { ...links };
+        for (const row of ownRows) candidates[row.id] = { ...candidates[row.id], owned: true, deckId: candidates[row.id]?.deckId ?? "" };
+      } else if (Object.keys(links).length) {
+        const { data, error } = await supabase.from("rankings").select(RANK_COLS).in("id", Object.keys(links));
+        if (error) throw error;
+        ownRows = (data ?? []) as PublicRank[];
+      }
+      const existing = findRankTarget(active, decks, candidates, ownRows);
       if (existing) {
         const [id, link] = existing;
         if (link.owned && !code) { alert(NO_CODE); return; }
@@ -125,15 +146,13 @@ export function SharePanel({
           : await supabase.rpc("update_ranking", { p_id: id, p_token: link.token, ...args });
         if (error) throw error;
         if (ok) {
-          setLinks({ ...links, [id]: { ...link, sig: deckSig(args) } });
+          setLinks(prev => bindRank(prev, id, active.id, link.owned ? { owned: true } : { token: link.token }, deckSig(args)));
           loadPub();
           alert("등록해둔 덱을 최신 내용으로 갱신했습니다.");
           return;
         }
-        // 서버에서 이미 지워진 행이면 로컬 매핑만 정리하고 새로 등록
-        base = { ...links };
-        delete base[id];
-        setLinks(base);
+        // false는 삭제와 인증 실패를 구분하지 못한다. 자동 신규 등록하면 중복이 된다.
+        throw new Error("기존 랭킹 갱신 권한을 확인하지 못했습니다. 내 덱 코드를 불러온 뒤 다시 시도하세요.");
       }
       const token = uuid();
       const { data: newId, error } = code
@@ -141,7 +160,9 @@ export function SharePanel({
         : await supabase.rpc("insert_ranking", { p_client_id: getClientId(), p_token: token, ...args });
       if (error) throw error;
       if (typeof newId === "string") {
-        setLinks({ ...base, [newId]: { ...(code ? { owned: true } : { token }), deckId: active.id, sig: deckSig(args) } });
+        setLinks(prev => bindRank(prev, newId, active.id, code ? { owned: true } : { token }, deckSig(args)));
+      } else {
+        throw new Error("등록 결과를 확인하지 못했습니다. 새로고침 후 내 덱 코드로 불러오세요.");
       }
       loadPub();
       alert("전체 랭킹에 등록됐습니다.");
@@ -150,8 +171,10 @@ export function SharePanel({
       if (isRateLimited(e)) alert("너무 자주 등록하고 있어요 — 잠시 후 다시 시도하세요.");
       else if (isMissingRpc(e)) alert(code ? NEED_MIG : "등록 실패 — 마이그레이션 SQL(supabase_mig_rate_limit.sql)을 실행했는지 확인하세요.");
       else if (errMessage(e).includes("invalid_code")) alert("내 덱 코드를 서버가 인식하지 못해요 — 코드를 확인하세요.");
+      else if (errMessage(e).includes("duplicate_owned_name")) alert("내 랭킹에 같은 이름의 덱이 이미 있습니다. 기존 덱을 불러와 수정하거나 이름을 바꿔주세요.");
       else alert(`등록 실패: ${errMessage(e)}`);
     } finally {
+      submitLock.current = false;
       setSubmitting(false);
     }
   };
@@ -310,9 +333,12 @@ export function SharePanel({
               </button>
               <button disabled={pubLoading} onClick={() => loadPub()}>새로고침</button>
             </div>
+            <p className="muted">같은 소유자의 같은 이름은 기존 글을 갱신합니다(공백·영문 대소문자 무시). 다른 기기에서는 내 덱 코드를 먼저 불러오세요. 다른 사람의 동명 덱은 수정되지 않습니다.</p>
+            {!code && pub.some(r => rankingNameKey(r.deck_name) === rankingNameKey(active.name) && !links[r.id]) && <p className="warn">같은 이름의 글이 있습니다. 예전에 올린 내 글이라면 새로 등록하기 전에 내 덱 코드 또는 연동 파일을 불러오세요.</p>}
+            {pubError && <p className="warn" role="alert">{pubError}</p>}
             {pub.length === 0 ? (
               <p className="muted" style={{ marginTop: 8 }}>
-                {pubLoading ? "불러오는 중…" : "아직 등록된 덱이 없습니다. 첫 등록자가 되어보세요."}
+                {pubLoading ? "불러오는 중…" : pubError ? "조회 실패 — 위의 새로고침으로 다시 시도할 수 있습니다." : "아직 등록된 덱이 없습니다. 첫 등록자가 되어보세요."}
               </p>
             ) : (
               <table style={{ marginTop: 8 }}>
@@ -386,7 +412,7 @@ export function SharePanel({
             onChange={(e) => setInput(e.target.value)} />
           <button onClick={() => importFrom(input)}>가져오기</button>
         </div>
-        <p className="muted">불특정다수 전체 랭킹(서버 집계)은 백엔드가 필요해서 아직 없음. 링크 공유로 덱 자랑은 가능.</p>
+        <p className="muted">공유 링크로 가져온 덱은 복사본입니다. 원래 랭킹의 수정 권한은 포함되지 않습니다.</p>
       </div>
     </div>
   );
