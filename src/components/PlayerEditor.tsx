@@ -18,7 +18,7 @@ export function PlayerEditor({
   const stats = kind === "batter" ? BATTER_STATS : PITCHER_STATS;
   const isBlack = isSigBlackCard(p.card);
   const setArr = (
-    field: "base" | "train" | "spec" | "extra" | "synergy" | "locker" | "blackPos" | "blackBoost" | "finalOv",
+    field: "base" | "train" | "spec" | "extra" | "synergy" | "locker" | "blackPos" | "blackBoost" | "leaderBonus" | "finalOv",
     i: number, v: number | "",
   ) => {
     const arr = [...(p[field] ?? ["", "", ""])] as [number | "", number | "", number | ""];
@@ -52,7 +52,7 @@ export function PlayerEditor({
 
       <div className="ed-sec">기본 정보</div>
       <div className="ed-grid">
-        <label>포지션<input value={p.pos} onChange={(e) => update({ pos: e.target.value })} /></label>
+        <label>라인업 위치<input value={p.pos} readOnly title="선수 위치는 라인업 슬롯에 고정됩니다" /></label>
         <label>카드
           <select value={p.card} onChange={(e) => update({ card: e.target.value })}>
             <option value="">— 선택 —</option>
@@ -72,13 +72,19 @@ export function PlayerEditor({
       </div>
 
       <div className="ed-sec">스탯 (최종열에 직접 적으면 수동 고정 · 지우면 자동)</div>
+      <p className="muted">입력 즉시 저장됩니다. 선수명만으로 능력치를 조회하지 않으므로 게임 수치를 입력하세요. 스킬의 경기 중 효과는 아래 스킬점수에 별도 반영됩니다.</p>
+      {res.manual.slice(0, stats.length).some(Boolean) && <div className="warn" role="status">
+        <b>수동 고정 중: {stats.filter((_, i) => res.manual[i]).join(", ")}</b>
+        <p>이 항목은 기본·훈련·강화·덱코를 바꿔도 최종 수치가 바뀌지 않습니다.</p>
+        <button onClick={() => update({ finalOv: ["", "", ""] })}>모든 스탯 자동 계산으로 전환</button>
+      </div>}
       <div style={{ overflowX: "auto" }}>
       <table className="ed-stats">
         <thead>
           <tr><th>스탯</th><th>기본</th><th>훈련</th><th>특훈(리셋포함)</th><th title="포훈Lv로 자동 계산되는 포훈표 수치와 별개. 여기엔 게임 화면의 포지션훈련 '보너스' 수치만 입력(전체 포훈 수치 아님)">포지션훈련</th><th>시너지</th><th>라커룸</th>
             {isBlack && <th title="시그니처 블랙 전용 — 조견표가 없어 게임 화면 수치를 직접 입력">블랙포지션</th>}
             {isBlack && <th title="시그니처 블랙 전용 — 조견표가 없어 게임 화면 수치를 직접 입력">블랙부스트</th>}
-            <th>초월</th><th>강화</th><th>포훈</th><th>덱코</th><th>자동합</th><th>최종</th></tr>
+            <th>리더 영향력</th><th title="기존 산정 기준: S 스킬 보너스">스킬 기본</th><th>초월</th><th>강화</th><th>포훈</th><th>덱코</th><th>자동합</th><th>최종</th></tr>
         </thead>
         <tbody>
           {stats.map((s, i) => (
@@ -92,6 +98,8 @@ export function PlayerEditor({
               <td><Num value={p.locker[i]} width={56} onChange={(v) => setArr("locker", i, v)} /></td>
               {isBlack && <td><Num value={p.blackPos?.[i] ?? ""} width={56} onChange={(v) => setArr("blackPos", i, v)} /></td>}
               {isBlack && <td><Num value={p.blackBoost?.[i] ?? ""} width={56} onChange={(v) => setArr("blackBoost", i, v)} /></td>}
+              <td><Num value={p.leaderBonus?.[i] ?? ""} width={56} onChange={(v) => setArr("leaderBonus", i, v)} /></td>
+              <td className="calc">+3</td>
               <td className="calc">+{res.trans[i] ?? 0}</td>
               <td className="calc">+{res.enh[i] ?? 0}</td>
               <td className="calc">+{res.poh[i] ?? 0}</td>
@@ -104,6 +112,7 @@ export function PlayerEditor({
       </table>
       </div>
 
+      <p className="muted">리더 영향력은 게임에 표시된 해당 선수의 합산 버프만 입력하세요. 라커룸이나 수동 최종값에 포함했다면 중복 입력하지 마세요. 리더 레벨별 자동 산정은 아직 지원하지 않습니다.</p>
       <div className="ed-sec">스킬</div>
       <div className="ed-skills">
         {([0, 1, 2, 3] as const).map((i) => (
@@ -132,6 +141,7 @@ export function PlayerEditor({
       {res.warnings.length > 0 && (
         <div className="warn">{res.warnings.map((w, i) => <div key={i}>{w}</div>)}</div>
       )}
+      <div className="row" style={{ justifyContent: "flex-end", marginTop: 16 }}><button className="primary" onClick={close}>입력 완료 · 라인업으로</button></div>
     </div>
   );
 }

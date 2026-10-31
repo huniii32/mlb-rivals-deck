@@ -7,6 +7,7 @@ import { LineupView } from "./components/LineupView";
 import { PlayerEditor } from "./components/PlayerEditor";
 import { ChemPanel, DeckScorePanel } from "./components/DeckPanel";
 import { SkillCompare, SkillPanel } from "./components/SkillPanel";
+import { SkillExpectation } from "./components/SkillExpectation";
 import { TableEditor } from "./components/TableEditor";
 import { NewsTab } from "./components/NewsTab";
 import { SharePanel } from "./components/SharePanel";
@@ -25,14 +26,14 @@ const TABLES_KEY = "rivals-tables-v1";
 const THEME_KEY = "rivals-theme";
 const LEGACY_KEY = "rivals-deck-v2";
 
-function blankDeck(name: string): Deck {
+function blankDeck(name: string, legacyDefaults = false): Deck {
   return {
     id: newId(),
     name,
     updatedAt: Date.now(),
     players: LINEUP.map((l) => blankPlayer(l.row, l.kind, l.pos, l.order)),
-    chem: { ...DEFAULT_CHEM },
-    flags: flagDefaults(),
+    chem: legacyDefaults ? { ...DEFAULT_CHEM } : { commander: "X", catcher: "X", pitchChem: "X", batChem: "X", wbcP: "X", wbcB: "X" },
+    flags: legacyDefaults ? flagDefaults() : {},
     yearInputs: Object.fromEntries(Object.values(YEAR_ANCHOR).map((r) => [r, ""])) as Deck["yearInputs"],
   };
 }
@@ -44,7 +45,7 @@ function loadDecks(): { decks: Deck[]; activeId: string } {
       const s = JSON.parse(raw) as { decks: Deck[]; activeId: string };
       if (Array.isArray(s.decks) && s.decks.length) {
         const decks = s.decks.map((d) => {
-          const base = blankDeck(d.name || "내 덱");
+          const base = blankDeck(d.name || "내 덱", true);
           return {
             ...base,
             ...d,
@@ -59,7 +60,7 @@ function loadDecks(): { decks: Deck[]; activeId: string } {
     const legacy = localStorage.getItem(LEGACY_KEY);
     if (legacy) {
       const s = JSON.parse(legacy) as Partial<Deck>;
-      const d = blankDeck("내 덱 1");
+      const d = blankDeck("내 덱 1", true);
       if (isDeck(s)) d.players = s.players;
       if (s.chem) d.chem = { ...d.chem, ...s.chem };
       if (s.flags) d.flags = { ...d.flags, ...s.flags };
@@ -338,7 +339,7 @@ export default function App() {
           <input ref={xlRef} type="file" accept=".xlsx,.xlsm,.xls" style={{ display: "none" }}
             onChange={(e) => { importExcel(e.target.files?.[0]); e.target.value = ""; }} />
         </div>
-        <p className="muted">덱은 이 브라우저에만 저장됩니다 — 남이 내 덱을 볼 수 없고, 나도 남 덱을 못 봅니다. 기기 이동은 내보내기(현재 덱) 또는 전체 내보내기 → 가져오기로.</p>
+        <p className="muted">입력한 덱은 이 브라우저에 자동 저장됩니다. 공개 랭킹에 등록한 덱만 다른 사람이 볼 수 있어요. 기기 이동은 내보내기 파일 또는 덱랭킹의 내 덱 코드를 이용하세요.</p>
         <p className="muted">내보낸 파일에는 랭킹 수정 권한(비밀 토큰)이 들어 있어요 — 다른 사람에게 보내지 마세요.</p>
       </div>
 
@@ -353,7 +354,14 @@ export default function App() {
       {tab === "lineup" && (
         <div className="lineup-layout">
           <div>
+            <div className="card">
+              <b>선수 {players.filter(p => p.name.trim()).length}/18명 입력</b>
+              <p className="muted">① 포지션 선택 → ② 선수·능력치·스킬 입력 → ③ 케미·덱스코어 설정. 이름 있는 선수만 점수 평균에 포함됩니다.</p>
+              {players.some((p, i) => p.name.trim() && results[i].warnings.length > 0) && <p className="warn">확인이 필요한 선수: {players.filter((p, i) => p.name.trim() && results[i].warnings.length > 0).map(p => p.name).join(", ")}. 선수를 눌러 계산 경고를 확인하세요.</p>}
+              <p className="muted">{players.filter((p, i) => p.name.trim() && results[i].manual.slice(0, p.kind === "batter" ? 3 : 2).some(Boolean)).length}명 수동 최종값 사용 · 신규 덱은 케미/덱코 미선택 상태입니다.</p>
+            </div>
             <LineupView players={players} results={results} onSelect={setSelected} />
+            <details className="card"><summary>선수별 점수와 덱코 상세 보기</summary><ResultPanel players={players} results={results} /></details>
             <ChemPanel
               chem={chem} setChem={(c) => patchDeck({ chem: c })}
             />
@@ -373,6 +381,7 @@ export default function App() {
       {tab === "skills" && (
         <>
           <SkillCompare tables={tables} />
+          <SkillExpectation tables={tables} />
           <SkillPanel tables={tables} setTables={setTables} />
           <TableEditor tables={tables} setTables={setTables} />
         </>
