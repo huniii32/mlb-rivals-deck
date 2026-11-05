@@ -14,7 +14,7 @@ export function ScoreGuideModal({ close }: { close: () => void }) {
       <FlowDiagram steps={["자동합", "최종 스탯", "능력치(J)+스킬점수(O)", "최종점(P)", "덱 총점"]} />
 
       <h4>① 선수 스탯 자동합</h4>
-      <div className="formula">기본 + 훈련 + 특훈 + 초월 + 강화 + 포훈 + 포지션훈련 + 시너지 + 라커룸 + 블랙 보너스 + 스킬보너스(+3) + 덱코 보너스 + 투수 전술</div>
+      <div className="formula">기본 + 훈련 + 특훈 + 초월 + 강화 + 포훈 + 포지션훈련 + 시너지 + 라커룸 + 블랙 보너스 + 리더 영향력 + 스킬보너스(+3) + 덱코 보너스 + 투수 전술</div>
       <ul style={{ margin: "6px 0 0", paddingLeft: 20 }}>
         <li>초월·강화는 <b>카드+스탯</b>으로, 포훈은 <b>포지션+스탯</b>으로 표를 조회해 자동으로 채워짐</li>
         <li><b>포지션훈련</b> 칸은 포훈Lv 자동값과 별개 — 게임 화면의 &ldquo;보너스&rdquo; 수치만 입력해야 정확함</li>
@@ -48,7 +48,7 @@ export function ScoreGuideModal({ close }: { close: () => void }) {
 
       <h4>③ 스킬점수 (O)</h4>
       <div className="formula">스킬1 + 스킬2 + 스킬3 + (스킬4는 있으면만 가산)</div>
-      <p className="muted">스킬 1~3 중 표에 없는 이름이 하나라도 있으면 O 전체가 &ldquo;표없음&rdquo;. 스킬4는 선택 사항.</p>
+      <p className="muted">미인식 스킬은 경고하고, 인식된 스킬만 합산한 임시 점수를 보여줍니다. 스킬 이름·등급·조건을 목록에서 선택해 확정하세요. 신규 RP 스킬은 RP 위치에만 적용됩니다.</p>
 
       <h4>④ 팀덱코 · 스덱코</h4>
       <div className="row" style={{ alignItems: "stretch", gap: 12 }}>
@@ -81,7 +81,7 @@ export function ScoreGuideModal({ close }: { close: () => void }) {
       <ul style={{ margin: "6px 0 0", paddingLeft: 20 }}>
         <li>WBC에이스(타자) S1 등급은 파워엔 +2, 정확엔 +1로 비대칭 — 오타 아니고 원본 그대로</li>
         <li>스덱코 일부 규칙이 &ldquo;타순 1~2번&rdquo;·&ldquo;3~5번&rdquo; 조건을 봐서, 라인업 기본 타순(우익수 1번·지명타자 3번 등)에 따라 포지션별로 결과가 다르게 나오는 게 정상입니다</li>
-        <li>새로 만든 덱은 원본 엑셀 저장값 그대로 팀덱코·스덱코 다이아몬드 50개가 이미 켜진 상태로 시작합니다</li>
+        <li>새 덱의 팀 버프와 덱스코어는 미선택 상태로 시작합니다. 기존에 저장한 덱의 선택값은 유지됩니다.</li>
         <li>불펜은 총 7명까지 배치합니다. 승리조 분업은 최소 3명에게 +4, 승리조·추격조 적극은 해당 조 최소 2명에게 +2가 적용됩니다. 기본·롱릴리프·마무리는 가산이 없습니다.</li>
         <li>전술 인원은 이름이 등록된 투수로 판단하며, 변화·구위에 자동 가산합니다. 최종 스탯을 수동 입력할 때는 전술 보너스 적용 전 수치를 입력합니다.</li>
       </ul>

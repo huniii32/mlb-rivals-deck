@@ -10,6 +10,7 @@ import { applyDeckUpdate } from "./lib/playerUpdates";
 import { DeckSaveModal } from "./components/DeckSaveModal";
 import { passwordError, passwordResult, validDeckName, type PasswordCredential } from "./lib/deckPassword";
 import { getClientId, supabase } from "./lib/supabase";
+import { LineupTable } from "./components/LineupTable";
 import { LineupView } from "./components/LineupView";
 import { PlayerEditor } from "./components/PlayerEditor";
 import { ChemPanel, DeckScorePanel } from "./components/DeckPanel";
@@ -32,14 +33,14 @@ const TABLES_KEY = "rivals-tables-v1";
 const THEME_KEY = "rivals-theme";
 const LEGACY_KEY = "rivals-deck-v2";
 
-function blankDeck(name: string): Deck {
+function blankDeck(name: string, legacyDefaults = false): Deck {
   return {
     id: newId(),
     name,
     updatedAt: Date.now(),
     players: LINEUP.map((l) => blankPlayer(l.row, l.kind, l.pos, l.order)),
-    chem: { ...DEFAULT_CHEM },
-    flags: flagDefaults(),
+    chem: legacyDefaults ? { ...DEFAULT_CHEM } : { commander: "X", catcher: "X", pitchChem: "X", batChem: "X", wbcP: "X", wbcB: "X" },
+    flags: legacyDefaults ? flagDefaults() : {},
     yearInputs: Object.fromEntries(Object.values(YEAR_ANCHOR).map((r) => [r, ""])) as Deck["yearInputs"],
     bullpenTactics: { ...DEFAULT_TACTICS },
   };
@@ -52,7 +53,7 @@ function loadDecks(): { decks: Deck[]; activeId: string } {
       const s = JSON.parse(raw) as { decks: Deck[]; activeId: string };
       if (Array.isArray(s.decks) && s.decks.length) {
         const decks = s.decks.map((d) => {
-          const base = blankDeck(d.name || "내 덱");
+          const base = blankDeck(d.name || "내 덱", true);
           return normalizeDeck({
             ...base,
             ...d,
@@ -67,7 +68,7 @@ function loadDecks(): { decks: Deck[]; activeId: string } {
     const legacy = localStorage.getItem(LEGACY_KEY);
     if (legacy) {
       const s = JSON.parse(legacy) as Partial<Deck>;
-      const d = blankDeck("내 덱 1");
+      const d = blankDeck("내 덱 1", true);
       if (isDeck(s)) d.players = s.players;
       if (s.chem) d.chem = { ...d.chem, ...s.chem };
       if (s.flags) d.flags = { ...d.flags, ...s.flags };
@@ -112,6 +113,7 @@ export default function App() {
   const [activeId, setActiveId] = useState(boot.activeId);
   const [tables, setTables] = useState<SkillTables>(loadTables);
   const [selected, setSelected] = useState<number | null>(null);
+  const [lineupMode, setLineupMode] = useState<"illustration" | "table">("illustration");
   const [tab, setTab] = useState<"lineup" | "skills" | "ranking" | "news">("lineup");
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "dark");
   const [modal, setModal] = useState<"inquiry" | "patch" | "guide" | null>(null);
@@ -402,25 +404,33 @@ export default function App() {
         ))}
       </div>
 
-      {tab === "lineup" && (
-        <div className="lineup-layout">
-          <div>
-            <LineupView players={players} results={results} onSelect={setSelected}
-              bullpenControls={<BullpenControls players={players} tactics={deck.bullpenTactics} setCount={setBullpenCount}
-                setTactics={(bullpenTactics) => patchDeck({ bullpenTactics })} />} />
-            <ChemPanel
-              chem={chem} setChem={(c) => patchDeck({ chem: c })}
-            />
+      {tab === "lineup" && <>
+        <div className="lineup-view-bar"><span>라인업 보기</span><div role="group" aria-label="라인업 보기 방식">
+          <button aria-pressed={lineupMode === "illustration"} onClick={() => setLineupMode("illustration")}>일러스트</button>
+          <button aria-pressed={lineupMode === "table"} onClick={() => setLineupMode("table")}>표 보기</button>
+        </div></div>
+        {lineupMode === "table" ? <>
+          <LineupTable deck={deck} results={results} onSelect={setSelected} />
+          <details className="card sheet-settings"><summary>불펜 배치 · 투수 전술 변경</summary>
+            <BullpenControls players={players} tactics={deck.bullpenTactics} setCount={setBullpenCount}
+              setTactics={(bullpenTactics) => patchDeck({ bullpenTactics })} />
+          </details>
+          <div className="sheet-settings-grid">
+            <details className="card sheet-settings"><summary>팀 버프 · 케미스트리 변경</summary><ChemPanel chem={chem} setChem={chem => patchDeck({ chem })} /></details>
+            <details className="card sheet-settings"><summary>팀덱코 · 스페셜 덱코 변경</summary><DeckScorePanel flags={flags}
+              toggleFlag={k => patchDeck({ flags: { ...flags, [k]: !flags[k] } })} setRowSide={pickRowSide}
+              yearInputs={yearInputs} setYearInput={(r, v) => patchDeck({ yearInputs: { ...yearInputs, [r]: v } })} /></details>
           </div>
-          <aside>
-            <DeckScorePanel
-              flags={flags} toggleFlag={(k) => patchDeck({ flags: { ...flags, [k]: !flags[k] } })}
-              setRowSide={(region, row, side) => pickRowSide(region, row, side)}
-              yearInputs={yearInputs} setYearInput={(r, v) => patchDeck({ yearInputs: { ...yearInputs, [r]: v } })}
-            />
-          </aside>
-        </div>
-      )}
+        </> : <div className="lineup-layout"><div>
+          <LineupView players={players} results={results} onSelect={setSelected}
+            bullpenControls={<BullpenControls players={players} tactics={deck.bullpenTactics} setCount={setBullpenCount}
+              setTactics={(bullpenTactics) => patchDeck({ bullpenTactics })} />} />
+          <ChemPanel chem={chem} setChem={chem => patchDeck({ chem })} />
+        </div><aside><DeckScorePanel flags={flags}
+          toggleFlag={k => patchDeck({ flags: { ...flags, [k]: !flags[k] } })} setRowSide={pickRowSide}
+          yearInputs={yearInputs} setYearInput={(r, v) => patchDeck({ yearInputs: { ...yearInputs, [r]: v } })} /></aside></div>}
+        <details className="card"><summary>선수별 점수와 덱코 상세 보기</summary><ResultPanel players={players} results={results} /></details>
+      </>}
 
       {tab === "news" && <NewsTab />}
 

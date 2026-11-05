@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "node scripts/verify-all.cjs",
-    "test:db": "node scripts/verify-passwords.cjs"
+    "test:db": "node scripts/verify-passwords.cjs && node scripts/verify-ranking-db.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
@@ -23,6 +23,7 @@
     "@types/node": "^22.20.2",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
+    "tsx": "^4.23.15",
     "typescript": "5.8.3"
   }
 }

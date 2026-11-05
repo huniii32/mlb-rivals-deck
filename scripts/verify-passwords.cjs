@@ -2,7 +2,7 @@ const fs=require('node:fs');const path=require('node:path');const {PGlite}=requi
 let pass=0;function check(name,ok){if(!ok)throw Error(name);pass++;}
 (async()=>{const db=new PGlite({extensions:{pgcrypto}});const sql=name=>fs.readFileSync(path.join(__dirname,name),'utf8');try{
  await db.exec('create role anon; create role authenticated;');
- for(const f of ['supabase_schema.sql','supabase_mig_ranking_delete.sql','supabase_mig_rate_limit.sql','supabase_mig_inquiry_admin.sql','supabase_mig_owner_codes.sql','supabase_mig_bullpen.sql','supabase_mig_deck_passwords.sql'])await db.exec(sql(f));
+ for(const f of ['supabase_schema.sql','supabase_mig_ranking_delete.sql','supabase_mig_rate_limit.sql','supabase_mig_inquiry_admin.sql','supabase_mig_owner_codes.sql','supabase_mig_ranking_upsert.sql','supabase_mig_bullpen.sql','supabase_mig_deck_passwords.sql'])await db.exec(sql(f));
  const payload={id:'test-deck',name:'첫 번째 덱',players:Array.from({length:21},()=>({name:'P'})),password:'must-not-be-public',rank:{token:'must-not-be-public'}};
  const create=(client,local,name='첫 번째 덱',password='test-password-123')=>db.query('select public.create_ranking_password($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb) as r',[client,local,password,name,100,100,100,100,21,JSON.stringify(payload)]).then(r=>r.rows[0].r);
  const call=(fn,types,values)=>db.query(`select public.${fn}(${types.map((t,i)=>'$'+(i+1)+'::'+t).join(',')}) as r`,values).then(r=>r.rows[0].r);

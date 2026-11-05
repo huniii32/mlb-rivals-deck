@@ -29,6 +29,8 @@
 
 프런트엔드 배포 전에 Supabase SQL Editor에서 관리자 권한으로 순서대로 실행한다.
 기존 `supabase_mig_owner_codes.sql`이 적용된 DB를 전제로 한다.
+레거시 `supabase_mig_ranking_upsert.sql`도 사용할 경우 비밀번호 마이그레이션보다 먼저
+적용한다. 비밀번호 전환 뒤 구 등록 RPC의 실행 권한을 다시 열지 않는다.
 
 1. `scripts/supabase_mig_bullpen.sql`
 2. `scripts/supabase_mig_deck_passwords.sql`
@@ -49,3 +51,10 @@
 - `npm test`: 기존 계산·엑셀 가져오기·불펜·신규 스킬 27항목·덱코 86선택·연도 3조건·수동 최종값 갱신.
 - `npm run test:db`: 실제 PostgreSQL 엔진에서 비밀번호 RPC, 복수 기기 권한, 잘못된 비밀번호·토큰 거절, 공개 접근 제한, 초기화 백업·재실행.
 - `npm run build`: TypeScript 검사와 배포 빌드.
+
+## 라인업 보기
+
+기본 화면은 일러스트이며 상단의 표 보기 버튼으로 한 장 요약표로 전환한다.
+두 보기는 같은 선수 데이터와 계산 엔진 결과를 사용한다. 표에서 선수명을 누르면
+기존 상세 편집창이 열린다. 표 아래의 접힌 설정에서 불펜 배치·전술·팀 버프·덱코를
+수정할 수 있다. 새로고침하면 일러스트로 시작하며 저장된 덱 데이터는 유지된다.
