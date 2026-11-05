@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Kind, SkillTables } from "../lib/engine";
 import { LOOKUP, fmtScore, skillScore, suggestSkills } from "../lib/engine";
+import { NEW_SKILLS } from "../lib/skillUpdates";
 
 /** 스킬 입력 콤보박스: 포커스하면 전체 목록, 타이핑하면 오타 보정 검색 결과 */
 export function SkillInput({ kind, value, onChange, tables }: {
@@ -88,6 +89,7 @@ export function SkillSlot({ label, n, kind, value, tables, onChange }: {
   onChange: (v: string) => void;
 }) {
   const sc = value.trim() ? skillScore(kind, value, tables) : 0;
+  const detail = NEW_SKILLS.find(s => s.kind === kind && s.name === value);
   return (
     <label>
       <span className="sk-head">{label}{n}
@@ -95,6 +97,7 @@ export function SkillSlot({ label, n, kind, value, tables, onChange }: {
         {sc === null && <b className="pill bad-pill">표없음</b>}
       </span>
       <SkillInput kind={kind} value={value} tables={tables} onChange={onChange} />
+      {detail && <small className="muted">{detail.formula} · <a href={detail.source} target="_blank" rel="noreferrer">공식 효과 근거</a></small>}
     </label>
   );
 }

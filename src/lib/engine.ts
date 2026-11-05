@@ -1,5 +1,6 @@
 import lookup from "../data/lookup.json";
 import deckdata from "../data/deckrules.json";
+import { NEW_SKILLS } from "./skillUpdates";
 
 // 엑셀(MLB라이벌_덱관리프로그램_260910.xlsx) 로직의 웹 이식.
 // 수식 출처: 라인업 시트 J/O/P/D열, 강화/포훈/초월/스킬점수 시트, 덱코(BF:HL) 규칙 파서 추출.
@@ -21,7 +22,11 @@ interface Lookup {
   cards: string[];
   chem: Record<string, string[]>;
 }
-export const LOOKUP = lookup as Lookup;
+export const LOOKUP: Lookup = {
+  ...lookup,
+  batter: [...lookup.batter, ...NEW_SKILLS.filter(s => s.kind === "batter")],
+  pitcher: [...lookup.pitcher, ...NEW_SKILLS.filter(s => s.kind === "pitcher")],
+};
 
 interface DeckData {
   conds: Cond[];
@@ -78,6 +83,7 @@ export interface PlayerInput {
   // 구버전 덱·공유링크 호환을 위해 optional로 둠 — 없으면 0으로 취급.
   blackPos?: [number | "", number | "", number | ""];
   blackBoost?: [number | "", number | "", number | ""];
+  leaderBonus?: [number | "", number | "", number | ""]; // 게임에 표시된 리더 영향력 합계
   skillB: boolean; // 레거시(AQ): 항상 +3 적용이라 무시됨. 구 덱링크 호환용.
   skills: [string, string, string, string];
   finalOv: [number | "", number | "", number | ""];
@@ -94,7 +100,7 @@ interface EvalCtx {
 }
 
 const num = (v: number | "" | null | undefined): number =>
-  typeof v === "number" && !isNaN(v) ? v : 0;
+  typeof v === "number" && Number.isFinite(v) ? v : 0;
 
 function evVal(c: Cond, ctx: EvalCtx): string | number | boolean {
   switch (c.t) {
@@ -200,11 +206,12 @@ export function skillScore(
   if (!n) return null;
   const key = `${kind}:${n}`;
   if (tables.overrides[key] !== undefined) return tables.overrides[key];
-  const custom = tables.customs.find((c) => c.kind === kind && c.name === n);
+  const custom = tables.customs.find((c) => c.kind === kind && normalizeSkillKey(c.name) === normalizeSkillKey(n));
   if (custom) return custom.score;
   const list = kind === "batter" ? LOOKUP.batter : LOOKUP.pitcher;
-  const found = list.find((s) => s.name === n);
-  return found ? found.score : null;
+  // 공백·유니코드 표기 차이만 보정. 오타/조건/등급은 임의로 추측하지 않는다.
+  const found = list.find((s) => normalizeSkillKey(s.name) === normalizeSkillKey(n));
+  return found ? tables.overrides[`${kind}:${found.name}`] ?? found.score : null;
 }
 
 /** 점수 표시용: 소수 둘째자리까지 반올림, 끝의 0은 생략 (15.899999878 → 15.9) */
@@ -215,6 +222,7 @@ const normKey = (s: string): string => s.replace(/\s+/g, "");
 /** 카드가 시그니처 블랙 계열(시그니처 블랙/WBC/FA 전부 포함)인지 — 공백 무시 매칭 */
 export const isSigBlackCard = (card: string): boolean => normKey(card).includes("시그니처블랙");
 const normSkill = (s: string): string => s.replace(/\s+/g, "").toLowerCase();
+export const normalizeSkillKey = (s: string): string => s.normalize("NFKC").replace(/[\s\u200B-\u200D\uFEFF]/g, "").toLowerCase();
 
 /** 구 스킬명 → 현행명. 저장된 덱·표에 옛 이름이 남아있으면 로드 시 치환. */
 const SKILL_RENAMES: Record<string, string> = {
@@ -311,7 +319,7 @@ function tableBonus(
   kind: TableKind,
   tables: SkillTables,
 ): { v: number; miss: boolean } {
-  if (lv === "" || lv === null) return { v: 0, miss: false };
+  if (lv === "" || lv === null || lv === 0) return { v: 0, miss: false };
   // 엑셀 원본 결함: 카드 드롭다운('FA 시그니처 블랙')과 표 키('FA시그니처 블랙')의 띄어쓰기가
   // 달라 FA 계열이 전부 #N/A가 난다. 공백 제거 매칭으로 수정 (WBC 등 표 자체에 없는 카드는 그대로 경고).
   const table = getTable(kind, tables);
@@ -331,6 +339,7 @@ function tableBonus(
   if (!entry) return { v: 0, miss: true };
   const arr = entry[1];
   const idx = kind === "transcend" ? (lv as number) : (lv as number) - 1;
+  if (!Number.isInteger(idx)) return { v: 0, miss: true };
   if (idx < 0 || idx >= arr.length) return { v: 0, miss: true };
   return { v: arr[idx] ?? 0, miss: false };
 }
@@ -389,7 +398,8 @@ export function calcPlayer(
     const a =
       num(p.base[i]) + num(p.train[i]) + num(p.spec[i]) +
       (t ?? 0) + (e ?? 0) + (h ?? 0) + num(p.extra[i]) + num(p.synergy[i]) + num(p.locker[i]) +
-      num(p.blackPos?.[i]) + num(p.blackBoost?.[i]) + ar + (deckSums[i] ?? 0);
+      (isSigBlackCard(p.card) ? num(p.blackPos?.[i]) + num(p.blackBoost?.[i]) : 0) +
+      num(p.leaderBonus?.[i]) + ar + (deckSums[i] ?? 0);
     auto.push(Math.round(a * 100) / 100);
     const ov = p.finalOv[i];
     manual.push(ov !== "");
@@ -407,6 +417,7 @@ export function calcPlayer(
       (chem.wbcB === "S2" ? 2 : chem.wbcB === "S1" ? 1 : chem.wbcB === "S" ? 1 : 0);
     ability = (final[0] + pb) * 1.1 + (final[1] + ab) * 0.9 + final[2] * 0.4;
   } else {
+    if (chem.pitchChem === "S2") warnings.push("투수 케미스트리 S2는 팀 버프 수치가 미확인입니다. 현재 팀 버프에 포함되지 않습니다.");
     const oc = chem.commander;
     const pc = chem.catcher;
     const tc = chem.pitchChem;
@@ -424,7 +435,14 @@ export function calcPlayer(
     ability = (final[0] + chg) * 1.15 + (final[1] + ctl) * 1.2;
   }
 
-  const scores = p.skills.map((s) => (s.trim() ? skillScore(p.kind, s, tables) : 0));
+  const scores = p.skills.map((s) => {
+    const entry = NEW_SKILLS.find(e => e.kind === p.kind && normalizeSkillKey(e.name) === normalizeSkillKey(s));
+    if (entry?.rpOnly && !/^RP[1-3]$/.test(p.pos)) {
+      warnings.push(`${s}: 중계 투수 전용 효과 미적용`);
+      return 0;
+    }
+    return s.trim() ? skillScore(p.kind, s, tables) : 0;
+  });
   if (scores.slice(0, 3).some((s) => s === null)) {
     warnings.push("스킬 1~3 중 점수표에 없는 스킬 있음");
   }
@@ -437,7 +455,10 @@ export function calcPlayer(
     const bad = p.skills.filter((s, i) => s.trim() && scores[i] === null);
     if (bad.length) warnings.push(`점수 없음: ${bad.join(", ")}`);
   }
-  const total = (skill ?? 0) + ability;
+  // 미인식 슬롯 하나 때문에 나머지 정상 스킬 점수까지 사라지지 않게 한다.
+  const knownSkill = scores.reduce<number>((sum, score) => sum + (score ?? 0), 0);
+  const total = knownSkill + ability;
+  if (scores.some(s => s === null)) warnings.push("미인식 스킬을 제외한 임시 점수입니다. 스킬명을 선택해 확정하세요.");
   return {
     auto, final, manual, trans, enh, poh,
     deck: [deckSums[0] ?? 0, deckSums[1] ?? 0, deckSums[2] ?? 0],

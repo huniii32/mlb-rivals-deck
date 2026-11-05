@@ -39,7 +39,7 @@ export function rankArgs(d: Deck, tables: SkillTables) {
   return {
     s,
     args: {
-      p_name: d.name.slice(0, 50),
+      p_name: d.name.trim().slice(0, 50),
       p_total: s.total, p_sp: s.sp, p_rp: s.rp, p_bt: s.bt, p_named: s.named,
       p_deck: JSON.parse(JSON.stringify(d)) as object,
     },

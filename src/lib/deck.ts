@@ -71,6 +71,7 @@ export const normalizePlayer = (p: PlayerInput): PlayerInput => ({
   locker: p.locker ?? ["", "", ""],
   blackPos: p.blackPos ?? ["", "", ""],
   blackBoost: p.blackBoost ?? ["", "", ""],
+  leaderBonus: p.leaderBonus ?? ["", "", ""],
   skills: (p.skills ?? ["", "", "", ""]).map((s) =>
     migrateSkillName(p.kind, s)) as [string, string, string, string],
 });

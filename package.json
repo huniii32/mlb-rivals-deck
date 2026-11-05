@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "tsx scripts/verify-engine.ts && tsx scripts/verify-full.ts && tsx scripts/verify-import.ts && tsx scripts/verify-ranksync.ts && tsx scripts/verify-deckfile.ts && tsx scripts/verify-ownercode.ts && tsx scripts/verify-improvements.ts && node scripts/verify-ranking-db.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
@@ -17,9 +18,11 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.12",
     "@types/node": "^22.20.2",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
+    "tsx": "^4.23.15",
     "typescript": "5.8.3"
   }
 }
