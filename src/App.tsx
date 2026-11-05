@@ -2,7 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Kind, PlayerInput, SkillTables } from "./lib/engine";
 import { deckPlayerResults, flagDefaults, migrateSkillName } from "./lib/engine";
 import type { Deck } from "./lib/deck";
-import { DEFAULT_CHEM, LINEUP, YEAR_ANCHOR, blankPlayer, isDeck, newId, normalizePlayer } from "./lib/deck";
+import { DEFAULT_CHEM, LINEUP, YEAR_ANCHOR, blankPlayer, isDeck, newId, normalizeDeck, normalizeRoster, resizeBullpen } from "./lib/deck";
+import { DEFAULT_TACTICS, ROLE_LIMITS, bullpenCounts, bullpenRole } from "./lib/bullpen";
+import type { BullpenRole } from "./lib/bullpen";
+import { BullpenControls } from "./components/BullpenControls";
+import { applyDeckUpdate } from "./lib/playerUpdates";
+import { DeckSaveModal } from "./components/DeckSaveModal";
+import { passwordError, passwordResult, validDeckName, type PasswordCredential } from "./lib/deckPassword";
+import { getClientId, supabase } from "./lib/supabase";
 import { LineupView } from "./components/LineupView";
 import { PlayerEditor } from "./components/PlayerEditor";
 import { ChemPanel, DeckScorePanel } from "./components/DeckPanel";
@@ -34,6 +41,7 @@ function blankDeck(name: string): Deck {
     chem: { ...DEFAULT_CHEM },
     flags: flagDefaults(),
     yearInputs: Object.fromEntries(Object.values(YEAR_ANCHOR).map((r) => [r, ""])) as Deck["yearInputs"],
+    bullpenTactics: { ...DEFAULT_TACTICS },
   };
 }
 
@@ -45,11 +53,11 @@ function loadDecks(): { decks: Deck[]; activeId: string } {
       if (Array.isArray(s.decks) && s.decks.length) {
         const decks = s.decks.map((d) => {
           const base = blankDeck(d.name || "내 덱");
-          return {
+          return normalizeDeck({
             ...base,
             ...d,
-            players: isDeck(d) ? d.players.map(normalizePlayer) : base.players,
-          };
+            players: isDeck(d) ? d.players : base.players,
+          });
         });
         const activeId = decks.some((d) => d.id === s.activeId) ? s.activeId : decks[0].id;
         return { decks, activeId };
@@ -64,12 +72,12 @@ function loadDecks(): { decks: Deck[]; activeId: string } {
       if (s.chem) d.chem = { ...d.chem, ...s.chem };
       if (s.flags) d.flags = { ...d.flags, ...s.flags };
       if (s.yearInputs) d.yearInputs = { ...d.yearInputs, ...s.yearInputs };
-      return { decks: [d], activeId: d.id };
+      return { decks: [normalizeDeck(d)], activeId: d.id };
     }
   } catch {
     // 무시하고 새로 생성
   }
-  const d = blankDeck("내 덱 1");
+  const d = blankDeck("");
   return { decks: [d], activeId: d.id };
 }
 
@@ -108,7 +116,8 @@ export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "dark");
   const [modal, setModal] = useState<"inquiry" | "patch" | "guide" | null>(null);
   const [preview, setPreview] = useState<Deck | null>(null);
-  const { links, setLinks, status, code, setCode } = useRankSync(decks, tables);
+  const { links, setLinks, status, code } = useRankSync(decks, tables);
+  const [saveOpen, setSaveOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const xlRef = useRef<HTMLInputElement>(null);
 
@@ -122,7 +131,7 @@ export default function App() {
   }, [theme]);
 
   useEffect(() => {
-    localStorage.setItem(DECKS_KEY, JSON.stringify({ decks, activeId }));
+    localStorage.setItem(DECKS_KEY, JSON.stringify({ decks: decks.filter((d) => validDeckName(d.name)), activeId }));
   }, [decks, activeId]);
 
   useEffect(() => {
@@ -136,6 +145,7 @@ export default function App() {
         setSelected(null);
         setModal(null);
         setPreview(null);
+        setSaveOpen(false);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -145,7 +155,7 @@ export default function App() {
   const results = useMemo(() => deckPlayerResults(deck, tables), [deck, tables]);
 
   const patchDeck = (patch: Partial<Deck>) =>
-    setDecks(decks.map((d) => (d.id === deck.id ? { ...d, ...patch, updatedAt: Date.now() } : d)));
+    setDecks((prev) => prev.map((d) => (d.id === deck.id ? { ...applyDeckUpdate(d, patch, tables), updatedAt: Date.now() } : d)));
 
   // 행별 좌/우 택1: 고른 쪽만 켜고 반대쪽은 끈다. 이미 켜진 쪽을 다시 누르면 둘 다 끈다.
   const pickRowSide = (region: string, row: number, side: "L" | "R") => {
@@ -162,27 +172,65 @@ export default function App() {
     patchDeck({ flags: next });
   };
 
-  const update = (excelRow: number, p: Partial<PlayerInput>) =>
-    patchDeck({ players: players.map((x) => (x.excelRow === excelRow ? { ...x, ...p } : x)) });
+  const update = (excelRow: number, p: Partial<PlayerInput>) => {
+    const current = players.find((x) => x.excelRow === excelRow);
+    if (p.bullpenRole && current && p.bullpenRole !== bullpenRole(current) && bullpenCounts(players)[p.bullpenRole] >= ROLE_LIMITS[p.bullpenRole]) return;
+    patchDeck({ players: normalizeRoster(players.map((x) => (x.excelRow === excelRow ? { ...x, ...p } : x))) });
+  };
+
+  const setBullpenCount = (role: BullpenRole, count: number) => {
+    const next = resizeBullpen(players, role, count);
+    const removed = players.filter((p) => p.name.trim() && !next.some((n) => n.excelRow === p.excelRow));
+    if (removed.length && !confirm(`${removed.map((p) => p.name).join(", ")} 선수를 불펜에서 제외할까요?`)) return;
+    patchDeck({ players: next });
+    if (selected !== null && !next.some((p) => p.excelRow === selected)) setSelected(null);
+  };
 
   const selPlayer = selected === null ? null : players.find((p) => p.excelRow === selected) ?? null;
   const selRes = selPlayer ? results[players.indexOf(selPlayer)] : null;
 
   const newDeck = () => {
-    const d = blankDeck(`내 덱 ${decks.length + 1}`);
+    const draft = decks.find((d) => !validDeckName(d.name));
+    if (draft) { setActiveId(draft.id); setSaveOpen(true); return; }
+    const d = blankDeck("");
     setDecks([...decks, d]);
     setActiveId(d.id);
     setSelected(null);
+    setSaveOpen(true);
   };
   const renameDeck = () => {
-    const name = prompt("덱 이름", deck.name);
-    if (name?.trim()) patchDeck({ name: name.trim() });
+    setSaveOpen(true);
+  };
+  const saveDeck = async (name: string, password: string) => {
+    if (!validDeckName(name)) throw new Error("덱 이름을 입력하세요.");
+    const named = { ...deck, name: name.trim(), updatedAt: Date.now() };
+    setDecks((prev) => prev.map((d) => d.id === named.id ? named : d));
+    if (!supabase) return;
+    const existing = Object.entries(links).find(([, l]) => l.deckId === named.id);
+    try {
+      const { args } = rankArgs(named, tables);
+      if (existing?.[1].password) {
+        const { data, error } = await supabase.rpc("update_ranking_password", { p_id: existing[0], p_token: existing[1].token, ...args });
+        if (error) throw error;
+        if (!data) throw new Error("ownership_required");
+        setLinks((prev) => ({ ...prev, [existing[0]]: { ...existing[1], sig: deckSig(args) } }));
+      } else {
+        const { data, error } = await supabase.rpc("create_ranking_password", {
+          p_client_id: getClientId(), p_deck_id: named.id, p_password: password, ...args,
+          p_existing_id: existing?.[0] ?? null, p_token: existing?.[1].token ?? null, p_code: existing?.[1].owned ? code : null,
+        });
+        if (error) throw error;
+        const r = passwordResult(data);
+        setLinks((prev) => ({ ...prev, [r.id]: { deckId: named.id, token: r.token, password: true, sig: deckSig(args) } }));
+      }
+      window.dispatchEvent(new Event("rivals:ranking-updated"));
+    } catch (e) { throw new Error(`이 기기에 저장했습니다. ${passwordError(e)}`); }
   };
   const deleteDeck = () => {
     if (decks.length <= 1) {
       if (!confirm(`마지막 덱이라 삭제 대신 '${deck.name}' 내용을 비웁니다. 계속할까요?`)) return;
       const fresh = blankDeck(deck.name);
-      patchDeck({ players: fresh.players, chem: fresh.chem, flags: fresh.flags, yearInputs: fresh.yearInputs });
+      patchDeck({ players: fresh.players, chem: fresh.chem, flags: fresh.flags, yearInputs: fresh.yearInputs, bullpenTactics: fresh.bullpenTactics });
       setSelected(null);
       return;
     }
@@ -201,8 +249,8 @@ export default function App() {
     URL.revokeObjectURL(a.href);
   };
   // 랭킹 연동 덱은 다른 기기에서 같은 행을 갱신할 수 있게 id·토큰을 파일에만 담는다
-  const exportDeck = () => download(deck.name, withRank(deck, links));
-  const exportAll = () => download("내 덱 전체", buildBundle(decks, links));
+  const exportDeck = () => { if (!validDeckName(deck.name)) { setSaveOpen(true); return; } download(deck.name, withRank(deck, links)); };
+  const exportAll = () => { if (!validDeckName(deck.name)) { setSaveOpen(true); return; } download("내 덱 전체", buildBundle(decks.filter((d) => validDeckName(d.name)), links)); };
   const importDeck = (f: File | undefined) => {
     if (!f) return;
     const rd = new FileReader();
@@ -227,7 +275,7 @@ export default function App() {
         setLinks((prev) => {
           const next = { ...prev };
           for (const { nd, rank } of linked) {
-            next[rank!.id] = { token: rank!.token, deckId: nd.id, sig: deckSig(rankArgs(nd, tables).args) };
+            next[rank!.id] = { token: rank!.token, ...(rank!.password ? { password: true } : {}), deckId: nd.id, sig: deckSig(rankArgs(nd, tables).args) };
           }
           return next;
         });
@@ -269,18 +317,21 @@ export default function App() {
   };
 
   // 가져온 덱 데이터로 새 덱 만들기 (새 id, 선수 정규화). rank 같은 파일 전용 키는 parseDeckFile에서 이미 제거됨
-  const buildDeck = (d: Deck, fallbackName: string): Deck => ({
+  const buildDeck = (d: Deck, fallbackName: string): Deck => normalizeDeck({
     ...blankDeck(d.name || fallbackName),
     ...d,
-    players: d.players.map(normalizePlayer),
+    players: d.players,
     id: newId(),
     updatedAt: Date.now(),
   });
   // 내 덱 코드로 서버에서 불러온 글: 새 로컬 덱 + 소유 연결 (sig 선반영 → 복원만으로는 서버에 쓰지 않음)
-  const restoreDeck = (d: Deck, rowId: string) => {
+  const restoreDeck = (d: Deck, rowId: string, credential: PasswordCredential) => {
     const nd = buildDeck(d, "불러온 덱");
-    setDecks((prev) => [...prev, nd]);
-    setLinks((prev) => ({ ...prev, [rowId]: { deckId: nd.id, owned: true, sig: deckSig(rankArgs(nd, tables).args) } }));
+    const currentId = links[rowId]?.deckId;
+    if (currentId && decks.some((x) => x.id === currentId)) nd.id = currentId;
+    setDecks((prev) => prev.some((x) => x.id === nd.id) ? prev.map((x) => x.id === nd.id ? nd : x) : [...prev, nd]);
+    setActiveId(nd.id);
+    setLinks((prev) => ({ ...prev, [rowId]: { deckId: nd.id, ...credential, sig: deckSig(rankArgs(nd, tables).args) } }));
   };
   const addDeckData = (d: unknown, fallbackName: string) => {
     const entry = parseDeckFile(d)[0];
@@ -318,10 +369,11 @@ export default function App() {
         <div className="row">
           <label>내 덱{" "}
             <select value={deck.id} onChange={(e) => { setActiveId(e.target.value); setSelected(null); }}>
-              {decks.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              {decks.map((d) => <option key={d.id} value={d.id}>{d.name || "이름 없는 덱 · 저장 전"}</option>)}
             </select>
           </label>
           <button onClick={newDeck}>+ 새 덱</button>
+          <button className="primary" onClick={() => setSaveOpen(true)}>덱 저장</button>
           <button onClick={renameDeck}>이름변경</button>
           <button onClick={deleteDeck}>삭제</button>
           <button onClick={exportDeck}>내보내기</button>
@@ -338,7 +390,7 @@ export default function App() {
           <input ref={xlRef} type="file" accept=".xlsx,.xlsm,.xls" style={{ display: "none" }}
             onChange={(e) => { importExcel(e.target.files?.[0]); e.target.value = ""; }} />
         </div>
-        <p className="muted">덱은 이 브라우저에만 저장됩니다 — 남이 내 덱을 볼 수 없고, 나도 남 덱을 못 봅니다. 기기 이동은 내보내기(현재 덱) 또는 전체 내보내기 → 가져오기로.</p>
+        <p className="muted">{validDeckName(deck.name) ? "변경사항은 자동 저장되며, 랭킹에 연결된 덱은 수정 즉시 같은 글에 반영됩니다." : "덱 이름을 정하고 ‘덱 저장’을 눌러야 저장됩니다. 이름 없는 덱은 새로고침하면 사라집니다."} 다른 기기에서는 덱랭킹의 가져오기에서 비밀번호를 입력하세요.</p>
         <p className="muted">내보낸 파일에는 랭킹 수정 권한(비밀 토큰)이 들어 있어요 — 다른 사람에게 보내지 마세요.</p>
       </div>
 
@@ -353,7 +405,9 @@ export default function App() {
       {tab === "lineup" && (
         <div className="lineup-layout">
           <div>
-            <LineupView players={players} results={results} onSelect={setSelected} />
+            <LineupView players={players} results={results} onSelect={setSelected}
+              bullpenControls={<BullpenControls players={players} tactics={deck.bullpenTactics} setCount={setBullpenCount}
+                setTactics={(bullpenTactics) => patchDeck({ bullpenTactics })} />} />
             <ChemPanel
               chem={chem} setChem={(c) => patchDeck({ chem: c })}
             />
@@ -382,7 +436,7 @@ export default function App() {
         <>
           <SharePanel
             decks={decks} tables={tables} activeId={deck.id}
-            links={links} setLinks={setLinks} code={code} setCode={setCode} onRestoreDeck={restoreDeck}
+            links={links} setLinks={setLinks} code={code} onRestoreDeck={restoreDeck} onSaveDeck={() => setSaveOpen(true)}
             onSelectDeck={(id) => { setActiveId(id); setSelected(null); }}
             onImportDeck={(d) => addDeckData(d, "공유받은 덱")}
             onPreviewDeck={(d) => setPreview(d)}
@@ -395,6 +449,9 @@ export default function App() {
       {modal === "guide" && <ScoreGuideModal close={() => setModal(null)} />}
       {modal === "patch" && <PatchNotesModal close={() => setModal(null)} />}
       {preview && <DeckPreviewModal deck={preview} tables={tables} close={() => setPreview(null)} />}
+      {saveOpen && <DeckSaveModal key={deck.id} initialName={deck.name} remote={!!supabase}
+        needsPassword={!!supabase && !Object.values(links).some((l) => l.deckId === deck.id && l.password)}
+        save={saveDeck} close={() => setSaveOpen(false)} />}
 
       {selPlayer && selRes && (
         <div className="modal-overlay" onClick={() => setSelected(null)}>
@@ -405,6 +462,7 @@ export default function App() {
               update={(patch) => update(selPlayer.excelRow, patch)}
               close={() => setSelected(null)}
               tables={tables}
+              bullpenCounts={bullpenCounts(players)}
             />
           </div>
         </div>

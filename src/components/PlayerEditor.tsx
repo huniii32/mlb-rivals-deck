@@ -3,20 +3,24 @@ import { BATTER_STATS, LOOKUP, PITCHER_STATS, isSigBlackCard } from "../lib/engi
 import { PlayerArt, gradeColor } from "./CardArt";
 import { Num } from "./inputs";
 import { SkillSlot } from "./SkillInput";
+import { BULLPEN_ROLES, ROLE_LABELS, ROLE_LIMITS, bullpenRole } from "../lib/bullpen";
+import type { BullpenRole } from "../lib/bullpen";
 
 /** 라인업에서 포지션 클릭 시 열리는 단일 선수 편집 팝업 */
 export function PlayerEditor({
-  p, res, update, close, tables,
+  p, res, update, close, tables, bullpenCounts,
 }: {
   p: PlayerInput;
   res: PlayerResult;
   update: (patch: Partial<PlayerInput>) => void;
   close: () => void;
   tables: SkillTables;
+  bullpenCounts?: Record<BullpenRole, number>;
 }) {
   const kind: Kind = p.kind;
   const stats = kind === "batter" ? BATTER_STATS : PITCHER_STATS;
   const isBlack = isSigBlackCard(p.card);
+  const role = bullpenRole(p);
   const setArr = (
     field: "base" | "train" | "spec" | "extra" | "synergy" | "locker" | "blackPos" | "blackBoost" | "finalOv",
     i: number, v: number | "",
@@ -52,9 +56,14 @@ export function PlayerEditor({
 
       <div className="ed-sec">기본 정보</div>
       <div className="ed-grid">
-        <label>포지션<input value={p.pos} onChange={(e) => update({ pos: e.target.value })} /></label>
+        <label>포지션<input value={p.pos} readOnly={!!role} onChange={(e) => update({ pos: e.target.value })} /></label>
+        {role && <label>불펜 역할
+          <select aria-label="불펜 역할" value={role} onChange={(e) => update({ bullpenRole: e.target.value as BullpenRole })}>
+            {BULLPEN_ROLES.map((r) => <option key={r} value={r} disabled={r !== role && (bullpenCounts?.[r] ?? 0) >= ROLE_LIMITS[r]}>{ROLE_LABELS[r]}</option>)}
+          </select>
+        </label>}
         <label>카드
-          <select value={p.card} onChange={(e) => update({ card: e.target.value })}>
+          <select aria-label="카드" value={p.card} onChange={(e) => update({ card: e.target.value })}>
             <option value="">— 선택 —</option>
             {LOOKUP.cards.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
@@ -71,14 +80,16 @@ export function PlayerEditor({
         )}
       </div>
 
-      <div className="ed-sec">스탯 (최종열에 직접 적으면 수동 고정 · 지우면 자동)</div>
+      <div className="ed-sec">스탯 · 강화·훈련·덱코 변경분 자동 반영</div>
+      <p className="muted">최종값을 직접 입력해도 강화·초월·훈련·덱코 변경분이 자동으로 반영됩니다. 훈련재분배 후에는 바뀐 훈련 수치만 입력하세요.{kind === "pitcher" ? " 전술은 최종 입력 후 가산됩니다." : ""}</p>
+      {p.finalOv.some((v) => v !== "") && <button onClick={() => update({ finalOv: ["", "", ""] })}>최종값을 자동 합계로 전환</button>}
       <div style={{ overflowX: "auto" }}>
       <table className="ed-stats">
         <thead>
           <tr><th>스탯</th><th>기본</th><th>훈련</th><th>특훈(리셋포함)</th><th title="포훈Lv로 자동 계산되는 포훈표 수치와 별개. 여기엔 게임 화면의 포지션훈련 '보너스' 수치만 입력(전체 포훈 수치 아님)">포지션훈련</th><th>시너지</th><th>라커룸</th>
             {isBlack && <th title="시그니처 블랙 전용 — 조견표가 없어 게임 화면 수치를 직접 입력">블랙포지션</th>}
             {isBlack && <th title="시그니처 블랙 전용 — 조견표가 없어 게임 화면 수치를 직접 입력">블랙부스트</th>}
-            <th>초월</th><th>강화</th><th>포훈</th><th>덱코</th><th>자동합</th><th>최종</th></tr>
+            <th>초월</th><th>강화</th><th>포훈</th><th>덱코</th><th>전술</th><th>자동합</th><th>{kind === "pitcher" ? "최종(전술 전)" : "최종"}</th></tr>
         </thead>
         <tbody>
           {stats.map((s, i) => (
@@ -96,8 +107,9 @@ export function PlayerEditor({
               <td className="calc">+{res.enh[i] ?? 0}</td>
               <td className="calc">+{res.poh[i] ?? 0}</td>
               <td className="calc">+{res.deck[i]}</td>
+              <td className="calc" data-testid="tactic-bonus">+{res.tactics[i]}</td>
               <td className="calc"><b>{res.auto[i]}</b></td>
-              <td><Num value={p.finalOv[i]} width={60} placeholder={String(res.auto[i])} onChange={(v) => setArr("finalOv", i, v)} /></td>
+              <td><Num value={p.finalOv[i]} width={60} placeholder={String(res.auto[i] - res.tactics[i])} onChange={(v) => setArr("finalOv", i, v)} /></td>
             </tr>
           ))}
         </tbody>
@@ -120,6 +132,7 @@ export function PlayerEditor({
       </div>
 
       <div className="ed-result">
+        {res.team !== 0 && <div><span>추가 팀 버프</span><b>+{res.team.toFixed(1)}</b></div>}
         <div><span>능력치</span><b>{res.ability.toFixed(1)}</b></div>
         <div><span>스킬점</span><b>{res.skill === null ? "표없음" : res.skill.toFixed(1)}</b></div>
         <div><span>최종점</span><b>{res.total.toFixed(1)}</b></div>

@@ -179,6 +179,19 @@ h4 { margin: 12px 0 6px; font-size: 13.5px; }
 .dc-grade { font-size: 10px; font-weight: 700; color: #e2e8f0; padding-bottom: 3px; position: relative; z-index: 1;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .prow { display: flex; gap: 12px; flex-wrap: wrap; }
+.deck-save-form { width: min(480px, calc(100vw - 24px)); display: flex; flex-direction: column; gap: 14px; }
+.deck-save-form label { display: flex; flex-direction: column; gap: 6px; }
+.deck-save-form input { width: 100%; }
+.rank-actions { display: flex; flex-wrap: wrap; gap: 5px; }
+.table-scroll { overflow-x: auto; }
+.deckscore-no-points { font-size: 10px; max-width: 75px; margin-left: 14px; }
+.bullpen-controls { border-top: 1px solid var(--border); margin-top: 20px; padding-top: 12px; }
+.bullpen-counts, .bullpen-tactics { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.bullpen-counts label, .bullpen-tactics label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.bullpen-tactics { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.bullpen-tactics span { font-size: 12px; }
+.bullpen-slot { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.bullpen-group h4 { margin: 16px 0 10px; }
 
 /* 게임식 일러스트 카드 (파란 메탈 프레임 + 금빛 불꽃) */
 .gcard {
@@ -368,7 +381,7 @@ details[open] .patchnote-brief { display: none; }
 }
 .deckscore-rows { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
 .deckscore-row { display: flex; align-items: center; gap: 20px; }
-.dia-pair { display: flex; gap: 20px; width: 124px; }
+.dia-pair { display: flex; gap: 20px; width: 124px; flex: none; }
 .dia-pair.centered { justify-content: center; }
 .deckscore-year { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700;
   color: var(--muted); margin-left: 4px; }

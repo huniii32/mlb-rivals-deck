@@ -10,6 +10,8 @@ const CHEM_LABELS: [keyof Chem, string][] = [
   ["batChem", "타자케미스트리"],
   ["wbcP", "WBC에이스(투수)"],
   ["wbcB", "WBC에이스(타자)"],
+  ["comebackFlag", "컴백 플래그(동점·열세)"],
+  ["lockdown", "락다운(CP 배치)"],
 ];
 
 const POS_LABEL: Record<number, string> = Object.fromEntries(LINEUP.map((l) => [l.row, l.pos]));
@@ -25,17 +27,18 @@ export function ChemPanel({ chem, setChem }: {
 }) {
   return (
     <div className="card">
-      <h3>케미스트리 (투수·타자·WBC·커맨더·포수리드)</h3>
+      <h3>팀 버프 · 케미스트리</h3>
       <div className="row">
         {CHEM_LABELS.map(([k, label]) => (
           <label key={k}>{label}{" "}
-            <select value={chem[k]} onChange={(e) => setChem({ ...chem, [k]: e.target.value })}>
+            <select aria-label={label} value={chem[k] ?? "X"} onChange={(e) => setChem({ ...chem, [k]: e.target.value })}>
               {(LOOKUP.chem[k] ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
           </label>
         ))}
       </div>
       <p className="muted">스킬의 커맨더·포수리드는 타자 능력치에만 반영, 투수 버프는 여기서 선택한 값으로 자동 반영(원본 로직 동일).</p>
+      <p className="muted">컴백 플래그는 동점·열세 조건을 적용할 때 팀 타자의 파워·정확을 S/S1 +3, S2 +4로 평가합니다. 락다운은 CP 배치 효과를 랭킹대전 9이닝 중 7~9회 비중으로 반영하며 중복 적용하지 않습니다.</p>
     </div>
   );
 }
@@ -95,7 +98,7 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
         <ul className="tight-list muted">
           <li>행마다 좌·우 중 하나만 선택 (다시 누르면 해제)</li>
           <li>연도행: 선수 연도가 입력 연도 기준 0~9년 이내면 +1</li>
-          <li>팀 덱 스코어: 전원에게 같은 보너스</li>
+          <li>팀 덱 스코어: 선택 효과 적용 (일부 카드·타순 조건 필요)</li>
           <li>포지션별 값 차이는 타순·카드·강화Lv·연도 조건 때문</li>
         </ul>
         <div className="deckscore-rows">
@@ -117,6 +120,7 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
                         <button key={s} className={`dia dia-opt${on ? " on" : ""}`}
                           title={`${rowLabel(g.row)} ${s === "L" ? "좌" : "우"}${on ? " (선택됨, 다시 누르면 해제)" : ""}`}
                           aria-pressed={on}
+                          aria-label={`${g.region === "team" ? "팀" : "스페셜"} 덱스코어 ${g.threshold ?? g.row} ${s === "L" ? "좌" : "우"}`}
                           onClick={() => {
                             const key = `${g.row}-${g.region}-${s}`;
                             // 한쪽만 있는 행이면 기존 체크 토글, 양쪽 행이면 택1 로직
@@ -131,8 +135,9 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
                   </span>
                 )}
                 {yearRow !== undefined && (
-                  <label className="deckscore-year">행{yearRow} 연도
+                  <label className="deckscore-year">기준 연도
                     <input
+                      aria-label={`스페셜 덱스코어 ${g.threshold} 기준 연도`}
                       type="number"
                       value={yearInputs[yearRow] ?? ""}
                       placeholder="예: 2020"
@@ -140,6 +145,7 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
                     />
                   </label>
                 )}
+                {g.region === "team" && (g.threshold === 330 || g.threshold === 345) && <span className="muted deckscore-no-points">평가 능력치 가산 없음</span>}
               </div>
             );
           })}

@@ -12,7 +12,7 @@ create table if not exists public.rankings (
   sp double precision not null default 0,
   rp double precision not null default 0,
   bt double precision not null default 0,
-  named integer not null default 0 check (named between 0 and 18),
+  named integer not null default 0 check (named between 0 and 21),
   deck_json jsonb,
   owner_token text,
   created_at timestamptz not null default now()

@@ -57,7 +57,7 @@ export function PlayerSummary({ p, res, tables }: {
     <div className="card">
       <h3>{p.name} <span className="muted">{p.pos} · {p.card} {p.year && `· ${p.year}`}</span></h3>
       <table className="ed-stats">
-        <thead><tr><th>스탯</th><th>기본</th><th>훈련</th><th>특훈</th><th>포지션</th><th>시너지</th><th>라커룸</th><th>초월</th><th>강화</th><th>포훈</th><th>덱코</th><th>자동</th><th>최종</th></tr></thead>
+        <thead><tr><th>스탯</th><th>기본</th><th>훈련</th><th>특훈</th><th>포지션</th><th>시너지</th><th>라커룸</th><th>초월</th><th>강화</th><th>포훈</th><th>덱코</th><th>전술</th><th>자동</th><th>최종</th></tr></thead>
         <tbody>
           {stats.map((s, i) => (
             <tr key={s} className={res.manual[i] ? "manual" : ""}>
@@ -68,6 +68,7 @@ export function PlayerSummary({ p, res, tables }: {
               <td className="calc">+{res.enh[i] ?? 0}</td>
               <td className="calc">+{res.poh[i] ?? 0}</td>
               <td className="calc">+{res.deck[i]}</td>
+              <td className="calc">+{res.tactics[i]}</td>
               <td className="calc"><b>{res.auto[i]}</b></td>
               <td><b>{res.final[i]}</b></td>
             </tr>
@@ -90,6 +91,7 @@ export function PlayerSummary({ p, res, tables }: {
         </tbody>
       </table>
       <div className="ed-result">
+        {res.team !== 0 && <div><span>추가 팀 버프</span><b>+{res.team.toFixed(1)}</b></div>}
         <div><span>능력치</span><b>{res.ability.toFixed(1)}</b></div>
         <div><span>스킬점</span><b>{res.skill === null ? "표없음" : res.skill.toFixed(1)}</b></div>
         <div><span>최종점</span><b>{res.total.toFixed(1)}</b></div>

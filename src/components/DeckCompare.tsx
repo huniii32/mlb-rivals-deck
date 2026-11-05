@@ -4,6 +4,17 @@ import type { SkillTables } from "../lib/engine";
 import { calcDeckTotal, deckPlayerResults } from "../lib/engine";
 import { LineupView } from "./LineupView";
 import { PlayerSummary } from "./DeckPreview";
+import { BULLPEN_ROLES, ROLE_LABELS, bullpenRole } from "../lib/bullpen";
+import type { PlayerResult } from "../lib/engine";
+
+function comparisonSlots(deck: Deck, results: PlayerResult[]) {
+  const counts = Object.fromEntries(BULLPEN_ROLES.map((r) => [r, 0]));
+  return deck.players.map((p, i) => {
+    const role = bullpenRole(p);
+    const n = role ? ++counts[role] : 0;
+    return { key: role ? `${role}:${n}` : `row:${p.excelRow}`, label: role ? `${ROLE_LABELS[role]} ${n}` : p.pos, p, res: results[i] };
+  });
+}
 
 const diffStyle = (d: number) => (d === 0 ? undefined : { color: d > 0 ? "var(--good)" : "var(--danger)" });
 const fmtDiff = (d: number) => `${d > 0 ? "+" : ""}${d.toFixed(1)}`;
@@ -21,26 +32,26 @@ export function DeckCompareModal({
   const mySum = calcDeckTotal(myDeck, tables);
   const otherSum = calcDeckTotal(otherDeck, tables);
   const [selIdx, setSelIdx] = useState<number | null>(null);
-  const selectByExcelRow = (excelRow: number) => {
-    const idx = myDeck.players.findIndex((p) => p.excelRow === excelRow);
+  const mySlots = comparisonSlots(myDeck, mine);
+  const otherSlots = comparisonSlots(otherDeck, other);
+  const keys = [...new Set([...mySlots, ...otherSlots].map((s) => s.key))];
+  const rows = keys.map((key) => {
+    const m = mySlots.find((s) => s.key === key);
+    const o = otherSlots.find((s) => s.key === key);
+    const mt = m?.res.total ?? 0, ot = o?.res.total ?? 0;
+    return { pos: (m ?? o)!.label, my: m, other: o, myName: m?.p.name || "-", myTotal: mt, otherName: o?.p.name || "-", otherTotal: ot, diff: mt - ot };
+  });
+  const selectByExcelRow = (side: "my" | "other", excelRow: number) => {
+    const idx = rows.findIndex((r) => r[side]?.p.excelRow === excelRow);
     setSelIdx(idx >= 0 ? idx : null);
   };
 
-  // 포지션(excelRow) 기준 차이 맵 — 카드에 뱃지로 표시
+  // 서로 다른 불펜 인원도 역할·역할 내 순번 기준으로 비교한다.
   const myDiff: Record<number, number> = {};
   const otherDiff: Record<number, number> = {};
-  myDeck.players.forEach((p, i) => {
-    const op = otherDeck.players[i];
-    const d = (mine[i]?.total ?? 0) - (other[i]?.total ?? 0);
-    myDiff[p.excelRow] = d;
-    otherDiff[op.excelRow] = -d;
-  });
-
-  const rows = myDeck.players.map((p, i) => {
-    const op = otherDeck.players[i];
-    const mt = mine[i]?.total ?? 0;
-    const ot = other[i]?.total ?? 0;
-    return { pos: p.pos, myName: p.name || "-", myTotal: mt, otherName: op?.name || "-", otherTotal: ot, diff: mt - ot };
+  rows.forEach((r) => {
+    if (r.my) myDiff[r.my.p.excelRow] = r.diff;
+    if (r.other) otherDiff[r.other.p.excelRow] = -r.diff;
   });
   const totalDiff = mySum.total - otherSum.total;
 
@@ -70,11 +81,11 @@ export function DeckCompareModal({
         <div className="compare-cols">
           <div>
             <h4 style={{ margin: "0 0 8px" }}>{myName}</h4>
-            <LineupView players={myDeck.players} results={mine} onSelect={selectByExcelRow} diff={myDiff} />
+            <LineupView players={myDeck.players} results={mine} onSelect={(row) => selectByExcelRow("my", row)} diff={myDiff} />
           </div>
           <div>
             <h4 style={{ margin: "0 0 8px" }}>{otherName}</h4>
-            <LineupView players={otherDeck.players} results={other} onSelect={selectByExcelRow} diff={otherDiff} />
+            <LineupView players={otherDeck.players} results={other} onSelect={(row) => selectByExcelRow("other", row)} diff={otherDiff} />
           </div>
         </div>
 
@@ -97,18 +108,18 @@ export function DeckCompareModal({
         </div>
       </div>
 
-      {selIdx !== null && (
+      {selIdx !== null && rows[selIdx] && (
         <div className="modal-overlay" onClick={(e) => { e.stopPropagation(); setSelIdx(null); }}>
           <div className="modal-box" style={{ width: "min(1000px, 100%)" }} onClick={(e) => e.stopPropagation()}>
             <div className="card" style={{ paddingBottom: 4 }}>
               <div className="row" style={{ justifyContent: "space-between" }}>
-                <h4 style={{ margin: 0 }}>{myDeck.players[selIdx].pos} 상세 비교 — 스탯별로 뭐가 부족한지 확인</h4>
+                <h4 style={{ margin: 0 }}>{rows[selIdx].pos} 상세 비교 — 스탯별로 뭐가 부족한지 확인</h4>
                 <button onClick={() => setSelIdx(null)}>닫기 ✕</button>
               </div>
             </div>
             <div className="compare-cols">
-              <PlayerSummary p={myDeck.players[selIdx]} res={mine[selIdx]} tables={tables} />
-              <PlayerSummary p={otherDeck.players[selIdx]} res={other[selIdx]} tables={tables} />
+              {rows[selIdx].my ? <PlayerSummary p={rows[selIdx].my!.p} res={rows[selIdx].my!.res} tables={tables} /> : <p>해당 역할의 선수가 없습니다.</p>}
+              {rows[selIdx].other ? <PlayerSummary p={rows[selIdx].other!.p} res={rows[selIdx].other!.res} tables={tables} /> : <p>해당 역할의 선수가 없습니다.</p>}
             </div>
           </div>
         </div>

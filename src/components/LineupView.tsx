@@ -1,11 +1,13 @@
 import { useEffect, useRef } from "react";
+import type { ReactNode } from "react";
 import type { PlayerInput, PlayerResult } from "../lib/engine";
 import { deckTotals } from "../lib/engine";
 import { LINEUP } from "../lib/deck";
 import { GameCard } from "./CardArt";
+import { BULLPEN_ROLES, ROLE_LABELS, bullpenRole } from "../lib/bullpen";
 
 // 게임 라인업 화면처럼 다이아몬드 위에 카드 배치.
-// 타자 9명(외야 LF/CF/RF, 내야 3B/SS/2B/1B, 포수 C, 지명 DH) + 투수 9명(SP5/RP3/CP1).
+// 타자 9명 + 선발 5명 + 역할별 불펜 최대 7명.
 // 카드 그림은 자체 제작 일러스트. 수동 이미지 URL이 있으면 그걸 우선 표시.
 
 const DIAMOND: [string, number, number][] = [
@@ -29,12 +31,13 @@ const DEF_ROW: Record<string, number> = Object.fromEntries(LINEUP.map((l) => [l.
 const artOf = (p: PlayerInput) => p.photoUrl.trim() || undefined;
 
 export function LineupView({
-  players, results, onSelect, diff,
+  players, results, onSelect, diff, bullpenControls,
 }: {
-  players: PlayerInput[]; // 18명 (타자 9 + 투수 9)
+  players: PlayerInput[]; // 타자 9 + 선발 5 + 불펜 최대 7
   results: PlayerResult[];
   onSelect: (excelRow: number) => void;
   diff?: Record<number, number>;
+  bullpenControls?: ReactNode;
 }) {
   const batters = players.slice(0, 9);
   const pitchers = players.slice(9);
@@ -140,13 +143,24 @@ export function LineupView({
             filled={!!p.name.trim()} artUrl={artOf(p)} diff={diff?.[p.excelRow]} onClick={() => onSelect(p.excelRow)} />
         ))}
       </div>
-      <h4>불펜</h4>
-      <div className="prow">
-        {pitchers.slice(5).map((p, i) => (
-          <GameCard key={p.excelRow} pos={p.pos} kind="pitcher" name={p.name} team={p.team} card={p.card} score={results[14 + i].total}
-            filled={!!p.name.trim()} artUrl={artOf(p)} diff={diff?.[p.excelRow]} onClick={() => onSelect(p.excelRow)} />
-        ))}
-      </div>
+      {bullpenControls}
+      {BULLPEN_ROLES.map((role) => {
+        const group = players.map((p, i) => ({ p, r: results[i] })).filter(({ p }) => bullpenRole(p) === role);
+        return group.length > 0 && (
+          <section key={role} className="bullpen-group" aria-label={ROLE_LABELS[role]}>
+            <h4>{ROLE_LABELS[role]} <span className="muted">{group.length}명</span></h4>
+            <div className="prow">
+              {group.map(({ p, r }) => (
+                <div key={p.excelRow} className="bullpen-slot">
+                  <GameCard pos={p.pos} kind="pitcher" name={p.name} team={p.team} card={p.card} score={r.total}
+                    filled={!!p.name.trim()} artUrl={artOf(p)} diff={diff?.[p.excelRow]} onClick={() => onSelect(p.excelRow)} />
+                  {r.tactics[0] > 0 && <span className="pill">전술 +{r.tactics[0]}</span>}
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      })}
       <p className="muted">카드 그림은 자체 제작 일러스트. 이미지 URL을 직접 넣으면 그걸 대신 표시.</p>
     </div>
   );

@@ -1,5 +1,8 @@
 import lookup from "../data/lookup.json";
 import deckdata from "../data/deckrules.json";
+import { ROLE_PROFILES, bullpenRole, tacticBonuses } from "./bullpen";
+import type { BullpenRole, BullpenTactics } from "./bullpen";
+import { additionalTeamScore } from "./teamBuffs";
 
 // 엑셀(MLB라이벌_덱관리프로그램_260910.xlsx) 로직의 웹 이식.
 // 수식 출처: 라인업 시트 J/O/P/D열, 강화/포훈/초월/스킬점수 시트, 덱코(BF:HL) 규칙 파서 추출.
@@ -46,6 +49,8 @@ type Cond =
   | { t: "cmp"; op: string; a: Cond; b: Cond };
 
 export interface Chem {
+  comebackFlag?: string; // 동점·열세 컴백 플래그의 팀 타자 버프
+  lockdown?: string; // CP 배치 락다운의 7~9회 팀 효과 (랭대 9이닝 평균)
   commander: string; // O2 커맨더
   catcher: string; // O3 포수리드
   pitchChem: string; // O4 투수케미스트리
@@ -55,6 +60,7 @@ export interface Chem {
 }
 
 export interface PlayerInput {
+  bullpenRole?: BullpenRole;
   excelRow: number;
   kind: Kind;
   pos: string;
@@ -84,6 +90,7 @@ export interface PlayerInput {
 }
 
 interface EvalCtx {
+  tacticsByRow?: Record<number, number>;
   flags: Record<string, boolean>;
   yearInputs: Record<number, number | "">;
   cardByRow: Record<number, string>;
@@ -218,6 +225,10 @@ const normSkill = (s: string): string => s.replace(/\s+/g, "").toLowerCase();
 
 /** 구 스킬명 → 현행명. 저장된 덱·표에 옛 이름이 남아있으면 로드 시 치환. */
 const SKILL_RENAMES: Record<string, string> = {
+  "batter:[S0] 2026 퍼포머트리오 (리그·라이브 매치 O)": "[S0] 2026 퍼포머트리오 (랭대기준)",
+  "batter:[S0] 2026 퍼포머트리오 (리그·라이브 매치 X)": "[S0] 2026 퍼포머트리오 (랭대기준)",
+  "pitcher:[S0] 2026 퍼포머트리오 (리그·라이브 매치 O)": "[S0] 2026 퍼포머트리오 (랭대기준)",
+  "pitcher:[S0] 2026 퍼포머트리오 (리그·라이브 매치 X)": "[S0] 2026 퍼포머트리오 (랭대기준)",
   "batter:[S0] 리그 주도자 (-)": "[S0] 리그의 주도자 (-)",
   "batter:[S1] 리그 주도자 (-)": "[S1] 리그의 주도자 (-)",
   "batter:[S2] 리그 주도자 (-)": "[S2] 리그의 주도자 (-)",
@@ -336,6 +347,8 @@ function tableBonus(
 }
 
 export interface PlayerResult {
+  team: number;
+  tactics: number[];
   auto: number[];
   final: number[];
   manual: boolean[];
@@ -364,7 +377,17 @@ export function calcPlayer(
   const trans: (number | null)[] = [];
   const enh: (number | null)[] = [];
   const poh: (number | null)[] = [];
-  const { sums: deckSums, hits } = deckBonus(p.excelRow, ctx, p.kind);
+  const role = bullpenRole(p);
+  const profile = role ? ROLE_PROFILES[role] : { row: p.excelRow, pos: p.pos };
+  const ownCtx = profile.row === p.excelRow ? ctx : {
+    ...ctx,
+    cardByRow: { ...ctx.cardByRow, [profile.row]: p.card },
+    enhByRow: { ...ctx.enhByRow, [profile.row]: num(p.enhLv) },
+    yearByRow: { ...ctx.yearByRow, [profile.row]: num(p.year) },
+  };
+  const { sums: deckSums, hits } = deckBonus(profile.row, ownCtx, p.kind);
+  const tactic = p.kind === "pitcher" ? ctx.tacticsByRow?.[p.excelRow] ?? 0 : 0;
+  const tactics = [tactic, tactic, 0];
   for (let i = 0; i < 3; i++) {
     const stat = stats[i] ?? stats[0];
     let t: number | null = null;
@@ -373,7 +396,7 @@ export function calcPlayer(
     if (i < n) {
       const tr = tableBonus(p.card + stat, p.transLv, "transcend", tables);
       const en = tableBonus(p.card + stat, p.enhLv, "enhance", tables);
-      const ph = tableBonus(p.pos + stat, p.pohLv, "pohoon", tables);
+      const ph = tableBonus(profile.pos + stat, p.pohLv, "pohoon", tables);
       if (tr.miss && p.transLv !== "") warnings.push(`${stat} 초월표에 '${p.card}' 없음`);
       if (en.miss && p.enhLv !== "") warnings.push(`${stat} 강화표에 '${p.card}' 없음`);
       if (ph.miss && p.pohLv !== "") warnings.push(`${stat} 포훈표에 '${p.pos}' 없음`);
@@ -390,10 +413,10 @@ export function calcPlayer(
       num(p.base[i]) + num(p.train[i]) + num(p.spec[i]) +
       (t ?? 0) + (e ?? 0) + (h ?? 0) + num(p.extra[i]) + num(p.synergy[i]) + num(p.locker[i]) +
       num(p.blackPos?.[i]) + num(p.blackBoost?.[i]) + ar + (deckSums[i] ?? 0);
-    auto.push(Math.round(a * 100) / 100);
+    auto.push(Math.round((a + tactics[i]) * 100) / 100);
     const ov = p.finalOv[i];
     manual.push(ov !== "");
-    final.push(ov === "" ? auto[i] : (ov as number));
+    final.push(ov === "" ? auto[i] : (ov as number) + tactics[i]);
   }
 
   const chem = ctx.chem;
@@ -437,15 +460,18 @@ export function calcPlayer(
     const bad = p.skills.filter((s, i) => s.trim() && scores[i] === null);
     if (bad.length) warnings.push(`점수 없음: ${bad.join(", ")}`);
   }
+  const team = additionalTeamScore(p, chem);
+  ability += team;
   const total = (skill ?? 0) + ability;
   return {
-    auto, final, manual, trans, enh, poh,
+    auto, final, manual, trans, enh, poh, tactics, team,
     deck: [deckSums[0] ?? 0, deckSums[1] ?? 0, deckSums[2] ?? 0],
     deckHits: hits, ability, skill, total, warnings,
   };
 }
 
 interface DeckLike {
+  bullpenTactics?: BullpenTactics;
   players: PlayerInput[];
   chem: Chem;
   flags: Record<string, boolean>;
@@ -465,6 +491,7 @@ export function deckPlayerResults(d: DeckLike, tables: SkillTables): PlayerResul
     yearByRow[p.excelRow] = typeof p.year === "number" ? p.year : 0;
   }
   const ctx: EvalCtx = {
+    tacticsByRow: tacticBonuses(d.players, d.bullpenTactics),
     flags: d.flags, yearInputs: d.yearInputs,
     cardByRow, orderByRow, enhByRow, yearByRow, chem: d.chem,
   };
@@ -474,7 +501,7 @@ export function deckPlayerResults(d: DeckLike, tables: SkillTables): PlayerResul
 /** 덱 총점 가중치 (선발/계투/타자) */
 export const DECK_WEIGHTS = { sp: 0.4, rp: 0.1, bt: 0.5 };
 
-/** 덱 전체 총점 (선발/계투/타자 평균×10, 가중합). 이름 있는 선수만 평균. players는 18명(타자9+투수9) 순서. */
+/** 덱 전체 총점. 타자9/선발5/가변 불펜 순서에서 이름 있는 선수만 평균×10 후 가중합. */
 export function deckTotals(
   players: PlayerInput[],
   results: PlayerResult[],

@@ -3,12 +3,13 @@ import type { Deck } from "./deck";
 import { calcDeckTotal, type SkillTables } from "./engine";
 import { loadOwnerCode, saveOwnerCode } from "./ownerCode";
 import { supabase } from "./supabase";
+import { validDeckName } from "./deckPassword";
 
 const KEY = "rivals-my-ranks-v1";
 
 /** 서버 랭킹 행 하나와 연결된 로컬 덱. sig = 마지막으로 서버에 반영한 내용의 해시.
  *  token(레거시, 행별 비밀) 또는 owned(내 덱 코드 소유) 중 하나 */
-export interface RankLink { token?: string; owned?: boolean; deckId: string; sig?: string }
+export interface RankLink { token?: string; owned?: boolean; password?: true; deckId: string; sig?: string }
 /** 키 = 서버 행 id (이 브라우저에만 보관) */
 export type RankLinks = Record<string, RankLink>;
 
@@ -19,12 +20,13 @@ export function loadLinks(): RankLinks {
     for (const [k, v] of Object.entries(raw)) {
       if (typeof v === "string") out[k] = { token: v, deckId: "" }; // 구형: 토큰만 저장
       else if (v && typeof v === "object") {
-        const o = v as { token?: unknown; owned?: unknown; deckId?: unknown; sig?: unknown };
+        const o = v as { token?: unknown; owned?: unknown; password?: unknown; deckId?: unknown; sig?: unknown };
         const deckId = typeof o.deckId === "string" ? o.deckId : "";
         if (o.owned === true) out[k] = { owned: true, deckId };
         else if (typeof o.token === "string") out[k] = { token: o.token, deckId };
         else continue;
         if (typeof o.sig === "string") out[k].sig = o.sig;
+        if (o.password === true && typeof o.token === "string") out[k].password = true;
       }
     }
     return out;
@@ -39,7 +41,7 @@ export function rankArgs(d: Deck, tables: SkillTables) {
   return {
     s,
     args: {
-      p_name: d.name.slice(0, 50),
+      p_name: d.name.trim().slice(0, 50),
       p_total: s.total, p_sp: s.sp, p_rp: s.rp, p_bt: s.bt, p_named: s.named,
       p_deck: JSON.parse(JSON.stringify(d)) as object,
     },
@@ -54,7 +56,7 @@ export function deckSig(args: object): string {
   return `${(h >>> 0).toString(36)}.${json.length.toString(36)}`;
 }
 
-type Rpc = (fn: "update_ranking" | "update_ranking_owned", args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+type Rpc = (fn: "update_ranking" | "update_ranking_owned" | "update_ranking_password", args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
 
 /** 바뀐 연동 덱만 서버에 반영. 성공=sig 갱신, 행이 사라짐(false)=연동 해제, 오류=그대로 두고 다음 기회에 재시도 */
 export async function syncLinks(opts: {
@@ -64,13 +66,15 @@ export async function syncLinks(opts: {
   let pushed = 0, failed = 0;
   for (const [id, link] of Object.entries(opts.links)) {
     const deck = opts.decks.find((d) => d.id === link.deckId);
-    if (!deck) continue;
+    if (!deck || !validDeckName(deck.name)) continue;
     if (link.owned && !opts.code) continue; // 코드 없으면 소유 글은 반영 불가 — 건너뜀
     const { args } = rankArgs(deck, opts.tables);
     const sig = deckSig(args);
     if (link.sig === sig) continue;
     try {
-      const { data, error } = link.owned
+      const { data, error } = link.password
+        ? await opts.rpc("update_ranking_password", { p_id: id, p_token: link.token, ...args })
+        : link.owned
         ? await opts.rpc("update_ranking_owned", { p_id: id, p_code: opts.code, ...args })
         : await opts.rpc("update_ranking", { p_id: id, p_token: link.token, ...args });
       if (error) failed++;
@@ -84,9 +88,7 @@ export async function syncLinks(opts: {
 }
 
 export type RankSyncStatus = "idle" | "syncing" | "ok" | "error";
-const DEBOUNCE_MS = 3000;
-
-/** 앱 전역 자동 반영: 연동된 덱이 바뀌면 마지막 변경 3초 뒤 조용히 서버 행 갱신 */
+/** 연동 덱을 즉시 반영하며 요청 중 변경은 완료 직후 최신 상태로 다시 보낸다. */
 export function useRankSync(decks: Deck[], tables: SkillTables) {
   const [links, setLinksState] = useState(loadLinks);
   const [code, setCodeState] = useState(loadOwnerCode);
@@ -134,13 +136,18 @@ export function useRankSync(decks: Deck[], tables: SkillTables) {
         if (res.pushed || Object.keys(res.links).length !== Object.keys(snap).length) {
           const next = { ...cur.current.links };
           for (const id of Object.keys(snap)) {
+            const current = next[id], original = snap[id];
+            if (!current || current.deckId !== original.deckId || current.token !== original.token || current.owned !== original.owned || current.password !== original.password) {
+              again.current = true;
+              continue;
+            }
             if (!res.links[id]) delete next[id];
             else if (next[id]?.deckId === res.links[id].deckId) next[id] = { ...next[id], sig: res.links[id].sig };
           }
           setLinks(next);
         }
         if (res.failed) setStatus("error");
-        else if (res.pushed) setStatus("ok");
+        else if (res.pushed) { setStatus("ok"); window.dispatchEvent(new Event("rivals:ranking-updated")); }
         else setStatus(before === "syncing" ? "idle" : before);
       } while (again.current);
     } finally {
@@ -148,12 +155,18 @@ export function useRankSync(decks: Deck[], tables: SkillTables) {
     }
   };
 
-  const linked = Object.entries(links).map(([id, l]) => `${id}:${l.deckId}`).join();
+  const linked = Object.entries(links).map(([id, l]) => `${id}:${l.deckId}:${l.password ? "p" : l.owned ? "o" : "t"}:${l.token ?? ""}`).join();
   useEffect(() => {
     if (!supabase || !linked) return;
-    const t = setTimeout(run, DEBOUNCE_MS);
-    return () => clearTimeout(t);
+    void run();
   }, [decks, tables, linked, code]);
+
+  useEffect(() => {
+    const retry = () => { if (!document.hidden) void run(); };
+    window.addEventListener("online", retry);
+    document.addEventListener("visibilitychange", retry);
+    return () => { window.removeEventListener("online", retry); document.removeEventListener("visibilitychange", retry); };
+  }, []);
 
   return { links, setLinks, status, code, setCode };
 }
