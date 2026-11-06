@@ -4,7 +4,7 @@ import { availableSkills, browserRandom, CARD_TYPES, createSimulator, goalPossib
 interface Trial { number: number; board: Board; hit: boolean }
 interface Stats { total: number; hits: number; firstHit: Trial | null; recent: Trial[]; tiers: Partial<Record<Tier, number>> }
 const blankStats = (): Stats => ({ total: 0, hits: 0, firstHit: null, recent: [], tiers: {} });
-const initial: SimSettings = { card: "normal", position: "SP", protectS: true, noDuplicates: true, momentSkill: "" };
+const initial: SimSettings = { card: "normal", position: "SP", protectS: true, momentSkill: "" };
 const nf = new Intl.NumberFormat("ko-KR");
 const tick = () => new Promise<void>(resolve => setTimeout(resolve, 0));
 
@@ -85,10 +85,10 @@ export default function SkillSimulator() {
       <p className="sim-rule">{ruleSummary(settings.card)}</p>
       <div className="row sim-options">
         <label><input type="checkbox" checked={settings.protectS} disabled={busy || ["moment", "supreme", "wbc", "wbcBlack"].includes(settings.card)} onChange={e => change({ protectS: e.target.checked })} /> S 레벨 보호 상태</label>
-        <label><input type="checkbox" checked={settings.noDuplicates} disabled={busy} onChange={e => change({ noDuplicates: e.target.checked })} /> 같은 스킬 중복 제외</label>
+        <span className="muted">같은 결과에 동일 스킬은 중복 등장하지 않습니다.</span>
       </div>
       <p className="muted sim-small">슬롯 잠금 없이 전체 변경합니다. S 보호는 이미 모든 슬롯이 S인 상태를 가정합니다. 설정을 바꾸면 실험 기록이 초기화됩니다.</p>
-      <p className="muted sim-small">모먼트 계열은 전체 S 상태로 계산합니다. 중복 제외는 선택 가능한 시뮬레이션 가정이며, 실제 처리 순서는 공식 표에 공개되지 않았습니다.</p>
+      <p className="muted sim-small">모먼트 계열은 전체 S 상태로 계산합니다.</p>
     </div>
 
     <div className={`sim-board ${count === 4 ? "four" : ""}`} aria-label="변경 결과" aria-busy={busy}>
@@ -143,7 +143,7 @@ export default function SkillSimulator() {
       <ul>
         <li>포지션별 스킬 목록은 {PROBABILITY_DATA.asOf} 개별 확률표, 티어·슬롯 규칙은 공식 확률 안내를 사용합니다.</li>
         <li>변경권으로 등장하는 레벨은 D~S입니다. S1~S4 성장 보너스는 뽑기 결과에 포함되지 않습니다.</li>
-        <li>중복 제외를 켜면 티어를 먼저 뽑고, 이미 나온 스킬 이름을 해당 티어 목록에서 제외합니다. 중복 처리 순서는 공식 표에 공개되지 않아 시뮬레이션의 가정입니다.</li>
+        <li>한 번의 변경 결과에서 동일한 스킬은 중복 등장하지 않습니다. 이 규칙은 사용자의 게임 확인을 반영했습니다. 시뮬레이터는 티어를 먼저 뽑고 이미 나온 이름을 제외하며, 이 처리 순서는 공식 표에 공개되지 않은 모델 가정입니다.</li>
         <li>개별 확률의 소수점 반올림 오차는 같은 티어 내 상대 비율로 보정합니다. 모먼트는 선택한 카드의 전용 스킬이 1종인 경우를 기준으로 합니다.</li>
         <li>확정 누적 보상·슬롯 잠금은 적용하지 않습니다. S 보호 해제 시 매 시도 D~S 기본 분포를 사용합니다. 모먼트 계열은 전체 S 보호 상태를 기준으로 하며, WBC는 원래 S가 확정됩니다.</li>
         <li>관측 비율은 이번 가상 실험의 결과입니다. 목표 달성 시 멈추는 실험은 고정 횟수 실험과 집계 방식이 다르며, 실제 획득 횟수를 보장하지 않습니다.</li>

@@ -3,7 +3,7 @@ import { availableSkills, CARD_TYPES, createSimulator, goalPossible, LEVELS, mat
 let assertions = 0;
 function check(value: unknown, message: string) { assertions++; assert.ok(value, message); }
 function rng(seed: number) { return () => { seed += 0x6D2B79F5; let t = seed; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-const base: SimSettings = { card: "normal", position: "SP", protectS: true, noDuplicates: true, momentSkill: "" };
+const base: SimSettings = { card: "normal", position: "SP", protectS: true, momentSkill: "" };
 for (const [sheet, positions] of Object.entries(PROBABILITY_DATA.tables)) for (const [position, rows] of Object.entries(positions)) {
   check(Math.abs(rows.reduce((sum, r) => sum + r.rates.reduce((a, b) => a + b, 0), 0) - 100) < .0001, `${sheet}/${position} probability total`);
   check(new Set(rows.map(skillId)).size === rows.length, `${sheet}/${position} unique skills`);
@@ -33,17 +33,18 @@ for (const [card, tier, rate] of [['normal', 'Gold', 1], ['moment', 'Moment', .0
   for (let i = 0; i < 20000; i++) if (draw()[0].tier === tier) hits++;
   check(Math.abs(hits / 20000 - rate) < .012, `${card} first-tier frequency ${hits / 20000}`);
 }
-const raw = createSimulator({ ...base, protectS: false, noDuplicates: false }, rng(193));
+const raw = createSimulator({ ...base, protectS: false }, rng(193));
 const levels = Object.fromEntries(LEVELS.map(l => [l, 0]));
 const tiers: Partial<Record<Tier, number>> = {};
-for (let i = 0; i < 30000; i++) { const b = raw(); levels[b[0].level]++; tiers[b[1].tier] = (tiers[b[1].tier] || 0) + 1; }
+for (let i = 0; i < 30000; i++) { const b = raw(); check(new Set(b.map(s => s.name)).size === b.length, 'same name excluded across raw levels'); levels[b[0].level]++; tiers[b[1].tier] = (tiers[b[1].tier] || 0) + 1; }
 for (const [i, rate] of [.4,.3,.2,.07,.03].entries()) check(Math.abs(levels[LEVELS[i]] / 30000 - rate) < .012, `raw grade ${LEVELS[i]}`);
 for (const [tier, rate] of [['Bronze',.35],['Silver',.4],['Gold',.25]] as const) check(Math.abs(tiers[tier]! / 30000 - rate) < .012, `normal remaining ${tier}`);
 const black = createSimulator({ ...base, card: 'black' }, rng(83)); const placements = [0,0,0,0];
 for (let i = 0; i < 20000; i++) placements[black().findIndex(s => s.tier === 'Black')]++;
 check(placements.every(n => Math.abs(n/20000-.25) < .015), 'Black slot uniform 25%');
-const repeated = createSimulator({ ...base, noDuplicates: false }, () => 0)();
-assert.equal(repeated[1].name, repeated[2].name);
+// A stale runtime option cannot re-enable duplicates after its removal from the interface.
+const legacy = createSimulator({ ...base, noDuplicates: false } as SimSettings, () => 0)();
+assert.notEqual(legacy[1].name, legacy[2].name);
 const excluded = createSimulator(base, () => 0)(); assert.notEqual(excluded[1].name, excluded[2].name);
 const wbc = createSimulator({ ...base, card: 'wbc', protectS: false }, rng(19));
 for (let i=0;i<100;i++) check(wbc().every(s => s.level==='S'), 'WBC native S');

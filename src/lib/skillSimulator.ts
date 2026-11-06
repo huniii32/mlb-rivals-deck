@@ -11,7 +11,7 @@ export const LEVELS: Level[] = ["D", "C", "B", "A", "S"];
 export interface RateSkill { name: string; tier: Tier; rates: number[] }
 type Sheet = "normal" | "hof" | "black" | "blackOther" | "wbc" | "wbcBlack" | "wbcBlackOther" | "supreme";
 export const PROBABILITY_DATA = source as unknown as { asOf: string; checkedAt: string; overview: { url: string }; sources: Record<Sheet, { url: string; sha256: string }>; tables: Record<Sheet, Record<SimPosition, RateSkill[]>> };
-export interface SimSettings { card: SimCard; position: SimPosition; protectS: boolean; noDuplicates: boolean; momentSkill: string }
+export interface SimSettings { card: SimCard; position: SimPosition; protectS: boolean; momentSkill: string }
 export interface DrawSkill { id: string; name: string; tier: Tier; level: Level }
 export type Board = DrawSkill[];
 export const skillId = (skill: Pick<RateSkill, "tier" | "name">) => `${skill.tier}:${skill.name}`;
@@ -86,7 +86,7 @@ export function createSimulator(settings: SimSettings, random: Random = browserR
     const used = new Set<string>();
     return rules.map(rule => {
       const tier = pick(rule.tiers, rule.weights, random);
-      const pool = rule.pools[tier]!.filter(skill => !settings.noDuplicates || !used.has(skill.name));
+      const pool = rule.pools[tier]!.filter(skill => !used.has(skill.name));
       const skill = pick(pool, pool.map(s => s.rates.reduce((a, b) => a + b, 0)), random);
       used.add(skill.name);
       // Moment cards always protect their level. This simulator models already-S cards.
