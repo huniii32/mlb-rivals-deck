@@ -60,7 +60,7 @@ export default function HofRecruitment(){
         {last&&<small>{selected.has(last.id)?'희망 선수 획득 · ':''}누적 {nf.format(stats.counts[last.id])}회 획득</small>}
       </div>
       <div className="hof-actions">
-        <div className="row"><button className="primary" disabled={busy} onClick={()=>void draw(1)}>1회 영입</button><button disabled={busy} onClick={()=>void draw(10)}>10회</button><button disabled={busy} onClick={()=>void draw(100)}>100회</button>{busy&&<button onClick={()=>controller.current?.abort()}>중지</button>}</div>
+        <div className="row"><button className="primary" disabled={busy} onClick={()=>void draw(1)}>1회 영입</button><button disabled={busy} onClick={()=>void draw(10)}>10회</button><button disabled={busy} onClick={()=>void draw(100)}>100회</button>{busy&&<button onClick={()=>controller.current?.abort()}>중지</button>}<button disabled={busy||!stats.total} onClick={reset}>기록 초기화</button></div>
         <div className="sim-target-row"><label>최대 <input aria-label="HOF 최대 영입 횟수" type="number" min="1" max="100000" value={limit} disabled={busy} onChange={e=>setLimit(e.target.value)}/> 회</label><button disabled={busy||!valid||!targets.length} onClick={()=>void draw(maximum)}>희망 선수 나올 때까지</button></div>
         {!valid&&<p className="sim-error">횟수는 1~100,000의 정수로 입력하세요.</p>}
         <p className="sim-small muted">희망 선수를 고르면 10회·100회 실행도 처음 등장한 회차에 멈춥니다. 선택하지 않으면 요청한 횟수만큼 진행합니다.</p>
@@ -78,7 +78,6 @@ export default function HofRecruitment(){
       {probability>0&&<p className="sim-small">희망 선수 첫 등장까지 이론상 평균 {(1/probability).toFixed(2)}회 · 10회 안에 등장할 확률 {((1-(1-probability)**10)*100).toFixed(2)}% · 100회 안에 {((1-(1-probability)**100)*100).toFixed(2)}%</p>}
       {stats.recent.map(r=><div className="sim-history" key={r.number}><b>{nf.format(r.number)}회차</b><span>{byId.get(r.id)!.name} · {byId.get(r.id)!.enName}</span></div>)}
       {!stats.total&&<p className="muted">아직 영입 기록이 없습니다.</p>}
-      <button disabled={busy||!stats.total} onClick={reset}>영입 기록 초기화</button>
     </details>
     <details className="card sim-sources"><summary>공식 확률 · 시뮬레이션 기준</summary>
       <p>{HOF_DATA.asOf} 개별 확률표 기준, {HOF_DATA.checkedAt} 확인. 일반 영입 전용 표의 {HOF_PLAYERS.length}명만 사용합니다. 특별 영입 및 다른 HOF팩은 포함하지 않습니다.</p>
