@@ -354,6 +354,64 @@ const baseURL = process.env.RENEWAL_URL || "http://localhost:5176";
       "pitching tactics persisted",
       (await local()).bullpenTactics.winning === "basic",
     );
+    // Regression: a saved year alone never applies 615/645 to both groups.
+    const beforeDecade = await local();
+    await p.getByRole("button", { name: /덱스코어 선택/ }).click();
+    await p.getByRole("tab", { name: "스페셜 덱 스코어", exact: true }).click();
+    await p.getByLabel("스페셜 덱스코어 615 우", { exact: true }).click();
+    await p.getByLabel("스페셜 덱스코어 645 기준 연도", { exact: true }).fill("2020");
+    await p.getByLabel("스페셜 덱스코어 645 우", { exact: true }).click();
+    await sleep(200);
+    const pitcherDecade = await local();
+    const oldDecadeResults = deckPlayerResults(beforeDecade, tables);
+    const pitcherDecadeResults = deckPlayerResults(pitcherDecade, tables);
+    assert.deepEqual(pitcherDecadeResults.map((r,i)=>r.deck.map((v,k)=>v-oldDecadeResults[i].deck[k])), source.players.map(v=>v.kind==='pitcher'?[1,1,0]:[0,0,0])); passed++;
+    assert.deepEqual(pitcherDecade.players[0].finalOv, beforeDecade.players[0].finalOv); passed++;
+    await p.getByLabel("스페셜 덱스코어 615 좌", { exact: true }).click();
+    await sleep(200);
+    const batterDecade = await local();
+    assert.deepEqual(batterDecade.players[0].finalOv, beforeDecade.players[0].finalOv.map((v,i)=>v+(i>0?1:0))); passed++;
+    check("615 target switch clears the other group", !batterDecade.flags['33-spec-R'] && batterDecade.flags['33-spec-L']);
+    check("decade selection shows matching stats", (await p.locator('.deckscore-target-status').first().innerText()).includes('정확·선구 +1'));
+    for (const width of [320,390,900]) {
+      await p.setViewportSize({width,height:1000});
+      check(`deck score target controls fit ${width}`, await p.locator('dialog').evaluate(el=>el.scrollWidth<=el.clientWidth));
+    }
+    await p.setViewportSize({width:1440,height:1050});
+    await p.getByRole("button", { name: "설정 완료" }).click();
+    await p.reload(); await p.locator(".stadium-board").waitFor();
+    assert.deepEqual((await local()).flags, batterDecade.flags); passed++;
+
+    // Exercise every bullpen editor, including slots 31-33, through the real UI.
+    await p.locator('.roster-tabs button').filter({hasText:'불펜'}).click();
+    const training16 = {winning:[4,4], chasing:[5,4], long:[4,4], closer:[4,4]};
+    const trainedPlayers = (await local()).players.slice(14);
+    for (const player of trainedPlayers) {
+      await p.getByRole('button', {name:new RegExp(` ${player.name}$`)}).click();
+      const dialog = p.getByRole('dialog', {name:'선수 편집'});
+      await dialog.getByLabel('포지션훈련 Lv', {exact:true}).fill('');
+      const baselineStats = (await dialog.locator('[data-final-stat]').allTextContents()).map(Number);
+      await dialog.getByLabel('포지션훈련 Lv', {exact:true}).fill('16');
+      const targetStats = training16[player.bullpenRole];
+      assert.deepEqual((await dialog.locator('[data-final-stat]').allTextContents()).map((v,i)=>Number(v)-baselineStats[i]), targetStats); passed++;
+      check(`position training persists for row ${player.excelRow}`, (await local()).players.find(v=>v.excelRow===player.excelRow).pohLv===16);
+      check(`training feedback for row ${player.excelRow}`, (await dialog.getByLabel('포지션훈련 적용량').innerText()).includes(`변화 +${targetStats[0]} / 구위 +${targetStats[1]}`));
+      await dialog.getByRole('button', {name:'닫기', exact:true}).click();
+      check(`training changes deck total for row ${player.excelRow}`, (await p.getByTestId('deck-total').innerText()).replace(/[^\d.]/g,'')===calcDeckTotal(await local(),tables).total.toFixed(1));
+    }
+    const extra = trainedPlayers.find(v=>v.excelRow===31);
+    await p.getByRole('button', {name:new RegExp(` ${extra.name}$`)}).click();
+    const reliefEditor = p.getByRole('dialog', {name:'선수 편집'});
+    await reliefEditor.locator('.manual-values summary').click();
+    await reliefEditor.getByLabel('변화 최종(전술 전)',{exact:true}).fill('150');
+    await reliefEditor.getByLabel('구위 최종(전술 전)',{exact:true}).fill('160');
+    await reliefEditor.getByLabel('포지션훈련 Lv',{exact:true}).fill('20');
+    assert.deepEqual((await local()).players.find(v=>v.excelRow===31).finalOv.slice(0,2),[151,162]); passed++;
+    assert.deepEqual((await reliefEditor.locator('[data-final-stat]').allTextContents()).map(Number),[151,162]); passed++;
+    await reliefEditor.getByRole('button',{name:'닫기',exact:true}).click();
+    await p.reload(); await p.locator('.stadium-board').waitFor();
+    const restoredTraining=(await local()).players.find(v=>v.excelRow===31);
+    check('training and manual adjustment survive reload',restoredTraining.pohLv===20 && restoredTraining.finalOv[0]===151 && restoredTraining.finalOv[1]===162);
     const finalDeck = await local();
     check(
       "overview matches production calculation",

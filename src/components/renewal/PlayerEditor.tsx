@@ -226,6 +226,9 @@ export function RenewalPlayerEditor({
             )}
           </label>
         </div>
+        <p className="editor-hint training-applied" role="status" aria-label="포지션훈련 적용량">
+          포지션훈련 적용 · {stats.map((stat, i) => `${stat} +${r.poh[i] ?? 0}`).join(" / ")}
+        </p>
       </section>
       <section className="editor-section">
         <h3>능력치 입력</h3>

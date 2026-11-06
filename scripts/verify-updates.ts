@@ -21,9 +21,9 @@ check("team 200 applies all three batter stats",team.players[0].finalOv.join()==
 check("team selection changes final deck score",near(calcDeckTotal(team,tables).total-calcDeckTotal(deck,tables).total,36));
 const off=applyDeckUpdate(team,{flags},tables);
 check("deselecting team score restores original total",off.players[0].finalOv.join()==="100,100,100"&&near(calcDeckTotal(off,tables).total,calcDeckTotal(deck,tables).total));
-const year=applyDeckUpdate(deck,{yearInputs:{33:2020}},tables);
+const year=applyDeckUpdate(deck,{flags:{...flags,"33-spec-L":true},yearInputs:{33:2020}},tables);
 check("special 615 year criterion changes correct stat",year.players[0].finalOv[1]===101);
-check("special year outside 0-9 is excluded",applyDeckUpdate(deck,{yearInputs:{33:2016}},tables).players[0].finalOv[1]===100);
+check("special year outside 0-9 is excluded",applyDeckUpdate(deck,{flags:{...flags,"33-spec-L":true},yearInputs:{33:2016}},tables).players[0].finalOv[1]===100);
 const now=deckPlayerResults(deck,tables)[0];
 const comeback=deckPlayerResults({...deck,chem:{...deck.chem,comebackFlag:"S2"}},tables)[0];
 check("comeback team power/contact +4 is +8",near(comeback.total-now.total,8));

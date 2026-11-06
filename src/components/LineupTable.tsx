@@ -1,6 +1,7 @@
 import { cardDisplayName, shortCardName } from "../lib/cardNames";
 import type { Deck } from "../lib/deck";
 import { YEAR_ANCHOR } from "../lib/deck";
+import { DECADE_TARGET_ROWS, decadeTarget } from "../lib/deckScoreTargets";
 import { allThresholds, deckTotals, fmtScore, type PlayerResult } from "../lib/engine";
 import { BULLPEN_ROLES, ROLE_LABELS, bullpenRole, tacticStatus } from "../lib/bullpen";
 
@@ -50,8 +51,10 @@ export function LineupTable({ deck, results, onSelect }: {
       const yearRow = region === "spec" ? YEAR_ANCHOR[threshold] : undefined;
       const year = yearRow === undefined ? "" : deck.yearInputs[yearRow];
       const left = deck.flags[`${row}-${region}-L`], right = deck.flags[`${row}-${region}-R`];
-      const label = yearRow !== undefined ? (typeof year === "number" ? "연" : "—") : left && right ? "양" : left ? "좌" : right ? "우" : "—";
-      return <span key={row} className={`sheet-cell ${label === "우" ? "right" : label === "—" ? "off" : ""}`} title={`${threshold}: ${yearRow !== undefined ? year || "연도 미입력" : label}`}><small>{threshold}</small><i>{label}</i></span>;
+      const hasTarget = region === "spec" && DECADE_TARGET_ROWS[threshold] !== undefined;
+      const target = hasTarget ? decadeTarget(deck.flags, row) : null;
+      const label = hasTarget ? typeof year !== "number" || !target ? "—" : target === "batter" ? "타" : "투" : yearRow !== undefined ? (typeof year === "number" ? "연" : "—") : left && right ? "양" : left ? "좌" : right ? "우" : "—";
+      return <span key={row} className={`sheet-cell ${label === "우" || label === "투" ? "right" : label === "—" ? "off" : ""}`} title={`${threshold}: ${hasTarget ? `${target === "batter" ? "타자" : target === "pitcher" ? "투수" : "대상 미선택"} · ${typeof year === "number" ? year : "연도 미입력"}` : yearRow !== undefined ? year || "연도 미입력" : label}`}><small>{threshold}</small><i>{label}</i></span>;
     })}</div></div>)}</div>
     <p className="sheet-subtotals">타자 {fmt(totals.bt)} · 선발 {fmt(totals.sp)} · 불펜 {fmt(totals.rp)}</p>
     {warnings.length > 0 && <details className="sheet-warnings">

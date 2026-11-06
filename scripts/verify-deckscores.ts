@@ -26,8 +26,8 @@ for (const c of cases) {
 for (const [row, stat] of [[33, 1], [35, 0], [37, 0]]) {
   const deck: Deck = { id: "year", name: "연도 검증", updatedAt: 1, flags, chem: { ...DEFAULT_CHEM }, yearInputs: {}, players: LINEUP.map(l => blankPlayer(l.row, l.kind, l.pos, l.order)) };
   deck.players[0] = { ...deck.players[0], name: "타자", year: 2026, finalOv: [100, 100, 100] };
-  const changed = applyDeckUpdate(deck, { yearInputs: { [row]: 2020 } }, tables);
+  const changed = applyDeckUpdate(deck, { flags: { ...flags, [`${row}-spec-L`]: true }, yearInputs: { [row]: 2020 } }, tables);
   check(`year row ${row} affects final stats`, changed.players[0].finalOv[stat] === 101);
-  check(`year row ${row} excludes outside decade`, applyDeckUpdate(deck, { yearInputs: { [row]: 2016 } }, tables).players[0].finalOv.every(v => v === 100));
+  check(`year row ${row} excludes outside decade`, applyDeckUpdate(deck, { flags: { ...flags, [`${row}-spec-L`]: true }, yearInputs: { [row]: 2016 } }, tables).players[0].finalOv.every(v => v === 100));
 }
 console.log(`deckscore pass=${pass} fail=0`);

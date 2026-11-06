@@ -363,6 +363,8 @@ details[open] .patchnote-brief { display: none; }
 .deckscore-year { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700;
   color: var(--muted); margin-left: 4px; }
 .deckscore-year input { width: 76px; font-size: 13px; padding: 6px 8px; }
+.deckscore-target-row { flex-wrap: wrap; row-gap: 8px; }
+.deckscore-target-status { flex-basis: 100%; margin: 0 0 4px; color: var(--muted); font-size: 12px; line-height: 1.6; }
 .dia {
   position: relative; width: 52px; height: 52px; flex: none;
   transform: rotate(45deg); border-radius: 10px;

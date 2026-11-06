@@ -33,7 +33,7 @@ function ScoreTable({ region, title, flags, yearInputs }: {
         <thead><tr><th></th><th>좌</th><th>우</th><th>연도</th></tr></thead>
         <tbody>
           {groups.map((g) => {
-            const yr = g.threshold !== null ? YEAR_ANCHOR[g.threshold] : undefined;
+            const yr = region === "spec" && g.threshold !== null ? YEAR_ANCHOR[g.threshold] : undefined;
             return (
               <tr key={g.row}>
                 <td><b>{g.threshold}</b></td>

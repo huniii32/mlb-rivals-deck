@@ -4,6 +4,7 @@ import deckdata from "../data/deckrules.json";
 import { ROLE_PROFILES, bullpenRole, tacticBonuses } from "./bullpen";
 import type { BullpenRole, BullpenTactics } from "./bullpen";
 import { additionalTeamScore } from "./teamBuffs";
+import { DECADE_TARGET_ROWS, decadeTarget } from "./deckScoreTargets";
 
 // 엑셀(MLB라이벌_덱관리프로그램_260910.xlsx) 로직의 웹 이식.
 // 수식 출처: 라인업 시트 J/O/P/D열, 강화/포훈/초월/스킬점수 시트, 덱코(BF:HL) 규칙 파서 추출.
@@ -52,6 +53,20 @@ type Cond =
   | { t: "or"; items: Cond[] }
   | { t: "arith"; op: string; a: Cond; b: Cond }
   | { t: "cmp"; op: string; a: Cond; b: Cond };
+
+// 병합된 엑셀 임계값 셀은 두 번째 능력치부터 r.t가 null이다.
+// 라벨 대신 실제 연도 입력 조건을 찾아 모든 관련 능력치에 대상 제한을 건다.
+function decadeRow(c: Cond): number | undefined {
+  if (c.t === "yearinput") return Object.values(DECADE_TARGET_ROWS).includes(c.row) ? c.row : undefined;
+  if (c.t === "not") return decadeRow(c.x);
+  if (c.t === "and" || c.t === "or") return c.items.map(decadeRow).find(v => v !== undefined);
+  if (c.t === "arith" || c.t === "cmp") return decadeRow(c.a) ?? decadeRow(c.b);
+  return undefined;
+}
+const DECADE_CONDITION_ROWS = DECK.conds.map(decadeRow);
+const DECADE_RULE_ROWS = new Map(DECK.rules.map(r => [r,
+  r.g === 1 ? r.a.map(([ci]) => DECADE_CONDITION_ROWS[ci]).find(v => v !== undefined) : undefined,
+]));
 
 export interface Chem {
   comebackFlag?: string; // 동점·열세 컴백 플래그의 팀 타자 버프
@@ -164,6 +179,9 @@ function deckBonus(
   const stats = kind === "batter" ? BATTER_STATS : PITCHER_STATS;
   for (const r of DECK.rules) {
     if (r.r !== excelRow) continue;
+    // 원본 연도 수식에는 타자/투수 선택 조건이 빠져 있었다.
+    const targetRow = DECADE_RULE_ROWS.get(r);
+    if (targetRow !== undefined && decadeTarget(ctx.flags, targetRow) !== kind) continue;
     let pts = 0;
     for (const [ci, p] of r.a) {
       const c = ci < 0 ? null : DECK.conds[ci];
@@ -555,7 +573,7 @@ export function allThresholds(region: "team" | "spec"): { row: number; threshold
   return out.sort((a, b) => a.threshold - b.threshold);
 }
 
-/** 덱코 패널에 보여줄 참조 플래그 목록 (규칙에서 실제 참조된 것만).
+/** 덱코 패널에 보여줄 참조 플래그 목록 (원본 규칙 + 연대 대상 보정).
  *  행별 임계값(게임 화면의 POINT 숫자)은 해당 플래그를 참조하는 첫 규칙의 t에서 가져온다. */
 export function referencedFlags(): { row: number; region: string; side: string; threshold: number | null }[] {
   const seen = new Map<string, { row: number; region: string; side: string; threshold: number | null }>();
@@ -570,6 +588,11 @@ export function referencedFlags(): { row: number; region: string; side: string; 
   };
   for (const r of DECK.rules) for (const [ci] of r.a) {
     if (ci >= 0) walk(DECK.conds[ci]);
+  }
+  for (const [threshold, row] of Object.entries(DECADE_TARGET_ROWS)) {
+    for (const side of ["L", "R"]) {
+      seen.set(`${row}-spec-${side}`, { row, region: "spec", side, threshold: Number(threshold) });
+    }
   }
   return [...seen.values()].sort((a, b) => a.region.localeCompare(b.region) || (a.threshold ?? 0) - (b.threshold ?? 0) || a.row - b.row || a.side.localeCompare(b.side));
 }
