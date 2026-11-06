@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:events": "node scripts/event-pilot-server.cjs",
     "build": "tsc --noEmit && vite build",
     "build:cloudflare": "node scripts/build-cloudflare.mjs",
     "preview": "vite preview",
     "test": "node scripts/verify-all.cjs",
-    "test:db": "node scripts/verify-passwords.cjs && node scripts/verify-ranking-db.mjs && node scripts/verify-name-passwords.cjs"
+    "test:db": "node scripts/verify-passwords.cjs && node scripts/verify-ranking-db.mjs && node scripts/verify-name-passwords.cjs && node scripts/verify-events-db.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

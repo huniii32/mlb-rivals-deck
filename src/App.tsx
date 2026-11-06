@@ -114,6 +114,8 @@ export default function App() {
   const [simulatorVisit, setSimulatorVisit] = useState(0);
   const [tab, setTab] = useState<Page>(() => {
     const hash = window.location.hash.slice(1);
+    // Supabase replaces the redirect hash with login tokens; keep the event destination.
+    if (new URLSearchParams(window.location.search).get("event") === "1" && (!hash || hash.startsWith("access_token=") || hash.startsWith("error="))) return "simulator";
     return ["lineup", "skills", "simulator", "ranking", "news"].includes(hash) ? hash as Page : hash.startsWith("d=") ? "ranking" : "lineup";
   });
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "dark");
@@ -419,7 +421,7 @@ export default function App() {
         </div>
       </RenewalDialog>}
 
-      {tab === "simulator" && <Suspense fallback={<div className="card" role="status">공식 확률표를 불러오는 중…</div>}><Simulator key={simulatorVisit} tables={tables} players={players} /></Suspense>}
+      {tab === "simulator" && <Suspense fallback={<div className="card" role="status">공식 확률표를 불러오는 중…</div>}><Simulator key={simulatorVisit} tables={tables} players={players} eventDeck={withRank(deck,links).rank} onRegisterDeck={()=>setSaveOpen(true)} onViewRankings={()=>navigate('ranking')}/></Suspense>}
 
       {tab === "news" && <NewsTab />}
 

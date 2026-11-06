@@ -1,0 +1,371 @@
+.event-page {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+.event-page .event-hero-live {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px;
+  border-radius: 16px;
+  background: linear-gradient(120deg, #17273e, #2c466b);
+  color: #fff;
+}
+.event-page .event-hero-live h2 {
+  font-size: clamp(22px, 2.5vw, 32px);
+  margin: 8px 0;
+}
+.event-page .event-hero-live p {
+  color: #ccd8e9;
+}
+.event-page .event-rule-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+.event-page .event-rule-tags span {
+  border: 1px solid #7387a3;
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.event-page .event-prizes {
+  display: grid;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.event-page .event-prizes strong {
+  font-size: 36px;
+  color: #f1d28f;
+}
+.event-page .event-prizes small {
+  color: #ccd8e9;
+}
+.event-page .event-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+.event-page .event-status-bar > span:first-child {
+  color: var(--blue);
+  font-weight: 800;
+}
+.event-page .event-status-bar button {
+  margin-left: auto;
+}
+.event-page .event-panel {
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  min-width: 0;
+}
+.event-page .event-panel h3 {
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+.event-page .event-panel p {
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+.event-page .event-registration form,
+.event-page .event-account,
+.event-page .event-register-actions,
+.event-page .event-admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.event-page .event-registration label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+}
+.event-page .event-registration input {
+  width: 280px;
+  max-width: 100%;
+}
+.event-page .event-account {
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}
+.event-page .event-register-actions p {
+  flex-basis: 100%;
+}
+.event-page .event-error,
+.event-page .event-message,
+.event-page .event-notice {
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  line-height: 1.8;
+}
+.event-page .event-error {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.event-page .event-message,
+.event-page .event-notice {
+  background: var(--nav);
+  color: var(--text);
+}
+.event-page .event-competition {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 18px;
+}
+.event-page .event-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: space-between;
+}
+.event-page .event-skill-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 18px 0;
+}
+.event-page .event-skill-cards > div {
+  border: 1px solid var(--line);
+  border-top: 3px solid #c6a469;
+  border-radius: 10px;
+  background: var(--soft);
+  min-height: 128px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+}
+.event-page .event-skill-cards small {
+  font-size: 11px;
+  color: var(--blue);
+}
+.event-page .event-skill-cards strong {
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+.event-page .event-skill-cards span {
+  margin-top: auto;
+  font-variant-numeric: tabular-nums;
+}
+.event-page .event-score-line {
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  font-size: 12px;
+}
+.event-page .event-score-line strong {
+  font-size: 26px;
+  margin-left: 8px;
+  color: var(--blue);
+}
+.event-page .event-challenge-button {
+  width: 100%;
+}
+.event-page .event-details {
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+.event-page .event-details summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 650;
+  margin-bottom: 12px;
+}
+.event-page .event-attempt,
+.event-page .event-ticket {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+.event-page .event-attempt small,
+.event-page .event-ticket small {
+  flex-basis: 100%;
+  overflow-wrap: anywhere;
+}
+.event-page .event-rankings {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  max-height: 480px;
+  overflow-y: auto;
+}
+.event-page .event-rankings li {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 6px;
+  border-bottom: 1px solid var(--line);
+}
+.event-page .event-rankings li.mine {
+  background: var(--nav);
+  border-radius: 8px;
+}
+.event-page .event-rankings strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.event-page .event-rankings small {
+  display: block;
+  font-size: 10px;
+  margin-top: 3px;
+}
+.event-page .event-missions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+.event-page .event-missions article {
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.event-page .event-missions h4 {
+  font-size: 14px;
+  margin: 0;
+}
+.event-page .event-missions p {
+  font-size: 12px;
+  margin: 0;
+  flex: 1;
+}
+.event-page .event-missions button {
+  font-size: 12px;
+  padding: 10px 6px;
+}
+.event-page .event-experience {
+  padding: 18px 0 0;
+}
+.event-page .event-candidates {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.event-page .event-player-result {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.event-page .event-player-result small,
+.event-page .event-player-result span {
+  font-size: 11px;
+}
+.event-page .event-hidden-cards {
+  display: flex;
+  gap: 10px;
+}
+.event-page .event-hidden-cards button {
+  background: #234575;
+  color: #f1d28f;
+  flex: 1;
+  max-width: 120px;
+  aspect-ratio: 2/3;
+  font-size: 30px;
+}
+.event-page .event-hidden-cards small {
+  display: block;
+  font-size: 12px;
+}
+.event-page .event-winners {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 18px 0;
+}
+.event-page .event-winners > div {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border-radius: 10px;
+  background: var(--nav);
+}
+.event-page .event-winners strong {
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+.event-page .event-winners small {
+  font-size: 12px;
+}
+@media (max-width: 900px) {
+  .event-page .event-hero-live {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 22px;
+  }
+  .event-page .event-competition {
+    grid-template-columns: 1fr;
+  }
+  .event-page .event-missions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 500px) {
+  .event-page .event-panel {
+    padding: 16px;
+  }
+  .event-page .event-registration form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .event-page .event-registration input {
+    width: 100%;
+  }
+  .event-page .event-section-heading {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .event-page .event-skill-cards {
+    gap: 6px;
+  }
+  .event-page .event-skill-cards > div {
+    padding: 10px 7px;
+  }
+  .event-page .event-skill-cards strong {
+    font-size: 13px;
+  }
+  .event-page .event-skill-cards small {
+    font-size: 9px;
+  }
+  .event-page .event-missions {
+    grid-template-columns: 1fr;
+  }
+  .event-page .event-candidates {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .event-page .event-hidden-cards {
+    gap: 6px;
+  }
+  .event-page .event-hidden-cards button {
+    padding: 5px;
+    font-size: 22px;
+  }
+  .event-page .event-winners {
+    grid-template-columns: 1fr;
+  }
+}
