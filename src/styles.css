@@ -310,16 +310,6 @@ h4 { margin: 12px 0 6px; font-size: 13.5px; }
 .ed-result span { display: block; font-size: 12px; font-weight: 700; color: var(--muted); }
 .ed-result b { font-size: 24px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 
-/* 산정방식 모달: 흐름도 */
-.flow-diagram { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 10px 0; }
-.flow-item { display: flex; align-items: center; gap: 6px; }
-.flow-step {
-  font-size: 12.5px; font-weight: 700; padding: 8px 12px; border-radius: 9px;
-  background: var(--panel2); border: 1px solid var(--border2); color: var(--text2);
-  white-space: nowrap;
-}
-.flow-arrow { color: var(--accent); font-weight: 800; font-size: 15px; }
-
 /* 산정방식 모달: 비율 막대 (선발/계투/타자 등) */
 .share-bar { display: flex; height: 22px; border-radius: 999px; overflow: hidden; border: 1px solid var(--border2); }
 .share-seg { height: 100%; }
@@ -327,19 +317,6 @@ h4 { margin: 12px 0 6px; font-size: 13.5px; }
 .share-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; font-size: 12.5px; color: var(--text2); }
 .share-legend-item { display: flex; align-items: center; gap: 5px; }
 .share-dot { width: 9px; height: 9px; border-radius: 999px; flex: none; }
-
-/* 산정방식 모달: 스탯 가중치 막대 */
-.weight-bars { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
-.weight-row { display: grid; grid-template-columns: 44px 1fr 40px; align-items: center; gap: 8px; }
-.weight-label { font-size: 12.5px; font-weight: 700; color: var(--text2); }
-.weight-track { height: 10px; border-radius: 999px; background: var(--panel2); border: 1px solid var(--border); overflow: hidden; }
-.weight-fill { display: block; height: 100%; border-radius: 999px; }
-.weight-value { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
-
-/* 산정방식 모달: 팀덱코/스덱코 적용범위 다이아몬드 그리드 */
-.scope-diagram { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px 0; }
-.scope-dots { display: grid; grid-template-columns: repeat(3, 16px); gap: 6px; }
-.scope-dot { width: 16px; height: 16px; border-radius: 5px; background: var(--accent); transform: rotate(45deg); }
 
 /* 공지사항: 날짜별 그룹 + 섹션 */
 .patchnotes { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
@@ -584,4 +561,105 @@ button.dia-opt.on { border-color: #facc15; box-shadow: 0 0 14px rgba(250, 204, 2
 @media (max-width: 760px) {
   .deck-tools { grid-template-columns: 1fr; gap: 18px; }
   .deck-tools section + section { border-top: 1px solid var(--border); padding-top: 16px; }
+}
+
+/* 산정방식: 단계별 흐름과 수식 카드 */
+.score-guide { margin-top: 20px; font-size: 15px; line-height: 1.65; color: var(--text); }
+.score-guide * { box-sizing: border-box; }
+.score-guide p { margin: 8px 0 0; }
+.score-intro { padding: 24px; border: 1px solid var(--border2); border-radius: 16px; background: var(--panel2); }
+.score-badge { display: inline-block; padding: 3px 10px; border: 1px solid var(--border2); border-radius: 99px; font-size: 12px; font-weight: 700; color: var(--text2); }
+.score-intro h2 { margin: 12px 0 0; font-size: clamp(22px, 3vw, 30px); line-height: 1.35; letter-spacing: -0.04em; }
+.score-intro > p { color: var(--text2); }
+.score-flow { list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; margin: 18px 0; padding: 0; }
+.score-flow li { position: relative; padding: 15px 12px; text-align: center; border: 1px solid var(--border2); border-radius: 10px; background: var(--panel); min-width: 0; }
+.score-flow li:not(:last-child)::after { content: '→'; position: absolute; right: -24px; top: 50%; transform: translateY(-50%); color: var(--text2); font-size: 20px; }
+.score-flow strong, .score-flow span { display: block; }
+.score-flow strong { font-size: 16px; }
+.score-flow span { margin-top: 3px; font-size: 13px; color: var(--text2); }
+.score-intro .score-flow { margin-bottom: 0; }
+.score-nav { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin: 16px 0 28px; }
+.score-nav button { padding: 10px 5px; font-size: 13px; }
+.score-nav button span { display: block; font-size: 11px; margin-bottom: 2px; color: var(--muted); }
+.score-guide button:focus-visible, .score-guide summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.score-section { padding: 24px; margin-top: 18px; border: 1px solid var(--border); border-radius: 16px; scroll-margin-top: 20px; }
+.score-section-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 20px; }
+.score-step-number { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 11px; background: var(--accent); color: #fff; font-size: 15px; font-weight: 800; }
+.score-section-head h3 { margin: 0; font-size: 20px; letter-spacing: -0.03em; line-height: 1.4; }
+.score-section-head p { margin-top: 5px; color: var(--text2); font-size: 14px; }
+.score-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 14px 0; }
+.score-grid-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.score-tile { padding: 16px; border: 1px solid var(--border); background: var(--panel2); border-radius: 12px; min-width: 0; }
+.score-guide h4 { font-size: 15px; margin: 0 0 8px; line-height: 1.5; }
+.score-tile p { font-size: 14px; color: var(--text2); }
+.score-equation { padding: 18px 20px; margin: 14px 0; border: 1px solid var(--border2); border-left: 4px solid var(--accent); background: var(--panel2); border-radius: 12px; }
+.score-grid > .score-equation { margin: 0; }
+.score-equation-primary { background: var(--accent-soft); border-color: var(--accent); }
+.score-label { display: block; font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 8px; }
+.score-math { font-size: 18px; line-height: 1.8; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.score-math > span { display: inline-block; }
+.score-math strong { font-weight: 850; }
+.score-math small { display: block; font-size: 13px; color: var(--text2); font-weight: 400; }
+.score-caption { display: block; font-size: 13px; color: var(--text2); line-height: 1.65; }
+.score-note { font-size: 13px; color: var(--text2); }
+.score-details { border-top: 1px solid var(--border); margin-top: 18px; padding-top: 14px; }
+.score-details summary { cursor: pointer; font-size: 14px; font-weight: 700; color: var(--text2); }
+.score-details p { font-size: 14px; color: var(--text2); }
+.score-details[open] summary { margin-bottom: 12px; }
+.score-tile .score-flow { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin: 12px 0; }
+.score-tile .score-flow li { padding: 10px 5px; }
+.score-tile .score-flow strong { font-size: 14px; }
+.score-tile .score-flow span { font-size: 12px; }
+.score-tile .score-flow li:not(:last-child)::after { right: -21px; }
+.score-key-value { display: flex; flex-direction: column; padding: 8px 0; }
+.score-key-value span { font-size: 13px; color: var(--text2); }
+.score-key-value strong { font-size: 17px; }
+.score-tactics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--border2); border-radius: 12px; overflow: hidden; margin-top: 16px; }
+.score-tactics > div { padding: 16px; display: flex; flex-direction: column; gap: 5px; }
+.score-tactics > div + div { border-left: 1px solid var(--border2); }
+.score-tactics span { font-size: 13px; color: var(--text2); }
+.score-tactics b { font-size: 14px; }
+.score-tactics strong { font-size: 16px; }
+.score-tactics small { font-size: 12px; color: var(--text2); }
+.score-table-wrap { overflow-x: auto; }
+.score-table-wrap table { min-width: 530px; }
+.score-table-wrap caption { text-align: left; font-size: 13px; color: var(--text2); margin: 8px 0; }
+.score-table-wrap th, .score-table-wrap td { font-size: 13px; white-space: normal; }
+.score-coefficients { display: flex; flex-wrap: wrap; gap: 8px; }
+.score-coefficients span { display: flex; flex-direction: column; align-items: center; flex: 1; padding: 8px; background: var(--panel); border: 1px solid var(--border); border-radius: 9px; font-size: 13px; color: var(--text2); }
+.score-coefficients b { font-size: 22px; color: var(--text); }
+.score-example { padding: 18px; background: var(--panel2); border: 1px dashed var(--border2); border-radius: 12px; margin-top: 14px; }
+.score-example-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.score-example-head h4 { margin: 0; }
+.score-example-head .score-label { margin-bottom: 4px; }
+.score-toggle { display: flex; flex-wrap: wrap; gap: 6px; }
+.score-toggle button { font-size: 13px; }
+.score-toggle button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.score-example-sum { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 18px 0 8px; font-variant-numeric: tabular-nums; }
+.score-example-sum > span { font-size: 13px; color: var(--text2); }
+.score-example-sum b { display: block; color: var(--text); font-size: 18px; }
+.score-example-sum i { font-size: 20px; color: var(--text2); font-style: normal; }
+.score-example-sum output, .score-example-total { font-size: 32px; font-weight: 850; letter-spacing: -0.03em; color: var(--text); }
+.score-example-sum small { font-size: 14px; margin-left: 5px; font-weight: 500; }
+.score-guide .share-legend { font-size: 14px; margin-bottom: 18px; }
+.score-footnote { text-align: center; color: var(--text2); font-size: 13px; padding: 16px 8px 0; }
+@media (max-width: 700px) {
+  .score-guide { margin-top: 16px; font-size: 14px; }
+  .score-intro, .score-section { padding: 16px; border-radius: 12px; }
+  .score-section-head { gap: 10px; }
+  .score-section-head h3 { font-size: 18px; }
+  .score-nav { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-bottom: 20px; }
+  .score-nav button { font-size: 12px; }
+  .score-grid, .score-grid-three, .score-tactics { grid-template-columns: 1fr; }
+  .score-flow { grid-template-columns: 1fr; gap: 26px; }
+  .score-flow li { padding: 12px; }
+  .score-flow li:not(:last-child)::after { content: '↓'; right: auto; left: 50%; top: auto; bottom: -28px; transform: translateX(-50%); }
+  .score-tile .score-flow li:not(:last-child)::after { content: '→'; right: -21px; left: auto; top: 50%; bottom: auto; transform: translateY(-50%); }
+  .score-tactics > div + div { border-left: 0; border-top: 1px solid var(--border2); }
+  .score-equation { padding: 14px; }
+  .score-math { font-size: 16px; }
+  .score-example { padding: 14px; }
+  .score-example-sum { gap: 8px; }
+  .score-example-sum b { font-size: 16px; }
+  .score-example-sum output, .score-example-total { font-size: 28px; }
 }
