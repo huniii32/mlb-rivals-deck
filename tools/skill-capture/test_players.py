@@ -37,7 +37,7 @@ class PlayerTests(unittest.TestCase):
         self.config['first_fingerprint']=card_identity(self.game.screenshot(),self.config)
         (self.folder/'calibration').mkdir();crop(self.game.screenshot(),CONFIG['detail_anchor']).save(self.folder/'calibration/detail_anchor.png')
     def collector(self,test=False,stop=None):return PlayerCollector(self.game,self.config,self.folder,stop or threading.Event(),lambda _:None,delay=0,test_only=test)
-    def state(self):return json.loads((self.folder/'state.json').read_text())
+    def state(self):return json.loads((self.folder/'state.json').read_text(encoding='utf-8'))
     def test_cycle_keeps_same_name_different_cards(self):
         self.collector().run();s=self.state();self.assertEqual(s['status'],'complete');self.assertEqual(len(s['cards']),3)
         self.assertEqual(len(list((self.folder/'cards').glob('*/portrait.png'))),3)

@@ -32,7 +32,7 @@ class WindowsIntegration(unittest.TestCase):
                 review=PlayerReview(root,folder);root.update()
                 for key,value in [('name','Test Player'),('team','NYY'),('grade','Moment')]:review.variables[('fields',key)].set(value)
                 review.variables[('stats','파워')].set('105');review.reviewed.set(True);review.save()
-                record=next(iter(json.loads((folder/'state.json').read_text())['cards'].values()))
+                record=next(iter(json.loads((folder/'state.json').read_text(encoding='utf-8'))['cards'].values()))
                 self.assertEqual(record['review_status'],'reviewed');self.assertEqual(record['stats']['파워']['value'],105)
                 review.destroy()
             # Only the test runner desktop, no game or user data.
