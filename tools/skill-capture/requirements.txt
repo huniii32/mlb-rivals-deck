@@ -1,2 +1,0 @@
-Pillow>=10.4,<12
-PyAutoGUI==0.9.54

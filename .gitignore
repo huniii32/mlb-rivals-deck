@@ -11,3 +11,9 @@ __pycache__/
 *.pyc
 .DS_Store
 .vite/
+
+# Personal capture/automation tools are not part of the public website.
+/tools/skill-capture/
+/scripts/package_skill_capture.py
+/public/downloads/*capture*
+/public/downloads/*collector*

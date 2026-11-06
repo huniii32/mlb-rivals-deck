@@ -66,11 +66,6 @@ export function NewsTab() {
 
   return (
     <div>
-      <details className="card"><summary>Windows 도감 수집 · 스킬 자동 변경 프로그램</summary>
-        <p>스킬 설명 · 선수 기본 능력치 · 미페 수집과 실제 게임의 스킬 자동 변경을 선택할 수 있습니다. ZIP을 풀고 RivalsGuideCollector.exe를 실행하세요.</p>
-        <div className="row"><a href={`${import.meta.env.BASE_URL}downloads/rivals-guide-collector-windows.zip`} download>Windows 실행 파일</a><a href={`${import.meta.env.BASE_URL}downloads/rivals-guide-capture-windows.zip`} download>Python 실행 버전</a><a href={`${import.meta.env.BASE_URL}downloads/guide-collector-readme.txt`} target="_blank" rel="noreferrer">사용 방법</a></div>
-        <p className="muted">수집은 위치 설정 후 1개 테스트, 자동 변경은 게임에서 첫 줄을 잠근 뒤 읽기 테스트부터 진행하세요. 자동 변경은 실제 변경권을 사용하며 2·3번째 목표 조합 또는 최대 횟수에서 멈춥니다. 실제 Steam 게임 동작은 사용자 환경에서 소량 실행으로 먼저 확인하세요.</p>
-      </details>
       <div className="tabs">
         <button className={sub === "official" ? "on" : ""} onClick={() => setSub("official")}>
           공식사이트

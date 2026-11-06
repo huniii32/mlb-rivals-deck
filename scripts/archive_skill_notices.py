@@ -394,7 +394,7 @@ def publish_docs(out, manifest, articles):
              '결과는 `data/official-skill-archive/`에 저장됩니다. '
              '`official-skill-archive.zip`에는 전체 목록·본문 텍스트·상세 원문 HTML·표·이미지 URL·스킬별 색인이 포함됩니다. '
              '`skill-reference.zip`은 원문 HTML 캐시를 제외한 읽기용 묶음입니다. 이미지 파일 자체와 이미지 안의 텍스트는 포함하지 않습니다. 캐시를 새로 받으려면 `--refresh`를 추가하세요.\n')
-    text += '\n추가 조사: [공지 이미지 OCR·검수](official-skill-image-review.md) · [레벨 표기 대응](skill-level-mapping.md) · [Windows 도감 캡처](../tools/skill-capture/README.md)\n'
+    text += '\n추가 조사: [공지 이미지 OCR·검수](official-skill-image-review.md) · [레벨 표기 대응](skill-level-mapping.md)\n'
     (docs / 'official-skill-notices.md').write_text(text, encoding='utf-8')
     write_json(docs / 'official-skill-effects.json', json.loads((out / 'skill-history.json').read_text()))
     (docs / 'official-skill-effects.md').write_text(
