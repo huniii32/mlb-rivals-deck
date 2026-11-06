@@ -446,7 +446,7 @@ export default function App() {
         <details className="card"><summary>선수별 점수와 덱코 상세 보기</summary><ResultPanel players={players} results={results} /></details>
       </>}
 
-      {tab === "simulator" && <Suspense fallback={<div className="card" role="status">공식 확률표를 불러오는 중…</div>}><Simulator key={simulatorVisit} tables={tables} /></Suspense>}
+      {tab === "simulator" && <Suspense fallback={<div className="card" role="status">공식 확률표를 불러오는 중…</div>}><Simulator key={simulatorVisit} tables={tables} players={players} /></Suspense>}
 
       {tab === "news" && <NewsTab />}
 

@@ -1,26 +1,34 @@
-import { fmtScore, type SkillTables } from "../lib/engine";
+import { fmtScore, type PlayerInput, type SkillTables } from "../lib/engine";
 import { createScoreEvaluator, meetsScoreGoal, type ScoreChoices } from "../lib/simulatorScore";
+import { readSession, saveSession, object, counter, finite, strings } from '../lib/simulatorSession';
+import SimulationAnalysis from './SimulationAnalysis';
+import SkillStartingPanel from './SkillStartingPanel';
+import type { SkillPreset } from '../lib/simulatorPreset';
 import { useEffect, useMemo, useRef, useState } from "react";
 import { availableSkills, browserRandom, CARD_TYPES, createSimulator, canLockFirst, newlyDrawnSkills, hasNewDedicatedSkill, dedicatedTiers, runTrialChunk, TICKETS, goalPossible, LEVELS, matchesGoal, momentSkills, POSITIONS, PROBABILITY_DATA, ruleSummary, skillId, slotCount, TIERS, type Board, type DrawSkill, type Level, type SimSettings, type Tier } from "../lib/skillSimulator";
 
 interface Trial { number: number; board: Board; hit: boolean; score: number | null }
-interface Stats { total: number; samples: number; hits: number; firstHit: Trial | null; recent: Trial[]; tiers: Partial<Record<Tier, number>>; best: number | null; unscored: number }
-const blankStats = (): Stats => ({ total: 0, samples: 0, hits: 0, firstHit: null, recent: [], tiers: {}, best: null, unscored: 0 });
+interface Stats { total: number; samples: number; hits: number; firstHit: Trial | null; recent: Trial[]; tiers: Partial<Record<Tier, number>>; best: number | null; bestTrial: Trial | null; unscored: number }
+const blankStats = (): Stats => ({ total: 0, samples: 0, hits: 0, firstHit: null, recent: [], tiers: {}, best: null, bestTrial: null, unscored: 0 });
 const initial: SimSettings = { ticket: "superior", card: "normal", position: "SP", protectS: true, momentSkill: "" };
 const nf = new Intl.NumberFormat("ko-KR");
 const tick = () => new Promise<void>(resolve => setTimeout(resolve, 0));
 
-export default function SkillSimulator({ tables }: { tables: SkillTables }) {
-  const [settings, setSettings] = useState(initial);
-  const [lockedFirst, setLockedFirst] = useState<DrawSkill | null>(null);
-  const [currentBoard, setCurrentBoard] = useState<Board>([]);
-  const [mode, setMode] = useState<"free" | "skills" | "score">("free");
-  const [scoreTarget, setScoreTarget] = useState("60");
-  const [scoreChoices, setScoreChoices] = useState<ScoreChoices>({});
-  const [targets, setTargets] = useState<string[]>([]);
-  const [minimum, setMinimum] = useState<Level>("S");
-  const [limit, setLimit] = useState("10000");
-  const [stats, setStats] = useState<Stats>(blankStats);
+interface SavedSkillSession { settings:SimSettings; lockedFirst:DrawSkill|null; currentBoard:Board; mode:'free'|'skills'|'score'; scoreTarget:string; scoreChoices:ScoreChoices; targets:string[]; minimum:Level; limit:string; stats:Stats; scoreSignature:string }
+export default function SkillSimulator({ tables, players = [] }: { tables: SkillTables; players?:PlayerInput[] }) {
+  const [saved] = useState(()=>readSession<SavedSkillSession>('skills',validSavedSkills));
+  const [saveError,setSaveError]=useState(false);
+  const [analysisOpen,setAnalysisOpen]=useState(false);
+  const [settings, setSettings] = useState(saved?.settings??initial);
+  const [lockedFirst, setLockedFirst] = useState<DrawSkill | null>(saved?.lockedFirst??null);
+  const [currentBoard, setCurrentBoard] = useState<Board>(saved?.currentBoard??[]);
+  const [mode, setMode] = useState<"free" | "skills" | "score">(saved?.mode??"free");
+  const [scoreTarget, setScoreTarget] = useState(saved?.scoreTarget??"60");
+  const [scoreChoices, setScoreChoices] = useState<ScoreChoices>(saved?.scoreChoices??{});
+  const [targets, setTargets] = useState<string[]>(saved?.targets??[]);
+  const [minimum, setMinimum] = useState<Level>(saved?.minimum??"S");
+  const [limit, setLimit] = useState(saved?.limit??"10000");
+  const [stats, setStats] = useState<Stats>(()=>saved?.scoreSignature===JSON.stringify(tables)?saved.stats:blankStats());
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const controller = useRef<AbortController | null>(null);
@@ -35,12 +43,16 @@ export default function SkillSimulator({ tables }: { tables: SkillTables }) {
   const threshold = Number(scoreTarget);
   const scoreValid = scoreTarget.trim() !== "" && Number.isFinite(threshold) && threshold > 0;
   const possible = mode === "score" ? scoreValid && threshold <= scorer.upperBound : mode !== "skills" || !ids.length || goalPossible(settings, ids, lockedFirst, minimum);
+  const heldGoalSatisfied=mode==='skills'&&!!lockedFirst&&matchesGoal([lockedFirst],ids,minimum);
   const hasGoal = mode === "score" ? scoreValid : mode === "skills" && ids.length > 0;
   const goalHit = (board: Board, score: number | null) => mode === "score" ? meetsScoreGoal(score, threshold) : mode === "skills" && matchesGoal(board, ids, minimum);
   const numericLimit = Number(limit);
   const limitValid = limit.trim() !== "" && Number.isInteger(numericLimit) && numericLimit >= 1 && numericLimit <= 100000;
   const specialTiers = dedicatedTiers(settings, lockedFirst);
 
+  useEffect(()=>{setSaveError(!saveSession('skills',{settings,lockedFirst,currentBoard,mode,scoreTarget,scoreChoices,targets,minimum,limit,stats,scoreSignature:JSON.stringify(tables)}));},[settings,lockedFirst,currentBoard,mode,scoreTarget,scoreChoices,targets,minimum,limit,stats,tables]);
+  function usePreset(preset:SkillPreset){setSettings(preset.settings);setLockedFirst(preset.locked);setCurrentBoard(preset.board);setScoreChoices(preset.choices);setTargets([]);setStats(blankStats());setMessage(preset.message);}
+  function makeAnalysisTrial(){const draw=createSimulator(settings,browserRandom(),lockedFirst);return ()=>{const board=draw();return goalHit(board,scorer.board(board).total);};}
   function reset() { setStats(blankStats()); setMessage(""); }
   function change(patch: Partial<SimSettings>) {
     const next = { ...settings, ...patch };
@@ -82,10 +94,11 @@ export default function SkillSimulator({ tables }: { tables: SkillTables }) {
           const score = scorer.board(board).total;
           const hit = goalHit(board, score);
           if (score === null) next.unscored++;
-          else next.best = next.best === null ? score : Math.max(next.best, score);
+
           next.total++;
           next.samples++;
           const record = { number: next.total, board, hit, score };
+          if(score!==null&&(next.best===null||score>next.best)){next.best=score;next.bestTrial=record;}
           if (hit) { next.hits++; next.firstHit ??= record; }
           for (const s of newlyDrawnSkills(board, lockedFirst)) next.tiers[s.tier] = (next.tiers[s.tier] ?? 0) + 1;
           next.recent = [record, ...next.recent].slice(0, 8);
@@ -108,6 +121,7 @@ export default function SkillSimulator({ tables }: { tables: SkillTables }) {
   }
 
   return <section className="skill-simulator" aria-label="스킬 변경권 시뮬레이터">
+    {saveError&&<p className="sim-error" role="alert">이 브라우저에 기록을 저장하지 못했습니다. 저장 공간 또는 브라우저 설정을 확인하세요.</p>}
     <div className="card sim-setup">
       <div className="sim-heading"><h2>스킬 시뮬레이션</h2><small className="muted">공식 확률 · {PROBABILITY_DATA.asOf}</small></div>
       <div className="sim-settings">
@@ -118,6 +132,7 @@ export default function SkillSimulator({ tables }: { tables: SkillTables }) {
       </div>
     </div>
 
+    <SkillStartingPanel settings={settings} tables={tables} players={players} disabled={busy} apply={usePreset}/>
     <div className="sim-stats" aria-label="시뮬레이션 통계">
       <div><span>사용한 변경권</span><strong>{nf.format(stats.total)}<small>장</small></strong></div>
       <div><span>현재 {scorer.scoredSlots}개 합계{lockedFirst ? " · 잠금 제외" : ""}</span><strong>{evaluation.total === null ? "—" : fmtScore(evaluation.total)}<small>점</small></strong></div>
@@ -167,6 +182,11 @@ export default function SkillSimulator({ tables }: { tables: SkillTables }) {
       </div>
     </div>
 
+    <details className="card"><summary>최고점 조합 · 현재 결과 비교</summary>
+      {stats.bestTrial?<><p><b>{fmtScore(stats.bestTrial.score!)}점</b> · {nf.format(stats.bestTrial.number)}회째 · 변경 스킬 {scorer.scoredSlots}개 합계</p><SkillChips board={stats.bestTrial.board}/><p className="muted">{evaluation.total===null?'현재 결과는 평가 불가':`현재 ${fmtScore(evaluation.total)}점 · 최고점 대비 ${fmtScore(evaluation.total-stats.bestTrial.score!)}점`}</p></>:<p className="muted">평가 가능한 변경 결과가 나오면 최고점 조합을 보관합니다.</p>}
+      <button disabled={busy||!hasGoal||!possible||heldGoalSatisfied} onClick={()=>setAnalysisOpen(true)}>목표 달성 소모량 분석</button>{heldGoalSatisfied&&<p className="muted">잠근 스킬로 목표를 이미 만족하므로 필요한 변경권은 0장입니다.</p>}{!hasGoal&&<p className="muted">점수 목표 또는 목표 스킬 조합을 설정하면 분석할 수 있습니다.</p>}
+    </details>
+    {analysisOpen&&<SimulationAnalysis makeTrial={makeAnalysisTrial} label={mode==='score'?`변경 스킬 ${scorer.scoredSlots}개 합계 ${threshold}점 이상`:`선택한 스킬 ${ids.length}개 · ${minimum} 이상`} close={()=>setAnalysisOpen(false)}/>}
     <details className="card sim-score-settings"><summary>점수 기준 · 조건 설정 <small className="muted">랭킹대전 S0 · 조건 미선택 시 최저값</small></summary>
       <p className="muted">변경되는 스킬의 점수를 합산합니다. 3슬롯 카드는 잠금 없이 3개 합계, 첫 줄 잠금 시 2·3번째 2개 합계로 목표를 판정합니다. 블랙 계열은 잠금 없이 4개 합계입니다. 현재 덱관리 점수표와 수정값을 사용하며, 소수 둘째 자리 점수로 비교합니다. 변경되는 스킬 중 S 미만·점수 미등록이 있으면 평가 불가입니다. 잠근 스킬의 점수·레벨은 합계에 영향을 주지 않습니다. S1~S4 성장 보너스는 적용하지 않습니다.</p>
       <div className="sim-options"><label><input type="checkbox" checked={settings.protectS} disabled={busy || ["moment", "supreme", "wbc", "wbcBlack"].includes(settings.card)} onChange={e => change({ protectS: e.target.checked })} /> S 레벨 보호 상태</label></div>
@@ -196,4 +216,20 @@ export default function SkillSimulator({ tables }: { tables: SkillTables }) {
 }
 function SkillChips({ board }: { board: Board }) {
   return <div className="sim-chips">{board.map((s, i) => <span className={`sim-chip tier-${s.tier}`} key={i}><b>{s.level}</b> {s.name}</span>)}</div>;
+}
+
+function validSavedSkills(v:unknown):v is SavedSkillSession {
+  if(!object(v)||!object(v.settings))return false;
+  const s=v.settings;
+  if(typeof s.card!=='string'||!Object.prototype.hasOwnProperty.call(CARD_TYPES,s.card)||typeof s.position!=='string'||!Object.prototype.hasOwnProperty.call(POSITIONS,s.position)||typeof s.ticket!=='string'||!Object.prototype.hasOwnProperty.call(TICKETS,s.ticket)||typeof s.protectS!=='boolean'||typeof s.momentSkill!=='string')return false;
+  const settings=s as unknown as SimSettings;
+  if(settings.card==='moment'&&!momentSkills(settings.position).some(x=>x.name===settings.momentSkill))return false;
+  const validSkill=(x:unknown):x is DrawSkill=>object(x)&&typeof x.name==='string'&&typeof x.tier==='string'&&Object.prototype.hasOwnProperty.call(TIERS,x.tier)&&LEVELS.includes(x.level as Level)&&x.id===skillId(x as unknown as DrawSkill);
+  const validBoard=(b:unknown):b is Board=>Array.isArray(b)&&b.length<=slotCount(settings.card)&&b.every(validSkill)&&new Set(b.map(x=>x.name)).size===b.length;
+  const validTrial=(t:unknown)=>object(t)&&counter(t.number)&&validBoard(t.board)&&typeof t.hit==='boolean'&&(t.score===null||finite(t.score));
+  if(v.lockedFirst!==null&&(!validSkill(v.lockedFirst)||!canLockFirst(settings,v.lockedFirst)))return false;
+  if(!validBoard(v.currentBoard)||(v.lockedFirst&&v.currentBoard[0]?.id!==(v.lockedFirst as DrawSkill).id))return false;
+  if(!['free','skills','score'].includes(v.mode as string)||typeof v.scoreTarget!=='string'||typeof v.limit!=='string'||!strings(v.targets)||v.targets.length>4||!LEVELS.includes(v.minimum as Level)||!object(v.scoreChoices)||!Object.values(v.scoreChoices).every(x=>typeof x==='string')||typeof v.scoreSignature!=='string')return false;
+  const t=v.stats;
+  return object(t)&&['total','samples','hits','unscored'].every(k=>counter(t[k]))&&(t.best===null||finite(t.best))&&(t.firstHit===null||validTrial(t.firstHit))&&(t.bestTrial===null||validTrial(t.bestTrial))&&Array.isArray(t.recent)&&t.recent.length<=8&&t.recent.every(validTrial)&&object(t.tiers)&&Object.entries(t.tiers).every(([k,n])=>Object.prototype.hasOwnProperty.call(TIERS,k)&&counter(n));
 }
