@@ -58,7 +58,7 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
 
   return (
     <div>
-      <div className="card">
+      <div className="card deckscore-panel">
         <h3>팀덱코 · 스덱코</h3>
         <div className="deckscore-tabs" role="tablist" aria-label="덱스코어 종류">
           {(["team", "spec"] as const).map((t) => (

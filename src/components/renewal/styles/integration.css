@@ -57,6 +57,33 @@
   border-color: var(--blue);
   color: var(--blue);
 }
+/* Diamond options need their own palette instead of the generic .on button. */
+.renewal .deckscore-panel {
+  --muted: #5f7089;
+}
+.renewal.night .deckscore-panel {
+  --muted: #aab8cd;
+}
+.renewal button.dia-opt {
+  padding: 0;
+  border: 2px solid var(--muted);
+  border-radius: 10px;
+  background: var(--soft);
+  color: var(--text);
+  box-shadow: none;
+  opacity: 1;
+  filter: none;
+  transform: rotate(45deg);
+}
+.renewal button.dia-opt.on {
+  background: #234575;
+  border-color: #d6ad4b;
+  color: #fff;
+  box-shadow: 0 0 0 1px #d6ad4b;
+}
+.renewal button.dia-opt > span {
+  color: inherit;
+}
 .renewal button:disabled {
   opacity: 0.55;
 }
