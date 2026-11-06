@@ -132,7 +132,8 @@ export function SharePanel({ decks, tables, activeId, links, setLinks, code, onR
     {restoreRow && <div className="modal-overlay" onClick={closeRestore}><form className="card modal-box deck-save-form" onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); void restore(); }}>
       <h3>{restoreRow.deck_name} 가져오기</h3>
       <p>저장할 때 정한 비밀번호를 입력하세요. 가져온 뒤 수정하면 같은 랭킹 글에 반영됩니다.</p>
-      <label>비밀번호 <input aria-label="가져올 덱 비밀번호" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} autoFocus maxLength={128} /></label>
+      <label>비밀번호 <input aria-label="가져올 덱 비밀번호" type="password" inputMode="numeric" placeholder="숫자 4자리" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} autoFocus maxLength={128} /></label>
+      <p className="muted">새 비밀번호는 숫자 4자리입니다. 이전에 긴 비밀번호로 저장한 덱은 기존 비밀번호를 입력하세요.</p>
       {restoreError && <p role="alert" className="bad">{restoreError}</p>}
       <div className="row"><button className="primary" type="submit" disabled={restoring}>{restoring ? "확인 중…" : "덱 가져오기"}</button><button type="button" disabled={restoring} onClick={closeRestore}>취소</button></div>
     </form></div>}

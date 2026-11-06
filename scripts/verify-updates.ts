@@ -56,7 +56,8 @@ for(const [kind,own,opponent] of [["batter",2.4,2.35],["pitcher",2.35,2.4]] as c
 }
 for(const grade of ["S","S1"])check("comeback team "+grade,near(deckPlayerResults({...deck,chem:{...deck.chem,comebackFlag:grade}},tables)[0].total-now.total,6));
 check("name required",!validDeckName("")&&!validDeckName("   ")&&validDeckName("내 덱"));
-check("password length validated",!validDeckPassword("short")&&validDeckPassword("valid-password"));
+for (const pin of ["0000", "0123", "1234", "9999"]) check("four digit PIN accepted: " + pin, validDeckPassword(pin));
+for (const pin of ["", "123", "12345", "12a4", " 123", "1234 ", "１２３４", "١٢٣٤", "1234\n", "valid-password"]) check("invalid PIN rejected: " + JSON.stringify(pin), !validDeckPassword(pin));
 (async()=>{
  const links={r:{deckId:deck.id,token:"session",password:true as const,sig:"old"}};
  const calls:{fn:string,args:Record<string,unknown>}[]=[];

@@ -1,3 +1,5 @@
+-- 새 비밀번호는 숫자 4자리. 이미 적용했다면 이 파일 전체를 다시 실행해 갱신한다.
+-- 기존 비밀번호 해시·기기 세션은 보존하며 이전 비밀번호로 가져오기도 계속 지원한다.
 -- 선행: 기존 owner_codes 마이그레이션. 운영 데이터 삭제 없이 덱별 비밀번호와 기기별 수정 권한을 추가한다.
 begin;
 create extension if not exists pgcrypto;
@@ -82,7 +84,7 @@ create or replace function public.create_ranking_password(
 declare rid uuid; creation text; tok text; verdict text;
 begin
   perform public._ranking_validate(p_name,p_named,p_deck);
-  if p_password is null or char_length(p_password) not between 8 and 128 then raise exception 'password_length'; end if;
+  if p_password is null or char_length(p_password) <> 4 or p_password !~ '^[0-9]{4}$' then raise exception 'password_length'; end if;
   if nullif(p_client_id,'') is null or nullif(p_deck_id,'') is null then raise exception 'invalid_deck'; end if;
   creation:=public._ranking_hash(p_client_id||'|'||p_deck_id);
   select ranking_id into rid from public.ranking_passwords where creation_hash=creation;
