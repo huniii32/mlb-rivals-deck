@@ -22,6 +22,7 @@ import { SharePanel } from "./components/SharePanel";
 import { ResultPanel } from "./components/ResultPanel";
 import { InquiryModal } from "./components/InquiryModal";
 import { PatchNotesModal } from "./components/PatchNotesModal";
+import { SiteMoveNotice } from "./components/SiteMoveNotice";
 import { ScoreGuideModal } from "./components/ScoreGuideModal";
 import { DeckPreviewModal } from "./components/DeckPreview";
 import { parseExcelDeck } from "./lib/excelImport";
@@ -359,6 +360,8 @@ export default function App() {
           <button onClick={() => setModal("patch")}>📢 공지사항</button>
         </div>
       </header>
+
+      <SiteMoveNotice count={savedDecks.length} backup={savedDecks.length ? exportAll : undefined} />
 
       {recovery !== null && <div className="card" role="status">
         <p>읽을 수 없는 저장 항목이 있어 정상 덱만 복원했습니다. 원본은 별도로 보관하며 아래에서 내려받을 수 있습니다.</p>

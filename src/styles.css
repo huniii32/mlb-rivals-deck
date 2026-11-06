@@ -759,3 +759,28 @@ button.dia-opt.on { border-color: #facc15; box-shadow: 0 0 14px rgba(250, 204, 2
 .hof-roster-player {display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:8px;white-space:normal;background:var(--panel2);padding:15px;min-width:0;}.hof-roster-player span,.hof-roster-player small {font-size:12px;color:var(--muted);overflow-wrap:anywhere;}.hof-roster-player b {font-size:12px;color:var(--accent);}.hof-roster-player.selected {border-color:var(--accent);background:var(--accent-soft);}.hof-roster-player:disabled {opacity:.75;}
 @media(max-width:800px){.hof-roster-grid {grid-template-columns:repeat(3,minmax(0,1fr));}}
 @media(max-width:600px){.hof-play {grid-template-columns:1fr;gap:16px;}.hof-result {min-height:210px;}.hof-roster-grid {grid-template-columns:repeat(2,minmax(0,1fr));}.hof-stats {grid-template-columns:repeat(2,minmax(0,1fr));}.hof-roster .sim-heading {align-items:stretch;flex-direction:column;}.hof-roster input {min-width:0;width:100%;box-sizing:border-box;}}
+
+/* Old GitHub Pages origin: migration notice, with native modal focus handling. */
+.site-move-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 14px 18px; margin: 16px 0; border: 1px solid var(--border2); border-radius: 12px; background: var(--panel); }
+.site-move-dialog { box-sizing: border-box; width: min(620px, calc(100% - 28px)); max-height: calc(100dvh - 32px); padding: 24px; color: var(--text); background: var(--panel); border: 1px solid var(--border2); border-radius: 18px; box-shadow: var(--shadow); overflow-y: auto; }
+.site-move-dialog::backdrop { background: rgba(3, 7, 17, .72); }
+.site-move-heading, .site-move-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.site-move-dialog h2 { font-size: 24px; margin: 18px 0 8px; }
+.site-move-dialog p, .site-move-dialog li { line-height: 1.65; }
+.site-move-address { display: block; padding: 12px; border-radius: 10px; background: var(--accent-soft); color: var(--text); font-weight: 700; overflow-wrap: anywhere; }
+.site-move-transfer { margin-top: 18px; padding: 16px; border: 1px solid var(--border2); border-radius: 12px; }
+.site-move-transfer h3 { margin: 0; font-size: 17px; }
+.site-move-transfer ol { padding-left: 22px; }
+.site-move-transfer li + li { margin-top: 6px; }
+.site-move-dismiss { display: flex; gap: 8px; align-items: center; margin: 20px 0 14px; font-size: 14px; }
+.site-move-dismiss input { width: auto; margin: 0; }
+.site-move-primary { display: inline-block; padding: 10px 14px; border-radius: 10px; background: var(--accent); color: #fff; font-weight: 700; text-decoration: none; }
+.site-move-dialog .site-move-footnote { margin-bottom: 0; font-size: 12px; }
+@media (max-width: 480px) {
+  .site-move-dialog { padding: 18px; }
+  .site-move-dialog h2 { font-size: 21px; }
+  .site-move-actions > * { width: 100%; text-align: center; box-sizing: border-box; }
+}
+[data-theme="light"] .site-move-primary { color: #fff; }
+.event-option .sim-hub-icon { color: #e6a44c; border-color: #e6a44c; }
+.event-option strong small { font-size: 12px; color: var(--muted); font-weight: 500; }
