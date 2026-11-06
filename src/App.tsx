@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import type { Kind, PlayerInput, SkillTables } from "./lib/engine";
 import { deckPlayerResults, flagDefaults, migrateSkillName } from "./lib/engine";
 import type { Deck } from "./lib/deck";
@@ -28,6 +28,8 @@ import { parseExcelDeck } from "./lib/excelImport";
 import { deckSig, rankArgs, useRankSync } from "./lib/rankSync";
 import { buildBundle, parseDeckFile, withRank } from "./lib/deckFile";
 import "./styles.css";
+
+const SkillSimulator = lazy(() => import("./components/SkillSimulator"));
 
 const DECKS_KEY = "rivals-decks-v1";
 const RECOVERY_KEY = "rivals-decks-recovery-v1";
@@ -104,7 +106,7 @@ export default function App() {
   const [tables, setTables] = useState<SkillTables>(loadTables);
   const [selected, setSelected] = useState<number | null>(null);
   const [lineupMode, setLineupMode] = useState<"illustration" | "table">("illustration");
-  const [tab, setTab] = useState<"lineup" | "skills" | "ranking" | "news">(() => /#d=([A-Za-z0-9\-_]+)/.test(window.location.hash) ? "ranking" : "lineup");
+  const [tab, setTab] = useState<"lineup" | "skills" | "simulator" | "ranking" | "news">(() => window.location.hash === "#simulator" ? "simulator" : /#d=([A-Za-z0-9\-_]+)/.test(window.location.hash) ? "ranking" : "lineup");
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "dark");
   const [modal, setModal] = useState<"inquiry" | "patch" | "guide" | null>(null);
   const [preview, setPreview] = useState<Deck | null>(null);
@@ -369,7 +371,7 @@ export default function App() {
         }}>백업 삭제</button></div>
       </div>}
       {storageError && <p className="bad" role="alert">{storageError}</p>}
-      <div className="card toolbar">
+      {tab !== "simulator" && <div className="card toolbar">
         <div className="row toolbar-main">
           <label>내 덱{" "}
             <select value={deck.id} onChange={(e) => { setActiveId(e.target.value); setSelected(null); }}>
@@ -406,10 +408,11 @@ export default function App() {
           }} />
       </div>
 
+      }
       <div className="tabs">
-        {(["lineup", "skills", "ranking", "news"] as const).map((t) => (
+        {(["lineup", "skills", "simulator", "ranking", "news"] as const).map((t) => (
           <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>
-            {{ lineup: "라인업", skills: "스킬비교", ranking: "덱랭킹", news: "정보글" }[t]}
+            {{ lineup: "라인업", skills: "스킬비교", simulator: "스킬 시뮬레이터", ranking: "덱랭킹", news: "정보글" }[t]}
           </button>
         ))}
       </div>
@@ -441,6 +444,8 @@ export default function App() {
           yearInputs={yearInputs} setYearInput={(r, v) => patchDeck({ yearInputs: { ...yearInputs, [r]: v } })} /></aside></div>}
         <details className="card"><summary>선수별 점수와 덱코 상세 보기</summary><ResultPanel players={players} results={results} /></details>
       </>}
+
+      {tab === "simulator" && <Suspense fallback={<div className="card" role="status">공식 확률표를 불러오는 중…</div>}><SkillSimulator /></Suspense>}
 
       {tab === "news" && <NewsTab />}
 
