@@ -8,6 +8,7 @@ export function LineupTable({ deck, results, onSelect }: {
   deck: Deck; results: PlayerResult[]; onSelect: (row: number) => void;
 }) {
   const entries = deck.players.map((p, i) => ({ p, r: results[i] }));
+  const warnings = entries.filter(({ p, r }) => p.name.trim() && r.warnings.length);
   const batters = entries.slice(0, 9).sort((a, b) => (a.p.order || 99) - (b.p.order || 99));
   const pitchers = [...entries.slice(9, 14), ...BULLPEN_ROLES.flatMap(role => entries.slice(14).filter(({ p }) => bullpenRole(p) === role))];
   const totals = deckTotals(deck.players, results);
@@ -52,6 +53,13 @@ export function LineupTable({ deck, results, onSelect }: {
       return <span key={row} className={`sheet-cell ${label === "우" ? "right" : label === "—" ? "off" : ""}`} title={`${threshold}: ${yearRow !== undefined ? year || "연도 미입력" : label}`}><small>{threshold}</small><i>{label}</i></span>;
     })}</div></div>)}</div>
     <p className="sheet-subtotals">타자 {fmt(totals.bt)} · 선발 {fmt(totals.sp)} · 불펜 {fmt(totals.rp)}</p>
+    {warnings.length > 0 && <details className="sheet-warnings">
+      <summary>계산 확인이 필요한 선수 {warnings.length}명</summary>
+      <ul>{warnings.map(({ p, r }) => <li key={p.excelRow}>
+        <button onClick={() => onSelect(p.excelRow)}>{p.name} · {p.pos} 수정</button>
+        <span>{r.warnings.join(" / ")}</span>
+      </li>)}</ul>
+    </details>}
     <footer>선수명 선택 → 능력치·스킬 편집<span>랭킹대전 기준 · * 미인식 스킬 제외 임시 점수</span></footer>
   </article>;
 }

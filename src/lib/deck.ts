@@ -66,19 +66,17 @@ export function blankPlayer(
   };
 }
 
-/** 저장/공유 덱의 옛 선수 데이터에 빠진 필드를 채우고 구 스킬명을 현행명으로 치환 */
+const STAT_ARRAYS = ["base", "train", "spec", "extra", "synergy", "locker", "blackPos", "blackBoost", "leaderBonus", "finalOv"] as const;
+const record = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+const statValue = (v: unknown) => v === "" || (typeof v === "number" && Number.isFinite(v));
+
+/** 구버전에서 생략된 입력칸을 채운다. 2칸 투수 스탯과 3칸 스킬도 현재 길이로 보완한다. */
 export const normalizePlayer = (p: PlayerInput): PlayerInput => ({
+  ...blankPlayer(p.excelRow, p.kind, p.pos, p.order ?? ""),
   ...p,
-  enName: p.enName ?? "",
-  photoUrl: p.photoUrl ?? "",
-  team: p.team ?? "",
-  synergy: p.synergy ?? ["", "", ""],
-  locker: p.locker ?? ["", "", ""],
-  blackPos: p.blackPos ?? ["", "", ""],
-  blackBoost: p.blackBoost ?? ["", "", ""],
-  leaderBonus: p.leaderBonus ?? ["", "", ""],
-  skills: (p.skills ?? ["", "", "", ""]).map((s) =>
-    migrateSkillName(p.kind, s)) as [string, string, string, string],
+  enName: p.enName ?? "", photoUrl: p.photoUrl ?? "", team: p.team ?? "",
+  ...Object.fromEntries(STAT_ARRAYS.map(key => [key, Array.from({ length: 3 }, (_, i) => p[key]?.[i] ?? "")])),
+  skills: Array.from({ length: 4 }, (_, i) => migrateSkillName(p.kind, p.skills?.[i] ?? "")) as PlayerInput["skills"],
 });
 
 export const newId = (): string =>
@@ -86,9 +84,29 @@ export const newId = (): string =>
 
 /** 기존 18명 덱과 불펜 0~7명의 확장 덱을 모두 읽는다. */
 export function isDeck(d: unknown): d is Deck {
-  const players = (d as Deck | null)?.players;
+  if (!record(d)) return false;
+  for (const key of ["id", "name"]) if (d[key] !== undefined && typeof d[key] !== "string") return false;
+  if (d.updatedAt !== undefined && (typeof d.updatedAt !== "number" || !Number.isFinite(d.updatedAt))) return false;
+  for (const key of ["chem", "flags", "yearInputs"]) if (d[key] !== undefined && !record(d[key])) return false;
+  if (d.chem && !Object.values(d.chem).every(v => typeof v === "string")) return false;
+  if (d.flags && !Object.values(d.flags).every(v => typeof v === "boolean")) return false;
+  if (d.yearInputs && !Object.values(d.yearInputs).every(statValue)) return false;
+  if (d.bullpenTactics !== undefined) {
+    if (!record(d.bullpenTactics)) return false;
+    const t = d.bullpenTactics;
+    if (t.winning !== undefined && !["basic", "aggressive", "division"].includes(String(t.winning))) return false;
+    if (t.chasing !== undefined && !["basic", "aggressive"].includes(String(t.chasing))) return false;
+  }
+  const players = d.players;
   if (!Array.isArray(players) || players.length < 14 || players.length > MAX_PLAYERS) return false;
   if (!players.every((p) => p && typeof p.name === "string" && typeof p.pos === "string" && Number.isInteger(p.excelRow))) return false;
+  if (!players.every(p => {
+    for (const key of ["card", "team", "photoUrl", "enName"]) if (p[key] !== undefined && typeof p[key] !== "string") return false;
+    for (const key of ["year", "order", "transLv", "enhLv", "pohLv"]) if (p[key] !== undefined && !statValue(p[key])) return false;
+    for (const key of STAT_ARRAYS) if (p[key] !== undefined && (!Array.isArray(p[key]) || p[key].length > 3 || !p[key].every(statValue))) return false;
+    if (p.skills !== undefined && (!Array.isArray(p.skills) || p.skills.length > 4 || !p.skills.every((v: unknown) => typeof v === "string"))) return false;
+    return p.bullpenRole === undefined || BULLPEN_ROLES.includes(p.bullpenRole);
+  })) return false;
   if (!LINEUP.slice(0, 14).every((l, i) => players[i].excelRow === l.row && players[i].kind === l.kind)) return false;
   if (!players.slice(14).every((p) => p.kind === "pitcher" && BULLPEN_ROWS.includes(p.excelRow))) return false;
   if (new Set(players.map((p) => p.excelRow)).size !== players.length) return false;
@@ -106,7 +124,7 @@ export function normalizeRoster(players: PlayerInput[]): PlayerInput[] {
 }
 
 export function normalizeDeck(d: Deck): Deck {
-  return { ...d, chem: { ...DEFAULT_CHEM, ...d.chem }, players: normalizeRoster(d.players), bullpenTactics: normalizeTactics(d.bullpenTactics) };
+  return { ...d, id: d.id ?? newId(), name: d.name ?? "가져온 덱", updatedAt: d.updatedAt ?? Date.now(), flags: d.flags ?? {}, yearInputs: d.yearInputs ?? {}, chem: { ...DEFAULT_CHEM, ...d.chem }, players: normalizeRoster(d.players), bullpenTactics: normalizeTactics(d.bullpenTactics) };
 }
 
 /** 역할별 배치 수 변경. 감소 시 빈 슬롯부터 제거하고, 선수 삭제 확인은 호출자가 담당한다. */

@@ -2,10 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Kind, PlayerInput, SkillTables } from "./lib/engine";
 import { deckPlayerResults, flagDefaults, migrateSkillName } from "./lib/engine";
 import type { Deck } from "./lib/deck";
-import { DEFAULT_CHEM, LINEUP, YEAR_ANCHOR, blankPlayer, isDeck, newId, normalizeDeck, normalizeRoster, resizeBullpen } from "./lib/deck";
+import { DEFAULT_CHEM, LINEUP, YEAR_ANCHOR, blankPlayer, newId, normalizeDeck, normalizeRoster, resizeBullpen } from "./lib/deck";
 import { DEFAULT_TACTICS, ROLE_LIMITS, bullpenCounts, bullpenRole } from "./lib/bullpen";
 import type { BullpenRole } from "./lib/bullpen";
 import { BullpenControls } from "./components/BullpenControls";
+import { readStoredDecks } from "./lib/deckStorage";
 import { applyDeckUpdate } from "./lib/playerUpdates";
 import { DeckSaveModal } from "./components/DeckSaveModal";
 import { passwordError, passwordResult, validDeckName, type PasswordCredential } from "./lib/deckPassword";
@@ -29,6 +30,7 @@ import { buildBundle, parseDeckFile, withRank } from "./lib/deckFile";
 import "./styles.css";
 
 const DECKS_KEY = "rivals-decks-v1";
+const RECOVERY_KEY = "rivals-decks-recovery-v1";
 const TABLES_KEY = "rivals-tables-v1";
 const THEME_KEY = "rivals-theme";
 const LEGACY_KEY = "rivals-deck-v2";
@@ -46,40 +48,26 @@ function blankDeck(name: string, legacyDefaults = false): Deck {
   };
 }
 
-function loadDecks(): { decks: Deck[]; activeId: string } {
+function loadDecks(): { decks: Deck[]; activeId: string; recovery: string | null } {
+  let recovery: string | null = null;
   try {
+    recovery = localStorage.getItem(RECOVERY_KEY);
     const raw = localStorage.getItem(DECKS_KEY);
-    if (raw) {
-      const s = JSON.parse(raw) as { decks: Deck[]; activeId: string };
-      if (Array.isArray(s.decks) && s.decks.length) {
-        const decks = s.decks.map((d) => {
-          const base = blankDeck(d.name || "내 덱", true);
-          return normalizeDeck({
-            ...base,
-            ...d,
-            players: isDeck(d) ? d.players : base.players,
-          });
-        });
-        const activeId = decks.some((d) => d.id === s.activeId) ? s.activeId : decks[0].id;
-        return { decks, activeId };
+    const legacy = raw === null ? localStorage.getItem(LEGACY_KEY) : null;
+    const source = raw ?? legacy;
+    if (source) {
+      const restored = readStoredDecks(source, raw === null);
+      if (restored.damaged) recovery = source;
+      if (restored.decks.length) {
+        const activeId = restored.decks.some(d => d.id === restored.activeId) ? restored.activeId! : restored.decks[0].id;
+        return { decks: restored.decks, activeId, recovery };
       }
     }
-    // 구버전(v2 단일 덱) 이전
-    const legacy = localStorage.getItem(LEGACY_KEY);
-    if (legacy) {
-      const s = JSON.parse(legacy) as Partial<Deck>;
-      const d = blankDeck("내 덱 1", true);
-      if (isDeck(s)) d.players = s.players;
-      if (s.chem) d.chem = { ...d.chem, ...s.chem };
-      if (s.flags) d.flags = { ...d.flags, ...s.flags };
-      if (s.yearInputs) d.yearInputs = { ...d.yearInputs, ...s.yearInputs };
-      return { decks: [normalizeDeck(d)], activeId: d.id };
-    }
   } catch {
-    // 무시하고 새로 생성
+    // 저장소 접근 실패 시에도 빈 덱으로 화면은 열 수 있다.
   }
   const d = blankDeck("");
-  return { decks: [d], activeId: d.id };
+  return { decks: [d], activeId: d.id, recovery };
 }
 
 function migrateTables(t: SkillTables): SkillTables {
@@ -109,6 +97,8 @@ function loadTables(): SkillTables {
 
 export default function App() {
   const [boot] = useState(loadDecks);
+  const [recovery, setRecovery] = useState(boot.recovery);
+  const [storageError, setStorageError] = useState("");
   const [decks, setDecks] = useState<Deck[]>(boot.decks);
   const [activeId, setActiveId] = useState(boot.activeId);
   const [tables, setTables] = useState<SkillTables>(loadTables);
@@ -129,15 +119,23 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem(THEME_KEY, theme);
+    try { localStorage.setItem(THEME_KEY, theme); } catch { /* 덱 저장 경고에서 안내 */ }
   }, [theme]);
 
   useEffect(() => {
-    localStorage.setItem(DECKS_KEY, JSON.stringify({ decks: decks.filter((d) => validDeckName(d.name)), activeId }));
-  }, [decks, activeId]);
+    try {
+      // 백업에 실패하면 현재 저장본을 덮어쓰지 않는다.
+      if (recovery !== null) localStorage.setItem(RECOVERY_KEY, recovery);
+      localStorage.setItem(DECKS_KEY, JSON.stringify({ decks: decks.filter((d) => validDeckName(d.name)), activeId }));
+      setStorageError("");
+    } catch {
+      setStorageError("기기 저장 공간에 기록하지 못했습니다. 덱 파일을 내보내 변경 내용을 보관하세요.");
+    }
+  }, [decks, activeId, recovery]);
 
   useEffect(() => {
-    localStorage.setItem(TABLES_KEY, JSON.stringify(tables));
+    try { localStorage.setItem(TABLES_KEY, JSON.stringify(tables)); }
+    catch { setStorageError("스킬 점수 설정을 기기에 저장하지 못했습니다. 저장 공간을 확인하세요."); }
   }, [tables]);
 
   // ESC로 팝업 닫기
@@ -203,11 +201,11 @@ export default function App() {
   const renameDeck = () => {
     setSaveOpen(true);
   };
-  const saveDeck = async (name: string, password: string) => {
+  const saveDeck = async (name: string, password: string, publish: boolean) => {
     if (!validDeckName(name)) throw new Error("덱 이름을 입력하세요.");
     const named = { ...deck, name: name.trim(), updatedAt: Date.now() };
     setDecks((prev) => prev.map((d) => d.id === named.id ? named : d));
-    if (!supabase) return;
+    if (!supabase || !publish) return;
     const existing = Object.entries(links).find(([, l]) => l.deckId === named.id);
     try {
       const { args } = rankArgs(named, tables);
@@ -367,6 +365,18 @@ export default function App() {
         </div>
       </header>
 
+      {recovery !== null && <div className="card" role="status">
+        <p>읽을 수 없는 저장 항목이 있어 정상 덱만 복원했습니다. 원본은 별도로 보관하며 아래에서 내려받을 수 있습니다.</p>
+        <div className="row"><button onClick={() => {
+          const url = URL.createObjectURL(new Blob([recovery], { type: "application/json" }));
+          const a = document.createElement("a"); a.href = url; a.download = "덱-복구용-원본.json"; a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }}>복구용 원본 다운로드</button><button onClick={() => {
+          if (!confirm("복구용 원본 백업을 삭제할까요? 필요한 경우 먼저 다운로드하세요.")) return;
+          try { localStorage.removeItem(RECOVERY_KEY); setRecovery(null); } catch { setStorageError("백업을 삭제하지 못했습니다."); }
+        }}>백업 삭제</button></div>
+      </div>}
+      {storageError && <p className="bad" role="alert">{storageError}</p>}
       <div className="card toolbar">
         <div className="row">
           <label>내 덱{" "}
@@ -459,7 +469,7 @@ export default function App() {
       {modal === "guide" && <ScoreGuideModal close={() => setModal(null)} />}
       {modal === "patch" && <PatchNotesModal close={() => setModal(null)} />}
       {preview && <DeckPreviewModal deck={preview} tables={tables} close={() => setPreview(null)} />}
-      {saveOpen && <DeckSaveModal key={deck.id} initialName={deck.name} remote={!!supabase}
+      {saveOpen && <DeckSaveModal key={deck.id} initialName={deck.name} remote={!!supabase} linked={activeLink}
         needsPassword={!!supabase && !Object.values(links).some((l) => l.deckId === deck.id && l.password)}
         save={saveDeck} close={() => setSaveOpen(false)} />}
 

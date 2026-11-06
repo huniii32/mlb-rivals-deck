@@ -458,8 +458,9 @@ export function calcPlayer(
   }
 
   const scores = p.skills.map((s) => {
-    const entry = NEW_SKILLS.find(e => e.kind === p.kind && normalizeSkillKey(e.name) === normalizeSkillKey(s));
-    if (entry?.rpOnly && (!role || role === "closer")) {
+    // 현행 O/X·평균 이름과 이전 아웃별 이름에 같은 중계 전용 조건을 적용한다.
+    const relieverOnly = /^\[S[0-4]\](신속한처리|레버리지릴리퍼|승리공식|컴백플래그)\(/i.test(normalizeSkillKey(s));
+    if (p.kind === "pitcher" && relieverOnly && (!role || role === "closer")) {
       warnings.push(`${s}: 중계 투수 전용 효과 미적용`);
       return 0;
     }
