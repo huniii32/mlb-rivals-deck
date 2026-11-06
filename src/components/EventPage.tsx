@@ -60,10 +60,12 @@ export default function EventPage({
   deck,
   onRegisterDeck,
   onViewRankings,
+  preview,
 }: {
   deck?: RankRef;
   onRegisterDeck?: () => void;
   onViewRankings?: () => void;
+  preview?: { request: typeof eventRequest; storageKey: string };
 }) {
   const [state, setState] = useState<EventState | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -76,12 +78,13 @@ export default function EventPage({
   const busyRef = useRef(false),
     version = useRef(0),
     mounted = useRef(true);
-  const pendingKey = `rivals-event-request:${EVENT_ID}:${deck?.id || "guest"}`;
+  const requestEvent = preview?.request || eventRequest;
+  const pendingKey = `rivals-event-request:${preview?.storageKey || EVENT_ID}:${deck?.id || "guest"}`;
   const refresh = useCallback(async () => {
     if (busyRef.current) return;
     const request = ++version.current;
     try {
-      const next = await eventRequest(
+      const next = await requestEvent(
         "get",
         {},
         deck?.password ? deck : undefined,
@@ -96,7 +99,7 @@ export default function EventPage({
     } finally {
       if (mounted.current && request === version.current) setLoading(false);
     }
-  }, [deck?.id, deck?.token, deck?.password]);
+  }, [deck?.id, deck?.token, deck?.password, requestEvent]);
   const refreshRef = useRef(refresh);
   refreshRef.current = refresh;
   useEffect(() => {
@@ -104,19 +107,22 @@ export default function EventPage({
     setState(null);
     setLoading(true);
     void refresh();
-    void supabase?.auth.getSession().then(({ data }) => {
-      if (mounted.current) setSession(data.session);
-    });
-    const subscription = supabase?.auth.onAuthStateChange((_event, next) => {
-      if (!mounted.current) return;
-      ++version.current;
-      setSession(next);
-      setState(null);
-      // Avoid calling another SDK request while Supabase's auth lock is held.
-      setTimeout(() => {
-        if (mounted.current) void refresh();
-      }, 0);
-    });
+    if (!preview)
+      void supabase?.auth.getSession().then(({ data }) => {
+        if (mounted.current) setSession(data.session);
+      });
+    const subscription = preview
+      ? undefined
+      : supabase?.auth.onAuthStateChange((_event, next) => {
+          if (!mounted.current) return;
+          ++version.current;
+          setSession(next);
+          setState(null);
+          // Avoid calling another SDK request while Supabase's auth lock is held.
+          setTimeout(() => {
+            if (mounted.current) void refresh();
+          }, 0);
+        });
     const timer = setInterval(() => void refresh(), 15000);
     const focus = () => void refresh();
     window.addEventListener("focus", focus);
@@ -127,7 +133,7 @@ export default function EventPage({
       clearInterval(timer);
       window.removeEventListener("focus", focus);
     };
-  }, [refresh]);
+  }, [refresh, preview]);
   useEffect(() => {
     try {
       const pending = localStorage.getItem(pendingKey);
@@ -150,7 +156,7 @@ export default function EventPage({
     setMessage("");
     const request = ++version.current;
     try {
-      const next = await eventRequest(action, args, deck);
+      const next = await requestEvent(action, args, deck);
       if (mounted.current && request === version.current) {
         setState(next);
         setMessage(success);
@@ -662,47 +668,49 @@ export default function EventPage({
           </details>
         ) : null}
       </section>
-      <details className="event-panel event-admin-login">
-        <summary>운영자 로그인</summary>
-        <p>
-          이메일 로그인은 이벤트 운영자만 사용합니다. 참가자는 위에서 등록
-          덱으로 참여해주세요.
-        </p>
-        {session ? (
-          <div className="event-account">
-            <span>
-              {session.user.email}
-              {state?.is_admin ? " · 운영자" : " · 운영 권한 없음"}
-            </span>
-            <button
-              disabled={busy}
-              onClick={() => void supabase?.auth.signOut()}
+      {!preview && (
+        <details className="event-panel event-admin-login">
+          <summary>운영자 로그인</summary>
+          <p>
+            이메일 로그인은 이벤트 운영자만 사용합니다. 참가자는 위에서 등록
+            덱으로 참여해주세요.
+          </p>
+          {session ? (
+            <div className="event-account">
+              <span>
+                {session.user.email}
+                {state?.is_admin ? " · 운영자" : " · 운영 권한 없음"}
+              </span>
+              <button
+                disabled={busy}
+                onClick={() => void supabase?.auth.signOut()}
+              >
+                로그아웃
+              </button>
+            </div>
+          ) : (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void login();
+              }}
             >
-              로그아웃
-            </button>
-          </div>
-        ) : (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void login();
-            }}
-          >
-            <label>
-              운영자 이메일
-              <input
-                type="email"
-                required
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="운영자 이메일 주소"
-              />
-            </label>
-            <button disabled={busy || !state}>운영자 로그인 링크 받기</button>
-          </form>
-        )}
-      </details>
+              <label>
+                운영자 이메일
+                <input
+                  type="email"
+                  required
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="운영자 이메일 주소"
+                />
+              </label>
+              <button disabled={busy || !state}>운영자 로그인 링크 받기</button>
+            </form>
+          )}
+        </details>
+      )}
       {state?.is_admin && (
         <section className="event-panel event-admin">
           <h3>운영자 관리</h3>

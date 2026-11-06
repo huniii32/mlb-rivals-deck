@@ -1,0 +1,49 @@
+body {
+  margin: 0;
+}
+.event-web-demo {
+  padding: clamp(16px, 3vw, 40px);
+}
+.event-web-demo button {
+  background: var(--paper);
+  border: 1px solid var(--line);
+}
+.event-web-demo > * {
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.event-web-demo .web-demo-header {
+  margin-bottom: 24px;
+}
+.event-web-demo .web-demo-header h1 {
+  margin: 8px 0;
+  font-size: clamp(24px, 3vw, 34px);
+}
+.event-web-demo .web-demo-notice {
+  padding: 14px;
+  margin-top: 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--nav);
+}
+.event-web-demo .web-demo-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  margin-top: 20px;
+}
+.event-web-demo .web-demo-controls label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+}
+.event-web-demo .web-demo-controls select {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--text);
+  background: var(--paper);
+}

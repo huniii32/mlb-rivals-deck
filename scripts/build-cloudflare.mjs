@@ -26,6 +26,14 @@ const result=spawnSync(process.platform==='win32'?'npm.cmd':'npm',['run','build'
 if(result.error)throw result.error;
 if(result.status!==0)process.exit(result.status??1);
 
+// A branch preview includes a standalone, browser-only event walkthrough.
+// It has no Supabase URL/key and is excluded from production/main builds.
+if(env.CF_PAGES_BRANCH && env.CF_PAGES_BRANCH !== 'main'){
+  const demo=spawnSync(process.execPath,['scripts/build-event-web-demo.mjs'],{cwd:root,stdio:'inherit',env});
+  if(demo.error)throw demo.error;
+  if(demo.status!==0)process.exit(demo.status??1);
+}
+
 const dist=resolve(root,'dist');
 const html=readFileSync(resolve(dist,'index.html'),'utf8');
 if(!html.includes('src="/assets/')||html.includes('/mlb-rivals-deck/assets/'))throw new Error('Cloudflare 루트 경로 빌드를 확인하세요.');
