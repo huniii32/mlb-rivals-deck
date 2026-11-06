@@ -92,7 +92,7 @@ export function SharePanel({ decks, tables, activeId, links, setLinks, code, onR
       <div className="row"><button className="primary" onClick={onSaveDeck}>이 덱 저장·랭킹 연결</button>
         {isSupabaseOn() && <button disabled={loading} onClick={() => void loadPub()}>새로고침</button>}
       </div>
-      <p className="muted">덱 이름과 비밀번호를 정해 저장하세요. 연결한 덱은 수정 즉시 같은 랭킹 글에 반영됩니다. 다른 기기에서는 내 글의 가져오기를 눌러 비밀번호로 관리 권한을 연결하세요.</p>
+      <p className="muted">같은 이름·같은 비밀번호로 저장하면 현재 기기의 내용으로 기존 랭킹을 갱신합니다. 연결한 덱은 수정 즉시 반영됩니다. 다른 기기에서는 내 글의 가져오기를 눌러 비밀번호로 관리 권한을 연결하세요.</p>
       {!isSupabaseOn() ? <p className="muted">온라인 랭킹이 연결되지 않아 현재는 이 기기에 저장합니다.</p> : <>
         {loadError && <p role="alert" className="bad">{loadError}</p>}
         {pub.length === 0 ? <p className="muted">{loading ? "불러오는 중…" : "등록된 덱이 없습니다."}</p> :

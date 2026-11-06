@@ -27,7 +27,7 @@ export function DeckSaveModal({ initialName, needsPassword, remote, linked, save
       {passwordRequired && <>
         <label>덱 비밀번호 <input aria-label="덱 비밀번호" type="password" inputMode="numeric" pattern="[0-9]{4}" placeholder="숫자 4자리" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={4} maxLength={4} /></label>
         <label>비밀번호 확인 <input aria-label="덱 비밀번호 확인" type="password" inputMode="numeric" pattern="[0-9]{4}" placeholder="숫자 4자리" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={4} maxLength={4} /></label>
-        <p className="muted">다른 기기에서 랭킹의 내 덱을 가져올 때 사용하는 비밀번호입니다. 잊어버리면 다른 기기에서 관리 권한을 복원할 수 없습니다.</p>
+        <p className="muted">같은 이름의 덱이 이미 있으면 기존 비밀번호를 입력하세요. 비밀번호가 맞으면 현재 기기의 내용으로 기존 랭킹을 갱신합니다. 잊어버리면 다른 기기에서 관리 권한을 복원할 수 없습니다.</p>
       </>}
       <p className="muted">{publish ? "저장 후 덱을 수정하면 같은 랭킹 글에 바로 반영됩니다." : "이 기기에만 저장합니다. 다른 기기로 옮기려면 덱 파일을 내보내거나, 나중에 공개 랭킹에 연결하세요."}</p>
       {error && <p role="alert" className="bad">{error}</p>}

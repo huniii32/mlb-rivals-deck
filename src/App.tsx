@@ -215,7 +215,7 @@ export default function App() {
         if (!data) throw new Error("ownership_required");
         setLinks((prev) => ({ ...prev, [existing[0]]: { ...existing[1], sig: deckSig(args) } }));
       } else {
-        const { data, error } = await supabase.rpc("create_ranking_password", {
+        const { data, error } = await supabase.rpc("save_ranking_password", {
           p_client_id: getClientId(), p_deck_id: named.id, p_password: password, ...args,
           p_existing_id: existing?.[0] ?? null, p_token: existing?.[1].token ?? null, p_code: existing?.[1].owned ? code : null,
         });
