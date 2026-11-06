@@ -266,6 +266,13 @@ export default function EventPage({
           <div className="eyebrow">PRIVATE EVENT</div>
           <h2>{loading ? "접근 권한 확인 중…" : "이벤트 준비 중"}</h2>
           <p>공개 전에는 운영자만 페이지를 확인할 수 있습니다.</p>
+          {!preview && (
+            <p>
+              <a href="https://feat-server-event-pilot.mlb-rivals-deck.pages.dev/event-demo/?view=admin">
+                운영자 미리보기 열기 →
+              </a>
+            </p>
+          )}
           {error && (
             <p className="event-error" role="alert">
               {error}
