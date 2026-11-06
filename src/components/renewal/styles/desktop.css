@@ -131,7 +131,10 @@
   }
   .renewal .field-player {
     /* Keep the full caption clear of the next card, especially 1B / DH. */
-    width: min(16%, clamp(70px, calc(var(--desktop-field-height) * 0.2778 - 48px), 112px));
+    width: min(
+      16%,
+      clamp(70px, calc(var(--desktop-field-height) * 0.2778 - 48px), 112px)
+    );
   }
   .renewal .pitcher-board {
     --pitcher-card-width: clamp(90px, 12dvh, 130px);
@@ -143,7 +146,10 @@
     gap: var(--pitcher-gap);
   }
   .renewal .bullpen-role .pitcher-grid {
-    max-width: calc(var(--bullpen-columns) * var(--pitcher-card-width) + (var(--bullpen-columns) - 1) * var(--pitcher-gap));
+    max-width: calc(
+      var(--bullpen-columns) * var(--pitcher-card-width) +
+        (var(--bullpen-columns) - 1) * var(--pitcher-gap)
+    );
     margin-inline: 0;
   }
   .renewal .pitcher-grid .vacant {
@@ -156,5 +162,28 @@
   }
   .renewal .bullpen-role > header {
     margin-bottom: 6px;
+  }
+}
+
+/* Keep larger reading text without pushing the lineup below short laptop screens. */
+@media (min-width: 1024px) and (max-height: 720px) {
+  .renewal .topbar {
+    height: 48px;
+  }
+  .renewal .workspace main {
+    padding-top: 10px;
+  }
+  .renewal .workspace main[data-page="lineup"] {
+    row-gap: 10px;
+  }
+  .renewal .toolbar {
+    padding: 8px 12px;
+  }
+  .renewal .score-main {
+    padding-block: 10px;
+  }
+  .renewal .overview-breakdown {
+    padding-top: 10px;
+    padding-bottom: 28px;
   }
 }

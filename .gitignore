@@ -2,6 +2,7 @@ node_modules/
 dist/
 *.log
 .env
+/.event-pilot/
 
 # scraped seed data (regenerable, repo-root data/ only)
 /data/

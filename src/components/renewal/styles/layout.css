@@ -65,7 +65,7 @@
   background: var(--bg);
   color: var(--text);
   font:
-    14px/1.5 "Pretendard",
+    16px/1.6 "Pretendard",
     "Noto Sans KR",
     system-ui,
     sans-serif;
@@ -100,7 +100,7 @@
   padding: 6px 30px;
   background: #ebe5d7;
   color: #756140;
-  font-size: 10px;
+  font-size: 12px;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -177,7 +177,7 @@
   display: flex;
   gap: 12px;
   align-items: center;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--muted);
 }
 .renewal .sidebar nav button > span {
@@ -221,7 +221,7 @@
   margin: 13px 0 8px;
 }
 .renewal .sidebar-event p {
-  font-size: 10px;
+  font-size: 12px;
   color: #a9b4c6;
   line-height: 1.8;
 }
@@ -236,12 +236,12 @@
   width: 100%;
   border-radius: 0;
   padding: 12px 0 0;
-  font-size: 11px;
+  font-size: 13px;
 }
 .renewal .sidebar-bottom {
   margin-top: auto;
   padding: 30px 10px 0;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
 }
 .renewal .connection-dot {
@@ -254,7 +254,7 @@
 }
 .renewal .sidebar-bottom small {
   display: block;
-  font-size: 9px;
+  font-size: 12px;
   margin-top: 7px;
   color: var(--muted);
 }
@@ -271,7 +271,7 @@
   background: var(--paper);
 }
 .renewal .topbar > span {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
   letter-spacing: 0.5px;
 }
@@ -293,7 +293,7 @@
 .renewal .topbar .help-button {
   border: 0;
   padding: 0;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
 }
 .renewal .help-button span {
@@ -328,7 +328,7 @@
   color: #caa96c;
 }
 .renewal .page-heading p {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--muted);
   margin-top: 10px;
 }
@@ -361,14 +361,14 @@
   z-index: 1;
 }
 .renewal .score-main > strong > span {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 400;
   color: #b4c4dc;
   margin-left: 9px;
 }
 .renewal .score-main p {
   color: #9dafc8;
-  font-size: 10px;
+  font-size: 12px;
   margin-top: 5px;
   position: relative;
   z-index: 1;
@@ -397,14 +397,14 @@
   min-width: 0;
 }
 .renewal .overview-breakdown > div > span {
-  font-size: 11px;
+  font-size: 13px;
   color: #b2c2d9;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 .renewal .overview-breakdown small {
-  font-size: 8px;
+  font-size: 12px;
   color: #8c9fb9;
 }
 .renewal .overview-breakdown strong {
@@ -420,7 +420,7 @@
   border: 0;
   background: none;
   padding: 0;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 400;
   color: #9fb1ca;
 }
@@ -451,12 +451,12 @@
   gap: 12px;
 }
 .renewal .panel-heading p {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
   margin-top: 6px;
 }
 .renewal .count {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
   font-weight: 500;
   margin-left: 9px;
@@ -473,7 +473,7 @@
 .renewal .segmented button {
   padding: 6px 10px;
   border: 0;
-  font-size: 10px;
+  font-size: 12px;
   border-radius: 5px;
   background: none;
   color: var(--muted);
@@ -499,7 +499,7 @@
   border: 0;
   border-radius: 0;
   padding: 10px 1px;
-  font-size: 11px;
+  font-size: 13px;
   background: none;
   color: var(--muted);
   position: relative;
@@ -517,7 +517,7 @@
   background: var(--blue);
 }
 .renewal .roster-tabs button span {
-  font-size: 9px;
+  font-size: 12px;
   margin-left: 7px;
   padding: 1px 5px;
   background: var(--soft);
@@ -525,7 +525,7 @@
 }
 .renewal .roster-tabs > small {
   margin-left: auto;
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
 }
 .renewal .stadium-board {
@@ -665,7 +665,7 @@
   letter-spacing: -1px;
 }
 .renewal .completion-ring > strong > span {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 400;
   color: var(--muted);
   letter-spacing: 0;
@@ -675,17 +675,17 @@
   justify-content: space-between;
   padding: 10px 0;
   border-bottom: 1px solid var(--line);
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
 }
 .renewal .status-line b {
   color: var(--text);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
 }
 .renewal .status-line i {
   font-style: normal;
-  font-size: 8px;
+  font-size: 12px;
   color: #668e7e;
   margin-left: 8px;
 }
@@ -694,7 +694,7 @@
   display: flex;
   justify-content: space-between;
   margin-top: 17px;
-  font-size: 10px;
+  font-size: 12px;
   background: var(--soft);
   border: 0;
 }
@@ -703,7 +703,7 @@
 }
 .renewal .quick-settings h2 {
   margin-bottom: 6px;
-  font-size: 15px;
+  font-size: 16px;
 }
 .renewal .quick-settings button {
   display: flex;
@@ -733,11 +733,11 @@
 }
 .renewal .quick-settings strong {
   display: block;
-  font-size: 11px;
+  font-size: 13px;
 }
 .renewal .quick-settings small {
   display: block;
-  font-size: 8px;
+  font-size: 12px;
   color: var(--muted);
   font-weight: 400;
   margin-top: 3px;
@@ -757,10 +757,10 @@
   min-width: 490px;
   text-align: right;
   font-variant-numeric: tabular-nums;
-  font-size: 12px;
+  font-size: 14px;
 }
 .renewal .table-scroll th {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--muted);
   padding: 13px 9px;
@@ -775,7 +775,7 @@
   text-align: left;
 }
 .renewal .pos-badge {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
 }
 .renewal .player-name {
@@ -783,11 +783,11 @@
   background: none;
   padding: 0;
   text-align: left;
-  font-size: 12px;
+  font-size: 14px;
 }
 .renewal .player-name small {
   display: block;
-  font-size: 8px;
+  font-size: 12px;
   color: var(--muted);
   font-weight: 400;
   margin-top: 3px;
@@ -801,7 +801,7 @@
 }
 .renewal .table-note {
   padding: 15px 0 0;
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
 }
 .renewal footer {
@@ -809,15 +809,15 @@
   align-items: center;
   gap: 13px;
   padding: 28px 2px;
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
 }
 .renewal footer strong {
-  font-size: 11px;
+  font-size: 13px;
 }
 .renewal footer small {
   margin-left: auto;
-  font-size: 8px;
+  font-size: 12px;
 }
 .renewal .search {
   border: 1px solid var(--line);
@@ -832,10 +832,10 @@
   padding: 0 8px;
   max-width: 170px;
   outline-offset: 8px;
-  font-size: 11px;
+  font-size: 13px;
 }
 .renewal .muted {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
   line-height: 1.9;
   margin-top: 8px;
@@ -852,7 +852,7 @@
   padding: 22px 18px;
 }
 .renewal .skill-combo > small {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
 }
 .renewal .skill-combo h3 {
@@ -870,14 +870,14 @@
   align-items: center;
 }
 .renewal .skill-sum > span {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
 }
 .renewal .skill-sum strong {
   font-size: 26px;
 }
 .renewal .skill-sum small {
-  font-size: 10px;
+  font-size: 12px;
   margin-left: 3px;
   font-weight: 400;
 }
@@ -891,7 +891,7 @@
   margin-top: 20px;
 }
 .renewal .comparison-result > span {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
 }
 .renewal .comparison-result strong {
@@ -900,7 +900,7 @@
 }
 .renewal .comparison-result > span:last-child {
   margin-left: auto;
-  font-size: 8px;
+  font-size: 12px;
 }
 .renewal .sim-hero {
   background: #1c2a42;
@@ -962,7 +962,7 @@
 }
 .renewal dialog label {
   display: block;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
 }
 .renewal dialog input {
@@ -974,10 +974,10 @@
   background: var(--soft);
   width: 100%;
   margin-top: 9px;
-  font-size: 14px;
+  font-size: 16px;
 }
 .renewal dialog p {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
   line-height: 1.9;
   margin: 15px 0;
@@ -1012,10 +1012,10 @@
     font-size: 16px;
   }
   .renewal .table-scroll th {
-    font-size: 12px;
+    font-size: 14px;
   }
   .renewal .player-name small {
-    font-size: 10px;
+    font-size: 12px;
   }
 }
 @media (max-width: 1200px) {
@@ -1134,7 +1134,7 @@
     padding: 7px 15px;
     gap: 9px;
     min-height: 32px;
-    font-size: 8px;
+    font-size: 12px;
   }
   .renewal .preview-strip > b {
     font-size: 7px;
@@ -1167,7 +1167,7 @@
     gap: 0;
   }
   .renewal .sidebar nav button {
-    font-size: 10px;
+    font-size: 12px;
     padding: 11px 8px;
     gap: 5px;
     border-radius: 0;
@@ -1175,7 +1175,7 @@
     white-space: nowrap;
   }
   .renewal .sidebar nav button > span {
-    font-size: 15px;
+    font-size: 16px;
   }
   .renewal .sidebar nav button.active {
     background: none;
@@ -1192,13 +1192,13 @@
     gap: 15px;
   }
   .renewal .topbar > span {
-    font-size: 8px;
+    font-size: 12px;
   }
   .renewal .topbar .icon-button {
     font-size: 20px;
   }
   .renewal .topbar .help-button {
-    font-size: 9px;
+    font-size: 12px;
   }
   .renewal .workspace main {
     padding: 24px 16px 0;
@@ -1212,7 +1212,7 @@
     font-size: 26px;
   }
   .renewal .page-heading p {
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.7;
     max-width: 210px;
   }
@@ -1231,14 +1231,14 @@
     font-size: 43px;
   }
   .renewal .score-main p {
-    font-size: 9px;
+    font-size: 12px;
   }
   .renewal .overview-breakdown {
     padding: 0 23px 44px;
     gap: 24px;
   }
   .renewal .overview-breakdown > div > span {
-    font-size: 10px;
+    font-size: 12px;
   }
   .renewal .overview-breakdown strong {
     font-size: 19px;
@@ -1253,7 +1253,7 @@
   .renewal .overview .score-guide-link {
     right: 23px;
     bottom: 15px;
-    font-size: 8px;
+    font-size: 12px;
   }
   .renewal .lineup-layout {
     grid-template-columns: 1fr;
@@ -1268,14 +1268,14 @@
     font-size: 16px;
   }
   .renewal .count {
-    font-size: 9px;
+    font-size: 12px;
     margin-left: 5px;
   }
   .renewal .panel-heading p {
-    font-size: 9px;
+    font-size: 12px;
   }
   .renewal .segmented button {
-    font-size: 9px;
+    font-size: 12px;
     padding: 5px 7px;
   }
   .renewal .stadium-board {
@@ -1314,7 +1314,7 @@
     padding: 18px 15px;
   }
   .renewal .right-column h2 {
-    font-size: 14px;
+    font-size: 16px;
   }
   .renewal .completion-ring {
     width: 95px;
@@ -1325,18 +1325,18 @@
     font-size: 28px;
   }
   .renewal .status-line {
-    font-size: 9px;
+    font-size: 12px;
     padding: 8px 0;
   }
   .renewal .status-line b {
-    font-size: 10px;
+    font-size: 12px;
   }
   .renewal .status-line i {
-    font-size: 7px;
+    font-size: 12px;
     margin-left: 4px;
   }
   .renewal .full-button {
-    font-size: 9px !important;
+    font-size: 12px !important;
     padding: 9px !important;
   }
   .renewal .quick-settings button {
@@ -1349,25 +1349,25 @@
     font-size: 15px;
   }
   .renewal .quick-settings strong {
-    font-size: 10px;
+    font-size: 12px;
   }
   .renewal .quick-settings small {
-    font-size: 7px;
+    font-size: 12px;
   }
   .renewal .quick-settings button > b {
-    font-size: 14px;
+    font-size: 16px;
   }
   .renewal footer {
-    font-size: 8px;
+    font-size: 12px;
     padding: 23px 0;
     gap: 9px;
     flex-wrap: wrap;
   }
   .renewal footer strong {
-    font-size: 10px;
+    font-size: 12px;
   }
   .renewal footer small {
-    font-size: 7px;
+    font-size: 12px;
   }
   .renewal .search {
     width: 100%;
@@ -1411,14 +1411,14 @@
 }
 @media (max-width: 370px) {
   .renewal .preview-strip > span {
-    font-size: 7px;
+    font-size: 12px;
   }
   .renewal .sidebar {
     padding-left: 12px;
     padding-right: 12px;
   }
   .renewal .sidebar nav button {
-    font-size: 9px;
+    font-size: 12px;
     padding: 11px 6px;
   }
   .renewal .sidebar nav button > span {
@@ -1432,13 +1432,13 @@
     font-size: 24px;
   }
   .renewal .page-heading p {
-    font-size: 9px;
+    font-size: 12px;
   }
   .renewal .panel-heading {
     flex-wrap: wrap;
   }
   .renewal .panel h2 {
-    font-size: 15px;
+    font-size: 16px;
   }
   .renewal .player-caption strong {
     font-size: 9px;

@@ -44,7 +44,7 @@
   color: var(--muted);
   display: grid;
   place-items: center;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
 }
 .renewal .skill-combo:last-child .combo-letter {
@@ -75,12 +75,12 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
 }
 .renewal .slot-heading i {
   font-style: normal;
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 0.4px;
   color: var(--muted);
 }
@@ -91,7 +91,7 @@
   letter-spacing: -0.3px;
 }
 .renewal .slot-heading > strong > small {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 400;
   margin-left: 4px;
 }
@@ -110,7 +110,7 @@
   width: 100%;
   height: 40px;
   padding: 8px;
-  font-size: 12px;
+  font-size: 14px;
   border-radius: 7px;
   background: var(--nav);
   color: var(--blue);
@@ -121,7 +121,7 @@
 .renewal .slot-input-row .skill-search-input input {
   height: 40px;
   padding: 10px 31px 10px 11px;
-  font-size: 12px;
+  font-size: 14px;
   background: var(--paper);
 }
 .renewal .skill-slot .skill-condition,
@@ -136,17 +136,17 @@
 }
 .renewal .skill-slot .skill-condition > span,
 .renewal .slot-condition-none > span {
-  font-size: 9px;
+  font-size: 12px;
 }
 .renewal .skill-slot .skill-condition select {
   margin: 0;
   height: 35px;
   padding: 7px 10px;
-  font-size: 11px;
+  font-size: 13px;
   background: var(--soft);
 }
 .renewal .slot-condition-none > small {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 400;
   line-height: 1.6;
   padding: 0 11px;
@@ -168,7 +168,7 @@
   background: var(--nav);
 }
 .renewal .skill-combo .skill-sum > span {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
 }
 .renewal .skill-combo .skill-sum > strong {
@@ -178,7 +178,7 @@
   letter-spacing: -0.6px;
 }
 .renewal .skill-combo .skill-sum > strong > small {
-  font-size: 10px;
+  font-size: 12px;
   margin-left: 6px;
 }
 .renewal .skill-lab .comparison-result {
@@ -192,7 +192,7 @@
   z-index: 3;
 }
 .renewal .skill-name-search .search-pending {
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.5;
 }
 .renewal .skill-lab .skill-directory {
@@ -220,18 +220,18 @@
     gap: 6px;
   }
   .renewal .slot-input-row .skill-search-input input {
-    font-size: 11px;
+    font-size: 13px;
     padding-left: 8px;
   }
   .renewal .skill-slot .slot-level-label select {
-    font-size: 11px;
+    font-size: 13px;
     padding-left: 7px;
   }
   .renewal .slot-heading > strong {
-    font-size: 15px;
+    font-size: 16px;
   }
   .renewal .skill-combo .combo-heading h3 {
-    font-size: 15px;
+    font-size: 16px;
   }
 }
 @media (max-width: 760px) {
@@ -259,10 +259,10 @@
     gap: 8px;
   }
   .renewal .slot-input-row .skill-search-input input {
-    font-size: 12px;
+    font-size: 14px;
   }
   .renewal .skill-slot .slot-level-label select {
-    font-size: 12px;
+    font-size: 14px;
   }
   .renewal .slot-heading > strong {
     font-size: 16px;
@@ -284,11 +284,11 @@
     gap: 6px;
   }
   .renewal .slot-input-row .skill-search-input input {
-    font-size: 11px;
+    font-size: 13px;
     padding-left: 7px;
   }
   .renewal .skill-slot .skill-condition select {
-    font-size: 10px;
+    font-size: 12px;
     padding-left: 7px;
   }
   .renewal .skill-lab .comparison-result > span:last-child {
