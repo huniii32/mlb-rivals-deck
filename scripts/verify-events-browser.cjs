@@ -307,7 +307,7 @@ async function stop() {
     await callback.goto(origin + "/?event=1#" + hash.toString());
     await callback.locator(".event-admin").waitFor();
     assert.equal(
-      await callback.locator(".event-account").count(),
+      await callback.locator(".event-admin").count(),
       1,
       "operator email callback lands on event management",
     );

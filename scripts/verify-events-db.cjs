@@ -3,6 +3,21 @@ const { randomUUID } = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const { createEventTestDb } = require("./event-test-db.cjs");
+// Match decimal rounding of the published scores without a floating-point tie error.
+function summedScore(board) {
+  const values = board.map((s) => String(s.score).split("."));
+  const digits = Math.max(
+    2,
+    ...values.map(([, fraction = ""]) => fraction.length),
+  );
+  const scale = 10n ** BigInt(digits);
+  const total = values.reduce(
+    (sum, [whole, fraction = ""]) =>
+      sum + BigInt(whole) * scale + BigInt(fraction.padEnd(digits, "0")),
+    0n,
+  );
+  return Number((total * 100n + scale / 2n) / scale) / 100;
+}
 (async () => {
   const { db, users, rpc } = await createEventTestDb();
   const { alice, bob, admin } = users;
@@ -75,6 +90,32 @@ const { createEventTestDb } = require("./event-test-db.cjs");
     const publicState = await call("event_get");
     assert.equal(publicState.me, null);
     assert.deepEqual(publicState.verification_decks, []);
+    assert.deepEqual(
+      publicState.participants,
+      [],
+      "guest cannot read the private activity list",
+    );
+    assert.deepEqual(
+      (await call("event_get", alice)).participants,
+      [],
+      "participant cannot read other activity records",
+    );
+    const roster = (await rpc("event_get", { p_event: "local-pilot" }, admin))
+      .participants;
+    assert.equal(
+      roster.length,
+      2,
+      "include registered entrants who have not attempted or claimed yet",
+    );
+    assert.ok(
+      roster.every(
+        (p) =>
+          p.attempts_used === 0 &&
+          p.ticket_count === 0 &&
+          p.evidence.deck &&
+          !p.evidence.skills,
+      ),
+    );
     assert.ok(!JSON.stringify(publicState).includes(alice.email));
     assert.ok(!JSON.stringify(publicState).includes(alice.token));
     await assert.rejects(
@@ -122,10 +163,7 @@ const { createEventTestDb } = require("./event-test-db.cjs");
       assert.equal(attempt.board[0].tier, "Gold");
       assert.equal(new Set(attempt.board.map((s) => s.name)).size, 3);
       assert.ok(attempt.board.every((s) => s.level === "S"));
-      assert.equal(
-        attempt.score,
-        Math.round(attempt.board.reduce((n, s) => n + s.score, 0) * 100) / 100,
-      );
+      assert.equal(attempt.score, summedScore(attempt.board));
     }
     await assert.rejects(
       () => call("event_attempt", alice, { p_request_id: randomUUID() }),
@@ -209,6 +247,19 @@ const { createEventTestDb } = require("./event-test-db.cjs");
     assert.equal((await call("event_get")).rankings[0].id, aid);
     const closed = await call("event_admin", admin, { p_action: "close" });
     assert.equal(closed.event.champion_id, aid);
+    const first = closed.participants.find((p) => p.id === aid),
+      second = closed.participants.find((p) => p.id === bid);
+    assert.equal(first.attempts_used, 5);
+    assert.equal(second.attempts_used, 1);
+    assert.equal(first.ticket_count, 4);
+    assert.equal(first.eligible_ticket_count, 0);
+    assert.equal(second.eligible_ticket_count, 4);
+    assert.deepEqual(Object.keys(first.evidence).sort(), [
+      "deck",
+      "hof",
+      "moment",
+      "skills",
+    ]);
     assert.equal(closed.tickets.filter((t) => !t.eligible).length, 4);
     await assert.rejects(() => join(admin), /closed/);
     await assert.rejects(

@@ -13,33 +13,9 @@ import {
   type EventPlayer,
 } from "../lib/events";
 import "./EventPage.css";
+import EventAdmin from "./events/EventAdmin";
+import { time, score, prizeStatus, auditLabels } from "./events/eventView";
 
-const time = (value: string) =>
-  new Date(value).toLocaleString("ko-KR", {
-    timeZone: "Asia/Seoul",
-    month: "numeric",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  });
-const score = (value: number) => value.toFixed(2);
-const prizeStatus = (verified: string | null, delivered: string | null) =>
-  delivered
-    ? "지급 완료"
-    : verified
-      ? "게임 덱 인증 완료 · 지급 대기"
-      : "게임 덱 인증 대기";
-const auditLabels: Record<string, string> = {
-  publish: "참여 접수 예약",
-  close: "마감 · 점수 1위 및 추첨 대상 확정",
-  draw: "추첨 완료 · 결과 고정",
-  verify_champion: "점수 1위 · 게임 덱 인증 완료",
-  verify_winner: "추첨 당첨자 · 게임 덱 인증 완료",
-  deliver_champion: "점수 1위 · 경품 지급 완료",
-  deliver_winner: "추첨 당첨자 · 경품 지급 완료",
-};
 function PlayerResult({ player }: { player: EventPlayer }) {
   return (
     <div className="event-player-result">
@@ -160,6 +136,7 @@ export default function EventPage({
       if (mounted.current && request === version.current) {
         setState(next);
         setMessage(success);
+        return next;
       }
     } catch (e) {
       if (mounted.current && request === version.current)
@@ -232,6 +209,19 @@ export default function EventPage({
   const ended =
     !!state?.event.ends_at &&
     Date.parse(state.server_now) >= Date.parse(state.event.ends_at);
+  if (state?.is_admin) {
+    return (
+      <EventAdmin
+        state={state}
+        busy={busy}
+        error={error}
+        message={message}
+        onAction={act}
+        onRefresh={() => void refresh()}
+        onLogout={preview ? undefined : () => void supabase?.auth.signOut()}
+      />
+    );
+  }
   return (
     <div className="event-page">
       {import.meta.env.DEV && import.meta.env.VITE_EVENT_PILOT === "1" && (
@@ -710,138 +700,6 @@ export default function EventPage({
             </form>
           )}
         </details>
-      )}
-      {state?.is_admin && (
-        <section className="event-panel event-admin">
-          <h3>운영자 관리</h3>
-          <p>
-            마감하면 참여·도전·응모권 발급이 중지됩니다. 추첨 결과는 한 번만
-            확정하며 다시 뽑을 수 없습니다.
-          </p>
-          <div className="event-admin-actions">
-            {!state.event.published && (
-              <button
-                disabled={busy || phase !== "open"}
-                onClick={() => {
-                  if (confirm("예약된 시작 시각부터 이벤트 접수를 허용할까요?"))
-                    void act("admin", { p_action: "publish" });
-                }}
-              >
-                참여 접수 활성화
-              </button>
-            )}
-            <button
-              disabled={
-                busy ||
-                phase !== "open" ||
-                !state.event.published ||
-                Date.parse(state.server_now) < Date.parse(state.event.opens_at)
-              }
-              onClick={() => {
-                if (
-                  confirm(
-                    "지금 마감하고 점수 1위와 추첨 대상을 확정할까요? 이후 참여할 수 없습니다.",
-                  )
-                )
-                  void act("admin", { p_action: "close" });
-              }}
-            >
-              ① 이벤트 마감 · 1위 확정
-            </button>
-            <button
-              className="primary"
-              disabled={busy || phase !== "closed"}
-              onClick={() => {
-                if (
-                  confirm(
-                    "점수 1위를 제외한 응모권에서 당첨자 1명을 추첨할까요? 결과는 변경할 수 없습니다.",
-                  )
-                )
-                  void act("admin", { p_action: "draw" });
-              }}
-            >
-              ② 당첨자 추첨
-            </button>
-          </div>
-          <div className="event-prize-management">
-            <h4>당첨자 인증 · 지급 기록</h4>
-            <p>
-              커뮤니티 쪽지로 받은 게임 덱을 아래 참가 당시 덱과 대조하세요.
-              확인 후 인증 완료를 기록하고, 기프티콘을 실제로 보낸 뒤 지급
-              완료를 눌러주세요. 이 버튼은 기프티콘을 자동 발송하지 않습니다.
-            </p>
-            {(["champion", "winner"] as const).map((prize) => {
-              const id = state.event[`${prize}_id`];
-              if (!id) return null;
-              const verified = state.event[`${prize}_verified_at`],
-                delivered = state.event[`${prize}_delivered_at`];
-              const registered = state.verification_decks.find(
-                (d) => d.id === id,
-              );
-              const title = prize === "champion" ? "점수 1위" : "추첨 당첨자";
-              return (
-                <article className="event-prize-review" key={prize}>
-                  <h4>
-                    {title} · {nameOf(id)}
-                  </h4>
-                  <p>{prizeStatus(verified, delivered)}</p>
-                  <details className="event-details">
-                    <summary>참가 당시 덱 확인</summary>
-                    {Array.isArray(registered?.deck?.players) ? (
-                      <>
-                        <p>{time(registered.joined_at)} 등록</p>
-                        <ul>
-                          {registered.deck.players
-                            .filter((p) => p?.name)
-                            .map((p, i) => (
-                              <li key={i}>
-                                {[p.pos, p.name, p.card]
-                                  .filter(Boolean)
-                                  .join(" · ")}
-                              </li>
-                            ))}
-                        </ul>
-                      </>
-                    ) : (
-                      <p>
-                        이전 검증판 참가 기록에는 덱 사본이 없습니다. 등록 덱을
-                        별도로 확인해주세요.
-                      </p>
-                    )}
-                  </details>
-                  <div className="event-admin-actions">
-                    <button
-                      disabled={busy || !!verified}
-                      onClick={() => {
-                        if (
-                          confirm(
-                            `${nameOf(id)} 님의 실제 게임 덱을 확인했나요?`,
-                          )
-                        )
-                          void act("admin", { p_action: `verify_${prize}` });
-                      }}
-                    >
-                      {title} · 게임 덱 인증 완료
-                    </button>
-                    <button
-                      disabled={busy || !verified || !!delivered}
-                      onClick={() => {
-                        if (
-                          confirm(
-                            `${nameOf(id)} 님에게 기프티콘을 실제로 보냈나요? 지급 완료를 기록합니다.`,
-                          )
-                        )
-                          void act("admin", { p_action: `deliver_${prize}` });
-                      }}
-                    >
-                      {title} · 지급 완료 기록
-                    </button>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </section>
       )}
     </div>
   );

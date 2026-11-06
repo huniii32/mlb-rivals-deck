@@ -38,6 +38,15 @@ export interface EventTicket {
   issued_at: string;
   eligible: boolean;
 }
+export interface EventParticipant {
+  id: string;
+  deck_name: string;
+  joined_at: string;
+  attempts_used: number;
+  evidence: Partial<Record<EventMission, string>>;
+  ticket_count: number;
+  eligible_ticket_count: number;
+}
 export interface EventState {
   event: {
     id: string;
@@ -65,6 +74,7 @@ export interface EventState {
   }[];
   server_now: string;
   is_admin: boolean;
+  participants: EventParticipant[];
   me: null | {
     id: string;
     ranking_id: string;

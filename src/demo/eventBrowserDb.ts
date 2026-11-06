@@ -121,6 +121,9 @@ async function createDemoDb() {
       "insert into sim_events(id,title,rules_id,opens_at,published) values($1,'스킬 챌린지 & 커피 이벤트','coffee-sp-s-v1',now()-interval '1 day',true)",
       [EVENT],
     );
+  } else {
+    // Keep saved demo attempts while upgrading the shared event RPCs.
+    await db.exec(migration);
   }
   return db;
 }
@@ -170,7 +173,7 @@ export function demoAdapter(
         p_ranking_id: deck?.id ?? null,
         p_token: deck?.token ?? null,
       };
-      return db.transaction(async (tx) => {
+      const state = await db.transaction(async (tx) => {
         await tx.exec(
           `set local role ${role === "admin" ? "authenticated" : "anon"}`,
         );
@@ -183,6 +186,9 @@ export function demoAdapter(
         );
         return result.rows[0].result;
       });
+      // A reload immediately after a click must retain the acknowledged mutation.
+      if (action !== "get") await db.syncToFs();
+      return state;
     },
   };
 }
@@ -196,6 +202,7 @@ export async function resetDemo(db: PGlite) {
       [EVENT],
     );
   });
+  await db.syncToFs();
   for (const key of Object.keys(localStorage))
     if (key.startsWith(`rivals-event-request:${EVENT}:`))
       localStorage.removeItem(key);

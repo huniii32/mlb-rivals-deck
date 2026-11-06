@@ -158,6 +158,14 @@ begin
   end if;
   return jsonb_build_object('event',to_jsonb(e),'server_now',clock_timestamp(),'me',mine,
     'is_admin',exists(select 1 from public.sim_event_admins where user_id=auth.uid()),
+    'participants',case when exists(select 1 from public.sim_event_admins where user_id=auth.uid()) then
+      (select coalesce(jsonb_agg(jsonb_build_object('id',p.id,'deck_name',p.deck_name,'joined_at',p.joined_at,
+        'attempts_used',(select count(*) from public.sim_event_attempts where participant_id=p.id),
+        'evidence',(select coalesce(jsonb_object_agg(mission,at),'{}') from public.sim_event_evidence where participant_id=p.id),
+        'ticket_count',(select count(*) from public.sim_event_tickets where participant_id=p.id),
+        'eligible_ticket_count',(select count(*) from public.sim_event_tickets where participant_id=p.id and eligible))
+        order by p.joined_at,p.id),'[]') from public.sim_event_participants p where p.event_id=p_event)
+      else '[]'::jsonb end,
     'verification_decks',case when exists(select 1 from public.sim_event_admins where user_id=auth.uid()) then
       (select coalesce(jsonb_agg(jsonb_build_object('id',p.id,'deck_name',p.deck_name,'joined_at',p.joined_at,'deck',p.deck_snapshot)),'[]')
        from public.sim_event_participants p where p.event_id=p_event and p.id in (e.champion_id,e.winner_id)) else '[]'::jsonb end,
