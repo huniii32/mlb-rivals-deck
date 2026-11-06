@@ -138,7 +138,7 @@ export function RenewalShell({
             </button>
           </div>
         </header>
-        <main>
+        <main data-page={page}>
           <div className="page-heading">
             <div>
               <div className="eyebrow">

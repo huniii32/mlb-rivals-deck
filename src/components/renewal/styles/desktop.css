@@ -1,0 +1,160 @@
+/* Desktop density follows the available viewport; mobile keeps its own layout. */
+@media (min-width: 1024px) {
+  .renewal .topbar {
+    height: 54px;
+    padding-inline: clamp(20px, 2vw, 36px);
+  }
+  .renewal .workspace main {
+    max-width: 1480px;
+    padding: clamp(14px, 2vh, 24px) clamp(20px, 2vw, 36px) 0;
+  }
+  .renewal .page-heading {
+    margin-bottom: 14px;
+    gap: 12px;
+  }
+  .renewal .page-heading h1 {
+    font-size: clamp(25px, 2vw, 30px);
+  }
+  .renewal .page-heading .eyebrow {
+    margin-bottom: 5px;
+  }
+  .renewal .page-heading p {
+    margin-top: 4px;
+  }
+  .renewal .toolbar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    gap: 6px 16px;
+  }
+  .renewal .toolbar-main {
+    flex: 1 1 auto;
+  }
+  .renewal .toolbar-status {
+    margin-left: auto;
+  }
+  .renewal .toolbar label select {
+    max-width: 240px;
+  }
+  .renewal .workspace main[data-page="lineup"] {
+    display: grid;
+    grid-template-columns: minmax(180px, 0.28fr) minmax(0, 1fr);
+    gap: 14px 18px;
+    align-items: start;
+  }
+  .renewal main[data-page="lineup"] > * {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+  .renewal main[data-page="lineup"] > .page-heading {
+    grid-area: 1 / 1;
+    margin-bottom: 0;
+  }
+  .renewal main[data-page="lineup"] > .toolbar {
+    grid-area: 1 / 2;
+    margin-bottom: 0;
+  }
+  .renewal .overview {
+    grid-template-columns: minmax(220px, 0.7fr) minmax(0, 1.3fr);
+    margin-bottom: 0;
+  }
+  .renewal .score-main {
+    padding: 12px 20px;
+  }
+  .renewal .score-main .eyebrow {
+    margin-bottom: 5px;
+  }
+  .renewal .score-main > strong {
+    font-size: clamp(32px, 2.8vw, 40px);
+    line-height: 1.15;
+  }
+  .renewal .overview-breakdown {
+    gap: clamp(14px, 2vw, 26px);
+    padding: 12px 20px 30px 0;
+  }
+  .renewal .overview-breakdown strong {
+    margin: 4px 0;
+  }
+  .renewal .overview .score-guide-link {
+    right: 20px;
+    bottom: 9px;
+  }
+  .renewal .lineup-layout {
+    grid-template-columns: minmax(0, 1fr) clamp(210px, 17vw, 250px);
+    gap: 16px;
+  }
+  .renewal .roster-panel,
+  .renewal .right-column .panel {
+    padding: 16px;
+  }
+  .renewal .roster-tabs {
+    margin: 10px 0;
+  }
+  .renewal .roster-tabs button {
+    padding-block: 7px;
+  }
+  .renewal .right-column {
+    gap: 14px;
+  }
+  .renewal .completion-ring {
+    width: clamp(88px, 11vh, 112px);
+    height: clamp(88px, 11vh, 112px);
+    margin: 12px auto;
+  }
+  .renewal .status-line {
+    padding-block: 8px;
+  }
+  .renewal .full-button {
+    margin-top: 10px;
+  }
+  .renewal .quick-settings button {
+    padding-block: 10px;
+  }
+  .renewal .stadium-board {
+    padding: 12px;
+  }
+  .renewal .stadium-label {
+    margin-bottom: 10px;
+  }
+  .renewal .field-board {
+    container-type: inline-size;
+  }
+  .renewal .position-field {
+    --desktop-field-height: clamp(420px, min(55dvh, 90cqw), 620px);
+    width: min(100%, calc(var(--desktop-field-height) * 1.5));
+    height: var(--desktop-field-height);
+    aspect-ratio: auto;
+    padding-bottom: 0;
+    margin-inline: auto;
+  }
+  .renewal .field-player {
+    /* Keep the full caption clear of the next card, especially 1B / DH. */
+    width: min(16%, clamp(70px, calc(var(--desktop-field-height) * 0.2778 - 48px), 112px));
+  }
+  .renewal .pitcher-board {
+    --pitcher-card-width: clamp(90px, 12dvh, 130px);
+    --pitcher-gap: 12px;
+  }
+  .renewal .pitcher-grid {
+    width: 100%;
+    max-width: calc(3 * var(--pitcher-card-width) + 2 * var(--pitcher-gap));
+    gap: var(--pitcher-gap);
+  }
+  .renewal .bullpen-role .pitcher-grid {
+    max-width: calc(var(--bullpen-columns) * var(--pitcher-card-width) + (var(--bullpen-columns) - 1) * var(--pitcher-gap));
+    margin-inline: 0;
+  }
+  .renewal .pitcher-grid .vacant {
+    min-height: 0;
+    aspect-ratio: 100 / 154;
+  }
+  .renewal .bullpen-rows {
+    gap: 12px;
+    padding-top: 8px;
+  }
+  .renewal .bullpen-role > header {
+    margin-bottom: 6px;
+  }
+}
