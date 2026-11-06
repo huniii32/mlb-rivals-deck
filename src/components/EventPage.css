@@ -117,11 +117,6 @@
   background: var(--nav);
   color: var(--text);
 }
-.event-page .event-competition {
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
-  gap: 18px;
-}
 .event-page .event-section-heading {
   display: flex;
   align-items: center;
@@ -317,9 +312,6 @@
     align-items: flex-start;
     flex-direction: column;
     padding: 22px;
-  }
-  .event-page .event-competition {
-    grid-template-columns: 1fr;
   }
   .event-page .event-missions {
     grid-template-columns: repeat(2, minmax(0, 1fr));

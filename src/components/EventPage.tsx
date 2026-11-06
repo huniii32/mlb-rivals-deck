@@ -231,6 +231,32 @@ export default function EventPage({
           <a href="/demo/event-pilot.html">테스트 참가자 전환 →</a>
         </div>
       )}
+      <section className="event-panel event-participant-ranking">
+        <div className="eyebrow">LEADERBOARD</div>
+        <h3>스킬 점수 순위</h3>
+        <p>최고점 ↓ · 최고점 달성 시각 ↑</p>
+        <ol className="event-rankings">
+          {state?.rankings.map((r) => (
+            <li className={r.id === me?.id ? "mine" : ""} key={r.id}>
+              <b>{r.rank}</b>
+              <div>
+                <strong>
+                  {r.deck_name}
+                  {r.id === me?.id ? " · 내 덱" : ""}
+                </strong>
+                <small>{time(r.achieved_at)}</small>
+              </div>
+              <strong>
+                {score(r.score)}
+                <small>점</small>
+              </strong>
+            </li>
+          ))}
+        </ol>
+        {!state?.rankings.length && (
+          <p className="event-empty">첫 도전을 기다리고 있어요.</p>
+        )}
+      </section>
       <section className="event-hero-live">
         <div>
           <div className="eyebrow">RIVALS DECK · COMMUNITY EVENT</div>
@@ -340,116 +366,85 @@ export default function EventPage({
           인증 후 경품을 받습니다.
         </p>
       </section>
-      <div className="event-competition">
-        <section className="event-panel event-challenge">
-          <div className="event-section-heading">
-            <div>
-              <div className="eyebrow">EVENT 01</div>
-              <h3>5회 스킬 챌린지</h3>
+      <section className="event-panel event-challenge">
+        <div className="event-section-heading">
+          <div>
+            <div className="eyebrow">EVENT 01</div>
+            <h3>5회 스킬 챌린지</h3>
+          </div>
+          <strong>{attempts.length} / 5회</strong>
+        </div>
+        <p>
+          5회 중 최고 점수로 순위를 결정합니다. 동점이면 같은 점수를 먼저 달성한
+          참가자가 앞섭니다.
+        </p>
+        <div className="event-skill-cards">
+          {[0, 1, 2].map((i) => (
+            <div key={i}>
+              <small>스킬 {i + 1} · S</small>
+              <strong>{latest?.board[i].name || "도전 대기"}</strong>
+              <span>{latest ? `${score(latest.board[i].score)}점` : "—"}</span>
             </div>
-            <strong>{attempts.length} / 5회</strong>
-          </div>
-          <p>
-            5회 중 최고 점수로 순위를 결정합니다. 동점이면 같은 점수를 먼저
-            달성한 참가자가 앞섭니다.
-          </p>
-          <div className="event-skill-cards">
-            {[0, 1, 2].map((i) => (
-              <div key={i}>
-                <small>스킬 {i + 1} · S</small>
-                <strong>{latest?.board[i].name || "도전 대기"}</strong>
-                <span>
-                  {latest ? `${score(latest.board[i].score)}점` : "—"}
-                </span>
-              </div>
-            ))}
-          </div>
-          <div className="event-score-line">
-            <span>
-              이번 점수 <strong>{latest ? score(latest.score) : "—"}</strong>
-            </span>
-            <span>
-              내 최고 점수{" "}
+          ))}
+        </div>
+        <div className="event-score-line">
+          <span>
+            이번 점수 <strong>{latest ? score(latest.score) : "—"}</strong>
+          </span>
+          <span>
+            내 최고 점수{" "}
+            <strong>
+              {attempts.length
+                ? score(Math.max(...attempts.map((a) => a.score)))
+                : "—"}
+            </strong>
+          </span>
+        </div>
+        <button
+          className="primary event-challenge-button"
+          disabled={busy || !me || !accepting || attempts.length >= 5}
+          onClick={challenge}
+        >
+          {busy
+            ? "서버에서 처리 중…"
+            : attempts.length === 5
+              ? "5회 도전 완료"
+              : "스킬 점수에 도전하기"}
+        </button>
+        <details className="event-details">
+          <summary>내 도전 기록 · {attempts.length}회</summary>
+          {attempts.map((a) => (
+            <div className="event-attempt" key={a.number}>
               <strong>
-                {attempts.length
-                  ? score(Math.max(...attempts.map((a) => a.score)))
-                  : "—"}
+                {a.number}회 · {score(a.score)}점
               </strong>
-            </span>
-          </div>
-          <button
-            className="primary event-challenge-button"
-            disabled={busy || !me || !accepting || attempts.length >= 5}
-            onClick={challenge}
-          >
-            {busy
-              ? "서버에서 처리 중…"
-              : attempts.length === 5
-                ? "5회 도전 완료"
-                : "스킬 점수에 도전하기"}
-          </button>
-          <details className="event-details">
-            <summary>내 도전 기록 · {attempts.length}회</summary>
-            {attempts.map((a) => (
-              <div className="event-attempt" key={a.number}>
-                <strong>
-                  {a.number}회 · {score(a.score)}점
-                </strong>
-                <span>{a.board.map((s) => s.name).join(" / ")}</span>
-                <small>{time(a.achieved_at)}</small>
-              </div>
-            ))}
-            {!attempts.length && <p>아직 도전 기록이 없습니다.</p>}
-          </details>
-          <details className="event-details">
-            <summary>확률과 점수 기준</summary>
-            <p>
-              첫 슬롯 골드 100%, 나머지 두 슬롯은 브론즈 35% / 실버 40% / 골드
-              25%입니다. 같은 스킬은 중복되지 않습니다.
-            </p>
-            <p>
-              전원 S 레벨, 시그니처 선발 투수 기준으로 계산하며 조건부 스킬은
-              고정된 기본 조건을 사용합니다. 개인 수정 점수표는 반영되지
-              않습니다.
-            </p>
-            {latest && (
-              <ul>
-                {latest.board.map((s) => (
-                  <li key={s.id}>
-                    {s.name}: {s.basis} · {score(s.score)}점
-                  </li>
-                ))}
-              </ul>
-            )}
-          </details>
-        </section>
-        <section className="event-panel">
-          <div className="eyebrow">LEADERBOARD</div>
-          <h3>스킬 점수 순위</h3>
-          <p>최고점 ↓ · 최고점 달성 시각 ↑</p>
-          <ol className="event-rankings">
-            {state?.rankings.map((r) => (
-              <li className={r.id === me?.id ? "mine" : ""} key={r.id}>
-                <b>{r.rank}</b>
-                <div>
-                  <strong>
-                    {r.deck_name}
-                    {r.id === me?.id ? " · 내 덱" : ""}
-                  </strong>
-                  <small>{time(r.achieved_at)}</small>
-                </div>
-                <strong>
-                  {score(r.score)}
-                  <small>점</small>
-                </strong>
-              </li>
-            ))}
-          </ol>
-          {!state?.rankings.length && (
-            <p className="event-empty">첫 도전을 기다리고 있어요.</p>
+              <span>{a.board.map((s) => s.name).join(" / ")}</span>
+              <small>{time(a.achieved_at)}</small>
+            </div>
+          ))}
+          {!attempts.length && <p>아직 도전 기록이 없습니다.</p>}
+        </details>
+        <details className="event-details">
+          <summary>확률과 점수 기준</summary>
+          <p>
+            첫 슬롯 골드 100%, 나머지 두 슬롯은 브론즈 35% / 실버 40% / 골드
+            25%입니다. 같은 스킬은 중복되지 않습니다.
+          </p>
+          <p>
+            전원 S 레벨, 시그니처 선발 투수 기준으로 계산하며 조건부 스킬은
+            고정된 기본 조건을 사용합니다. 개인 수정 점수표는 반영되지 않습니다.
+          </p>
+          {latest && (
+            <ul>
+              {latest.board.map((s) => (
+                <li key={s.id}>
+                  {s.name}: {s.basis} · {score(s.score)}점
+                </li>
+              ))}
+            </ul>
           )}
-        </section>
-      </div>
+        </details>
+      </section>
       <section className="event-panel">
         <div className="event-section-heading">
           <div>
