@@ -1,6 +1,6 @@
 # 공식 스킬 관련 공지 수집
 
-수집 시각(UTC): 2026-11-06T01:53:39.245423+00:00
+수집 시각(UTC): 2026-11-06T02:24:31.524545+00:00
 
 공식 게시판의 공개 한국어 글을 끝 페이지까지 수집했습니다. 판매·이벤트를 포함한 전체 목록과 제공된 본문 텍스트는 `all-notices.json`, 스킬 관련 자료는 `skill-notices.json`에서 검색할 수 있습니다.
 
@@ -824,3 +824,5 @@
 `python3 scripts/archive_skill_notices.py --publish-docs`
 
 결과는 `data/official-skill-archive/`에 저장됩니다. `official-skill-archive.zip`에는 전체 목록·본문 텍스트·상세 원문 HTML·표·이미지 URL·스킬별 색인이 포함됩니다. `skill-reference.zip`은 원문 HTML 캐시를 제외한 읽기용 묶음입니다. 이미지 파일 자체와 이미지 안의 텍스트는 포함하지 않습니다. 캐시를 새로 받으려면 `--refresh`를 추가하세요.
+
+추가 조사: [공지 이미지 OCR·검수](official-skill-image-review.md) · [레벨 표기 대응](skill-level-mapping.md) · [Windows 도감 캡처](../tools/skill-capture/README.md)

@@ -20,6 +20,7 @@ import time
 import urllib.parse
 import urllib.request
 import zipfile
+from skill_source_levels import annotate_history
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = 'https://community.withhive.com'
@@ -354,7 +355,7 @@ def main():
     write_json(out / 'all-notices.json', notices)
     write_json(out / 'articles.json', articles)
     write_json(out / 'skill-notices.json', skill_articles)
-    history = skill_history(skill_articles)
+    history = annotate_history(skill_history(skill_articles))
     write_json(out / 'skill-history.json', history)
     report_history(out, history)
     manifest = {'schema_version': 1, 'published_date_range': [min(n['published_at'] for n in notices), max(n['published_at'] for n in notices)], 'collected_at_utc': datetime.now(timezone.utc).isoformat(), 'boards': coverage,
@@ -393,9 +394,11 @@ def publish_docs(out, manifest, articles):
              '결과는 `data/official-skill-archive/`에 저장됩니다. '
              '`official-skill-archive.zip`에는 전체 목록·본문 텍스트·상세 원문 HTML·표·이미지 URL·스킬별 색인이 포함됩니다. '
              '`skill-reference.zip`은 원문 HTML 캐시를 제외한 읽기용 묶음입니다. 이미지 파일 자체와 이미지 안의 텍스트는 포함하지 않습니다. 캐시를 새로 받으려면 `--refresh`를 추가하세요.\n')
+    text += '\n추가 조사: [공지 이미지 OCR·검수](official-skill-image-review.md) · [레벨 표기 대응](skill-level-mapping.md) · [Windows 도감 캡처](../tools/skill-capture/README.md)\n'
     (docs / 'official-skill-notices.md').write_text(text, encoding='utf-8')
+    write_json(docs / 'official-skill-effects.json', json.loads((out / 'skill-history.json').read_text()))
     (docs / 'official-skill-effects.md').write_text(
-        (out / 'SKILLS.md').read_text(encoding='utf-8').replace('README와', '[공지 색인](official-skill-notices.md)과'), encoding='utf-8')
+        (out / 'SKILLS.md').read_text(encoding='utf-8').replace('README와', '[공지 색인](official-skill-notices.md)과') + '\n레벨 표기: [SS·SS+와 S0~S4 대응](skill-level-mapping.md). 원문 등급은 보존합니다.\n', encoding='utf-8')
     write_json(docs / 'official-skill-sources.json', {'manifest': manifest,
         'sources': [{k: a[k] for k in ('id', 'board', 'title', 'published_at', 'url', 'sha256', 'review_status', 'image_review')}
                     for a in articles]})
