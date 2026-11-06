@@ -66,6 +66,11 @@ export function NewsTab() {
 
   return (
     <div>
+      <details className="card"><summary>Windows 도감 수집기 다운로드</summary>
+        <p>스킬 설명 · 선수 기본 능력치 · 미페 수집을 선택하는 GUI 프로그램입니다. ZIP을 풀고 RivalsGuideCollector.exe를 실행하세요.</p>
+        <div className="row"><a href={`${import.meta.env.BASE_URL}downloads/rivals-guide-collector-windows.zip`} download>Windows 실행 파일</a><a href={`${import.meta.env.BASE_URL}downloads/rivals-guide-capture-windows.zip`} download>Python 실행 버전</a><a href={`${import.meta.env.BASE_URL}downloads/guide-collector-readme.txt`} target="_blank" rel="noreferrer">사용 방법</a></div>
+        <p className="muted">처음 한 번 게임창·캡처 영역·다음 화살표를 지정하고 1개 테스트부터 진행하세요. 실제 Steam 도감 전체 수집은 사용자 환경에서 확인이 필요합니다.</p>
+      </details>
       <div className="tabs">
         <button className={sub === "official" ? "on" : ""} onClick={() => setSub("official")}>
           공식사이트
