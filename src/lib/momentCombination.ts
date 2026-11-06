@@ -34,12 +34,12 @@ export function drawCombinationCandidates(materials: readonly Material[], random
     return "C";
   });
 }
-export function shuffleCandidates(candidates: readonly CombinationGrade[], random: Random = browserRandom()): CombinationGrade[] {
+export function shuffleCandidates<T>(candidates: readonly T[], random: Random = browserRandom()): T[] {
   const result=[...candidates];
   for(let i=result.length-1;i>0;i--){const j=index(random,i+1);[result[i],result[j]]=[result[j],result[i]];}
   return result;
 }
-export function pickCombination(candidates: readonly CombinationGrade[], random: Random = browserRandom()): { chosen: CombinationGrade; slot: number } {
+export function pickCombination<T>(candidates: readonly T[], random: Random = browserRandom()): { chosen: T; slot: number } {
   if(candidates.length!==5)throw new Error("후보 카드가 5장이어야 합니다.");
   const slot=index(random,5);
   return { chosen:candidates[slot], slot };

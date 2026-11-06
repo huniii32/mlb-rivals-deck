@@ -9,7 +9,7 @@ export default function Simulator({tables}:{tables:SkillTables}){
       <div className="sim-hub-heading"><h2>시뮬레이터</h2><p className="muted">원하는 시뮬레이션을 선택하세요.</p></div>
       <div className="sim-hub-options">
         <button className="card sim-hub-option" onClick={()=>setScreen('skills')}><span className="sim-hub-icon">S</span><strong>스킬 시뮬레이션</strong><span className="muted">변경권별 스킬 추첨 · 첫 줄 잠금 · 점수 목표</span><span className="sim-hub-enter">시작하기 →</span></button>
-        <button className="card sim-hub-option combo-option" onClick={()=>setScreen('combination')}><span className="sim-hub-icon">M</span><strong>슈프림 모먼트 조합</strong><span className="muted">재료 3장 조합 · 후보 5장 셔플 · 획득 기록</span><span className="sim-hub-enter">시작하기 →</span></button>
+        <button className="card sim-hub-option combo-option" onClick={()=>setScreen('combination')}><span className="sim-hub-icon">M</span><strong>슈프림 모먼트 조합</strong><span className="muted">구단·지구·리그 선택 · 선수·테마 · 후보 5장</span><span className="sim-hub-enter">시작하기 →</span></button>
       </div>
     </>:<>
       <button className="sim-back" onClick={()=>setScreen('home')}>← 시뮬레이터 선택</button>
