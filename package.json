@@ -9,12 +9,13 @@
     "build": "tsc --noEmit && vite build",
     "build:cloudflare": "node scripts/build-cloudflare.mjs",
     "preview": "vite preview",
-    "test": "node scripts/verify-all.cjs",
+    "test": "node scripts/verify-all.cjs && node scripts/verify-event-preview-guard.mjs",
     "test:db": "node scripts/verify-passwords.cjs && node scripts/verify-ranking-db.mjs && node scripts/verify-name-passwords.cjs && node scripts/verify-events-db.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
     "@vitejs/plugin-react": "4.7.0",
+    "jose": "^6.2.15",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "vite": "6.4.3",

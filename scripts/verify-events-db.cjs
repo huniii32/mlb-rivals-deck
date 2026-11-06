@@ -39,6 +39,37 @@ function summedScore(board) {
   const join = (u) =>
     call("event_join", u, { p_ranking_id: u.rank, p_token: u.token });
   try {
+    // An unpublished event is private even to confirmed users and valid deck owners.
+    for (const user of [null, alice, bob]) {
+      await assert.rejects(
+        () =>
+          rpc(
+            "event_get",
+            { p_event: "coffee-20261109", ...proof(user) },
+            user,
+          ),
+        /event_private/,
+      );
+    }
+    const privateState = await rpc(
+      "event_get",
+      { p_event: "coffee-20261109" },
+      admin,
+    );
+    assert.equal(privateState.event.published, false);
+    assert.equal(privateState.is_admin, true);
+    await db.query(
+      "update auth.users set email_confirmed_at=null where id=$1",
+      [admin.id],
+    );
+    await assert.rejects(
+      () => rpc("event_get", { p_event: "coffee-20261109" }, admin),
+      /event_private/,
+    );
+    await db.query(
+      "update auth.users set email_confirmed_at=now() where id=$1",
+      [admin.id],
+    );
     // There are deliberately no participant Auth accounts, verified emails or approvals.
     await db.query("delete from auth.users where id in ($1,$2)", [
       alice.id,
@@ -325,6 +356,37 @@ function summedScore(board) {
         1,
       );
     }
+    // Private mode revokes reads and idempotent mutation retries, without deleting records.
+    const beforeHide = (await call("event_get")).event;
+    const hidden = await call("event_admin", admin, { p_action: "unpublish" });
+    assert.equal(hidden.event.published, false);
+    await call("event_admin", admin, { p_action: "unpublish" });
+    for (const user of [null, alice, bob]) {
+      await assert.rejects(() => call("event_get", user), /event_private/);
+    }
+    for (const [name, args] of [
+      ["event_join", {}],
+      ["event_attempt", { p_request_id: request }],
+      ["event_experience", { p_mission: "hof" }],
+      ["event_pick_moment", { p_slot: 0 }],
+      ["event_claim", { p_mission: "deck" }],
+    ])
+      await assert.rejects(
+        () => call(name, alice, args),
+        /event_private|event_not_open/,
+      );
+    const restoredPublic = await call("event_admin", admin, {
+      p_action: "publish",
+    });
+    assert.deepEqual(
+      restoredPublic.event,
+      beforeHide,
+      "republishing preserves draw and delivery state",
+    );
+    assert.equal(
+      restoredPublic.audit.filter((a) => a.action === "unpublish").length,
+      1,
+    );
     const finalEvent = (await call("event_get")).event;
     // Scheduling uses the DB clock, even if the caller's browser changes its date.
     await db.exec(

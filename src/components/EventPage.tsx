@@ -70,8 +70,10 @@ export default function EventPage({
         setError("");
       }
     } catch (e) {
-      if (mounted.current && request === version.current)
+      if (mounted.current && request === version.current) {
+        setState(null);
         setError(eventError(e));
+      }
     } finally {
       if (mounted.current && request === version.current) setLoading(false);
     }
@@ -139,8 +141,11 @@ export default function EventPage({
         return next;
       }
     } catch (e) {
-      if (mounted.current && request === version.current)
+      if (mounted.current && request === version.current) {
+        // A revoked permission must also remove previously visible private data.
+        setState(null);
         setError(eventError(e));
+      }
     } finally {
       busyRef.current = false;
       if (mounted.current) {
@@ -179,7 +184,7 @@ export default function EventPage({
       target.hash = "simulator";
       const { error } = await supabase.auth.signInWithOtp({
         email: email.trim(),
-        options: { emailRedirectTo: target.href },
+        options: { emailRedirectTo: target.href, shouldCreateUser: false },
       });
       if (error) throw error;
       setMessage(
@@ -220,6 +225,63 @@ export default function EventPage({
         onRefresh={() => void refresh()}
         onLogout={preview ? undefined : () => void supabase?.auth.signOut()}
       />
+    );
+  }
+  const operatorLogin = !preview && (
+    <div className="event-admin-login">
+      {session ? (
+        <div className="event-account">
+          <span>{session.user.email} · 운영자 권한을 확인해주세요.</span>
+          <button disabled={busy} onClick={() => void supabase?.auth.signOut()}>
+            로그아웃
+          </button>
+        </div>
+      ) : (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void login();
+          }}
+        >
+          <label>
+            운영자 이메일
+            <input
+              type="email"
+              required
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="운영자 이메일 주소"
+            />
+          </label>
+          <button disabled={busy || !supabase}>운영자 로그인 링크 받기</button>
+        </form>
+      )}
+    </div>
+  );
+  if (!state) {
+    return (
+      <div className="event-page">
+        <section className="event-panel event-private" aria-busy={loading}>
+          <div className="eyebrow">PRIVATE EVENT</div>
+          <h2>{loading ? "접근 권한 확인 중…" : "이벤트 준비 중"}</h2>
+          <p>공개 전에는 운영자만 페이지를 확인할 수 있습니다.</p>
+          {error && (
+            <p className="event-error" role="alert">
+              {error}
+            </p>
+          )}
+          {message && (
+            <p className="event-message" role="status">
+              {message}
+            </p>
+          )}
+          {!loading && operatorLogin}
+          <button disabled={busy || loading} onClick={() => void refresh()}>
+            다시 확인
+          </button>
+        </section>
+      </div>
     );
   }
   return (
@@ -660,40 +722,7 @@ export default function EventPage({
             이메일 로그인은 이벤트 운영자만 사용합니다. 참가자는 위에서 등록
             덱으로 참여해주세요.
           </p>
-          {session ? (
-            <div className="event-account">
-              <span>
-                {session.user.email}
-                {state?.is_admin ? " · 운영자" : " · 운영 권한 없음"}
-              </span>
-              <button
-                disabled={busy}
-                onClick={() => void supabase?.auth.signOut()}
-              >
-                로그아웃
-              </button>
-            </div>
-          ) : (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                void login();
-              }}
-            >
-              <label>
-                운영자 이메일
-                <input
-                  type="email"
-                  required
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="운영자 이메일 주소"
-                />
-              </label>
-              <button disabled={busy || !state}>운영자 로그인 링크 받기</button>
-            </form>
-          )}
+          {operatorLogin}
         </details>
       )}
     </div>

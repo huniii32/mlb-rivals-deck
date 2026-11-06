@@ -19,7 +19,8 @@ export const prizeStatus = (
       ? "게임 덱 인증 완료 · 지급 대기"
       : "게임 덱 인증 대기";
 export const auditLabels: Record<string, string> = {
-  publish: "참여 접수 예약",
+  publish: "이벤트 공개",
+  unpublish: "이벤트 비공개 전환",
   close: "마감 · 점수 1위 및 추첨 대상 확정",
   draw: "추첨 완료 · 결과 고정",
   verify_champion: "점수 1위 · 게임 덱 인증 완료",

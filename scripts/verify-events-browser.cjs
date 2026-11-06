@@ -208,6 +208,66 @@ async function stop() {
     const admin = await login("운영자");
     await admin.locator(".event-admin").waitFor();
     admin.on("dialog", (d) => d.accept());
+    // Hiding immediately revokes reads, including a participant's already-rendered state.
+    await admin
+      .getByRole("button", { name: "비공개로 전환", exact: true })
+      .click();
+    await admin
+      .getByRole("button", { name: "이벤트 공개", exact: true })
+      .waitFor();
+    await alice.getByRole("button", { name: "새로고침", exact: true }).click();
+    await alice.locator(".event-private").waitFor();
+    assert.equal(
+      await alice
+        .locator(
+          ".event-participant-ranking, .event-registration, .event-results",
+        )
+        .count(),
+      0,
+    );
+    assert.equal(
+      await alice
+        .getByRole("button", { name: "운영자 로그인 링크 받기" })
+        .isEnabled(),
+      true,
+    );
+    const privateGuest = await (await context()).newPage();
+    await privateGuest.goto(origin + "/?event=1#simulator");
+    await privateGuest.locator(".event-private .event-error").waitFor();
+    assert.equal(
+      await privateGuest
+        .locator(".event-admin, .event-participant-ranking")
+        .count(),
+      0,
+    );
+    let loginPayload;
+    await privateGuest.route("**/auth/v1/otp*", (r) => {
+      loginPayload = r.request().postDataJSON();
+      return r.fulfill({ contentType: "application/json", body: "{}" });
+    });
+    await privateGuest
+      .getByLabel("운영자 이메일", { exact: true })
+      .fill("admin@event.test");
+    await privateGuest
+      .getByRole("button", { name: "운영자 로그인 링크 받기" })
+      .click();
+    await privateGuest.locator(".event-message").waitFor();
+    assert.equal(
+      loginPayload.create_user,
+      false,
+      "operator login never creates arbitrary participant accounts",
+    );
+    await privateGuest.context().close();
+    await admin.reload();
+    await admin.locator(".event-admin").waitFor();
+    await admin
+      .getByRole("button", { name: "이벤트 공개", exact: true })
+      .click();
+    await admin
+      .getByRole("button", { name: "비공개로 전환", exact: true })
+      .waitFor();
+    await alice.getByRole("button", { name: "다시 확인", exact: true }).click();
+    await alice.getByText("5 / 5회", { exact: true }).waitFor();
     await admin
       .getByRole("button", { name: "① 이벤트 마감 · 1위 확정" })
       .click();

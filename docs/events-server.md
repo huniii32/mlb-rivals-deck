@@ -2,6 +2,10 @@
 
 시뮬레이터의 이벤트 화면을 Supabase RPC와 연결한다. 서버 적용 전에는 준비 안내만 표시하며 브라우저 기록을 정식 참여 기록으로 대체하지 않는다. 기존 데모(`/demo/events.html`)와 개인용 수집 프로그램은 별개다.
 
+**현재 공개하지 않는 상태로 준비한다.** 미공개 이벤트의 조회는 이메일 확인을 완료하고 `sim_event_admins`에 등록된 운영자만 가능하다. 참가 덱 비밀번호나 일반 로그인만으로는 순위·응모권·결과도 읽을 수 없다. 시작 시각이 지나도 운영자가 ‘이벤트 공개’를 누르지 않으면 열리지 않는다. 사이트의 메뉴를 숨기는 방식이 아니라 RPC에서 거부한다.
+
+Cloudflare 미리보기 접근 설정은 [운영자 전용 미리보기 설정](event-private-preview.md)을 따른다. 과거 데모 주소까지 잠그려면 Cloudflare Access 정책을 반드시 켜야 한다. 이 저장소에서 과거 배포본의 접근 설정을 변경할 수는 없다.
+
 ## 운영 규칙
 
 - **등록 덱 + 기존 비밀번호**로 즉시 참여한다. 참가자 이메일 로그인이나 운영자 사전 승인은 없다. 비밀번호 확인으로 발급한 덱 세션을 서버에서 검증하며, 이벤트마다 등록 덱 ID당 참가 기록 하나를 유지한다. 다른 기기에서 같은 덱을 비밀번호로 가져와도 기존 도전 횟수와 응모권을 이어간다.
@@ -39,7 +43,7 @@ DB 검증: 이메일 계정 없이 덱 소유권 확인, 잘못된/누락된 세
 1. SQL Editor에서 `scripts/supabase_mig_events.sql`, 그다음 `scripts/event-rules-v1.sql`을 실행한다. 두 파일을 한 파일로 만들려면 `node scripts/build-event-setup.cjs /원하는/경로/event-setup.sql`을 사용한다.
 2. Authentication → URL Configuration의 Site URL을 `https://mlb-rivals-deck.pages.dev/`로 설정하고 Redirect URLs에 `https://mlb-rivals-deck.pages.dev/**`를 등록한다. 미리보기에서 운영자 로그인을 검증하려면 해당 **정확한 미리보기 호스트**도 등록한다.
 3. **운영자 로그인용으로만** 이메일 로그인 공급자와 이메일 확인을 활성화한다. 기본 발송 서비스를 쓴다면 운영자 주소가 발송 허용 대상인지 확인하거나 SMTP를 설정한다. 참가자에게는 인증 메일을 발송하지 않으며, 참가 인원 규모에 따른 SMTP 설정은 필요하지 않다. 운영자 메일 수신과 사이트 복귀는 실제 서비스에서 확인한다.
-4. 운영자가 이벤트 페이지 아래의 ‘운영자 로그인’을 펼쳐 이메일로 로그인한 뒤, Supabase SQL Editor에서 아래의 이메일을 운영자 본인 이메일로 바꿔 실행한다. 이메일을 소스에 커밋하지 않는다.
+4. Authentication → Users에서 운영자 본인의 이메일 계정 하나를 생성하고 이메일 소유를 확인한다. 페이지의 로그인은 새 계정을 자동 생성하지 않는다. Supabase SQL Editor에서 아래의 이메일을 운영자 본인 이메일로 바꿔 실행한다. 이메일을 소스에 커밋하지 않는다. 운영자는 본인 1명만 등록한다.
 
 ```sql
 insert into public.sim_event_admins(user_id)
@@ -48,10 +52,10 @@ where lower(email)=lower('운영자_이메일') and email_confirmed_at is not nu
 on conflict do nothing;
 ```
 
-5. `/?event=1#simulator`에서 운영자 관리가 나타나는지 확인한다. 새 이벤트는 **미공개 상태**이며 운영자가 ‘참여 접수 활성화’를 누르면 예약된 시작 시각부터 접수된다. 공개 전에 규칙·종료 시점·경품 안내를 확인한다. 시작 시각을 브라우저에서 바꿔도 참여할 수 없다.
+5. `/?event=1#simulator`의 준비 안내에서 운영자 이메일로 로그인한 뒤 관리 화면이 나타나는지 확인한다. 새 이벤트는 **미공개 상태**다. 배포 전 확인 중에는 ‘이벤트 공개’를 누르지 않는다. 나중에 공개하면 예약된 시작 시각부터 접수된다. ‘비공개로 전환’은 기록을 보관하면서 일반 사용자의 조회와 참여를 중지한다. 비공개였다가 다시 공개해도 횟수·당첨자·지급 상태는 초기화되지 않는다.
 6. 검증용 이벤트를 별도 Supabase에 만들거나 별도 이벤트 ID로 만들고 `VITE_EVENT_ID`를 지정해 원격 인증과 RPC 연결을 검증한다. 공개 이벤트에 테스트 참가 기록을 섞지 않는다. 확인 후 정식 배포 브랜치를 병합한다.
 
-서버에는 `service_role` 키나 OpenAI 키가 필요하지 않다. 참가 RPC는 `p_ranking_id`와 비밀번호 인증 세션 `p_token`을 받아 서버에서 해시를 대조한다. 공개 조회는 세션 없이 가능하고, 개인 기록은 해당 덱 세션이 필요하다. 운영자 RPC만 Supabase 로그인 JWT와 `sim_event_admins` 권한을 요구한다. 기존 공개 랭킹·문의 읽기는 로그인 후에도 동작하도록 공개 컬럼에만 authenticated 읽기를 추가했다.
+서버에는 `service_role` 키나 OpenAI 키가 필요하지 않다. 참가 RPC는 `p_ranking_id`와 비밀번호 인증 세션 `p_token`을 받아 서버에서 해시를 대조한다. 공개한 이벤트만 세션 없이 조회할 수 있고, 개인 기록은 해당 덱 세션이 필요하다. 미공개 이벤트 조회와 운영자 RPC는 Supabase 로그인 JWT와 `sim_event_admins` 권한을 요구한다. 기존 공개 랭킹·문의 읽기는 로그인 후에도 동작하도록 공개 컬럼에만 authenticated 읽기를 추가했다.
 
 ## 구현과 복구
 
@@ -65,7 +69,7 @@ on conflict do nothing;
 
 ## 외부에서 여는 HTTPS 체험 데모
 
-Cloudflare의 `main` 이외 브랜치 미리보기 빌드에는 `/event-demo/`를 추가한다. `localhost:5180`은 개발 환경 내부 전용이므로 사용자에게 공유할 링크로 사용하지 않는다. 공유 시 해당 Cloudflare 미리보기 호스트의 `https://…/event-demo/` 주소를 사용하고 실제 배포본을 확인한다.
+Cloudflare의 `main` 이외 브랜치 미리보기는 운영자 전용이다. Access 설정이 없으면 **잠금 안내와 검증 Worker만 빌드**하며 앱과 데모 자산을 업로드하지 않는다. 설정 후에는 `/event-demo/`와 실제 앱을 빌드하고 모든 경로(HTML·JS·WASM 포함)를 Access JWT의 서명·발급자·대상 앱·만료·운영자 이메일로 검증한다. `localhost:5180`은 개발 환경 내부 전용이므로 사용자에게 공유할 링크로 사용하지 않는다.
 
 웹 데모는 실제 `EventPage`와 이벤트 SQL/확률표를 사용하되, PGlite를 브라우저에서 실행한다. 가상 참가자 A·B, 운영자, 비참가자 화면을 전환하고 데모 초기화로 다시 체험할 수 있다. 테스트 DB는 별도 IndexedDB에 저장되며 다른 탭에서 동시에 쓰지 않도록 잠근다. 실제 덱 저장소를 수정하지 않는다. 별도 빌드에서 Supabase URL/키를 빈 값으로 고정하고 운영자 이메일 로그인을 렌더링하지 않으며, 모든 요청은 브라우저 내부 DB에서 처리한다. 실제 서버 보안/동시접속 검증은 앞선 서버 테스트가 담당한다.
 
@@ -74,11 +78,11 @@ Cloudflare의 `main` 이외 브랜치 미리보기 빌드에는 `/event-demo/`�
 node scripts/build-event-web-demo.mjs
 # dist/를 제공하는 preview 서버에서 확인한다.
 node scripts/verify-event-web-demo.cjs
-# 외부 배포본도 같은 테스트를 실행할 수 있다 (실제 API 호출은 차단).
-EVENT_DEMO_URL=https://미리보기호스트/event-demo/ node scripts/verify-event-web-demo.cjs
+# 로컬에서 Access JWT 접근 검증 (가상 서명키, 외부 인증 요청 없음)
+node scripts/verify-event-preview-guard.mjs
 ```
 
-정식 `main` 빌드에는 데모와 WASM 파일이 포함되지 않는다. 실제 수집기 프로그램과도 무관하다.
+정식 `main` 빌드에는 데모·WASM·미리보기 Worker가 포함되지 않는다. 실제 수집기 프로그램과도 무관하다. 공개 배포 전 원격 검증은 로그아웃 상태 차단, 본인 Access 로그인, Supabase 운영자 로그인, 미공개 RPC 거부를 모두 확인한다. 로컬 자동 테스트의 통과가 원격 인증 설정 완료를 의미하지 않는다.
 
 ## 운영자 화면
 

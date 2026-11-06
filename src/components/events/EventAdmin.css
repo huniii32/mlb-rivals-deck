@@ -30,7 +30,7 @@
   gap: 6px;
 }
 .event-admin-stats span {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--muted);
 }
 .event-admin-stats strong {
@@ -38,12 +38,12 @@
 }
 .event-admin-stats small {
   margin-left: 5px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
 }
 .event-admin-period {
   margin-left: auto;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
 }
 .event-draw-stage {
@@ -72,7 +72,7 @@
 }
 .event-admin-page .event-draw-stage p {
   color: #cbd9ea;
-  font-size: 12px;
+  font-size: 14px;
   margin: 0;
 }
 .event-draw-ticket {
@@ -106,7 +106,7 @@
   right: -9px;
 }
 .event-draw-ticket > span {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 2px;
 }
@@ -115,7 +115,7 @@
   overflow-wrap: anywhere;
 }
 .event-draw-ticket small {
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 1px;
 }
 .event-draw-orbit {
@@ -227,7 +227,7 @@
   gap: 8px;
 }
 .event-admin-page .event-prize-review button {
-  font-size: 11px;
+  font-size: 13px;
   padding: 9px 10px;
 }
 .event-admin-page .event-prize-review .event-details {
@@ -250,7 +250,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px 14px;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
   margin-bottom: 12px;
 }
@@ -267,13 +267,13 @@
 .event-participant-head {
   padding: 10px 0;
   border-bottom: 1px solid var(--line);
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
 }
 .event-participant-row {
   padding: 16px 0;
   border-bottom: 1px solid var(--line);
-  font-size: 11px;
+  font-size: 13px;
 }
 .event-participant-row > div {
   min-width: 0;
@@ -285,11 +285,11 @@
 }
 .event-participant-name strong {
   overflow-wrap: anywhere;
-  font-size: 12px;
+  font-size: 14px;
 }
 .event-participant-name small,
 .event-participant-tickets small {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
 }
 .event-participant-name .event-excluded {
@@ -309,7 +309,7 @@
   padding: 3px 5px;
   border: 1px solid var(--line);
   border-radius: 5px;
-  font-size: 10px;
+  font-size: 12px;
   white-space: nowrap;
   color: var(--muted);
 }
@@ -325,12 +325,12 @@
 }
 .event-admin-page .event-admin-footnote {
   margin: 14px 0 0;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
 }
 .event-admin-audit summary {
   cursor: pointer;
-  font-size: 12px;
+  font-size: 14px;
 }
 .event-admin-audit p {
   margin-top: 10px;
@@ -400,7 +400,7 @@
     content: attr(data-label);
     display: block;
     color: var(--muted);
-    font-size: 10px;
+    font-size: 12px;
     margin-bottom: 5px;
   }
   .event-participant-activities::before {

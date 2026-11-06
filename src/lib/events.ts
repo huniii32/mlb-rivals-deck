@@ -95,6 +95,7 @@ export interface EventState {
   audit: { action: string; at: string; details: Record<string, unknown> }[];
 }
 const messages: Record<string, string> = {
+  event_private: "비공개 준비 중입니다. 운영자만 열 수 있습니다.",
   event_not_found: "이벤트를 준비 중입니다. 공개 후 다시 확인해주세요.",
   event_login_required: "운영자 계정으로 로그인해주세요.",
   event_not_open: "아직 이벤트 참여가 시작되지 않았습니다.",

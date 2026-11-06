@@ -99,6 +99,12 @@ begin
   then raise exception 'event_login_required'; end if;
   return u;
 end $$;
+-- A confirmed Auth account alone does not grant operator access.
+create or replace function public._event_is_admin() returns boolean
+language sql stable security definer set search_path=pg_catalog,public as $$
+  select exists(select 1 from public.sim_event_admins a join auth.users u on u.id=a.user_id
+    where a.user_id=auth.uid() and u.email_confirmed_at is not null and u.email is not null)
+$$;
 create or replace function public._event_open(p_event text) returns public.sim_events
 language plpgsql security definer set search_path=pg_catalog,public as $$
 declare e public.sim_events;
@@ -133,9 +139,13 @@ end $$;
 create or replace function public.event_get(p_event text,p_ranking_id uuid default null,p_token text default null) returns jsonb
 language plpgsql security definer set search_path=pg_catalog,public as $$
 declare e public.sim_events; me public.sim_event_participants; rankings jsonb; tickets jsonb; mine jsonb;
+  is_admin boolean := public._event_is_admin();
 begin
   select * into e from public.sim_events where id=p_event;
   if not found then raise exception 'event_not_found'; end if;
+  -- Fail closed before reading any ranks, tickets, personal records or audit data.
+  -- The start date never publishes a private event automatically.
+  if not e.published and not is_admin then raise exception 'event_private'; end if;
   if p_ranking_id is not null or p_token is not null then
     perform public._event_deck(p_ranking_id,p_token);
     select * into me from public.sim_event_participants where event_id=p_event and ranking_id=p_ranking_id;
@@ -157,8 +167,8 @@ begin
       'experiences',(select coalesce(jsonb_object_agg(mission,jsonb_build_object('preview',preview,'result',result,'chosen_slot',chosen_slot)),'{}') from public.sim_event_experiences where participant_id=me.id));
   end if;
   return jsonb_build_object('event',to_jsonb(e),'server_now',clock_timestamp(),'me',mine,
-    'is_admin',exists(select 1 from public.sim_event_admins where user_id=auth.uid()),
-    'participants',case when exists(select 1 from public.sim_event_admins where user_id=auth.uid()) then
+    'is_admin',is_admin,
+    'participants',case when is_admin then
       (select coalesce(jsonb_agg(jsonb_build_object('id',p.id,'deck_name',p.deck_name,'joined_at',p.joined_at,
         'attempts_used',(select count(*) from public.sim_event_attempts where participant_id=p.id),
         'evidence',(select coalesce(jsonb_object_agg(mission,at),'{}') from public.sim_event_evidence where participant_id=p.id),
@@ -166,7 +176,7 @@ begin
         'eligible_ticket_count',(select count(*) from public.sim_event_tickets where participant_id=p.id and eligible))
         order by p.joined_at,p.id),'[]') from public.sim_event_participants p where p.event_id=p_event)
       else '[]'::jsonb end,
-    'verification_decks',case when exists(select 1 from public.sim_event_admins where user_id=auth.uid()) then
+    'verification_decks',case when is_admin then
       (select coalesce(jsonb_agg(jsonb_build_object('id',p.id,'deck_name',p.deck_name,'joined_at',p.joined_at,'deck',p.deck_snapshot)),'[]')
        from public.sim_event_participants p where p.event_id=p_event and p.id in (e.champion_id,e.winner_id)) else '[]'::jsonb end,
     'rankings',rankings,'tickets',tickets,
@@ -305,11 +315,15 @@ begin
   select * into e from public.sim_events where id=p_event for update;
   if not found then raise exception 'event_not_found'; end if;
   if p_action='publish' then
-    if e.phase<>'open' then raise exception 'event_closed'; end if;
     if e.published then return public.event_get(p_event); end if;
     if not exists(select 1 from public.sim_event_rules where id=e.rules_id) then raise exception 'event_rules_missing'; end if;
     update public.sim_events set published=true where id=p_event;
     insert into public.sim_event_audit(event_id,action,actor,details) values(p_event,'publish',u,jsonb_build_object('opens_at',e.opens_at,'ends_at',e.ends_at,'rules_id',e.rules_id));
+  elsif p_action='unpublish' then
+    if not e.published then return public.event_get(p_event); end if;
+    update public.sim_events set published=false where id=p_event;
+    insert into public.sim_event_audit(event_id,action,actor,details)
+      values(p_event,'unpublish',u,'{}');
   elsif p_action='close' then
     if e.phase<>'open' then return public.event_get(p_event); end if;
     if not e.published or clock_timestamp()<e.opens_at then raise exception 'event_not_open'; end if;

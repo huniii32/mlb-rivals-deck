@@ -258,15 +258,34 @@ export default function EventAdmin({
           </div>
         </div>
         <div className="event-admin-actions">
+          {e.published && (
+            <button
+              disabled={disabled}
+              onClick={() => {
+                if (
+                  confirm(
+                    "이벤트를 비공개로 바꿀까요? 기존 기록은 보관되고 일반 참가자의 조회와 참여가 중지됩니다.",
+                  )
+                )
+                  void onAction("admin", { p_action: "unpublish" });
+              }}
+            >
+              비공개로 전환
+            </button>
+          )}
           {!e.published && (
             <button
-              disabled={disabled || phase !== "open"}
+              disabled={disabled}
               onClick={() => {
-                if (confirm("예약된 시작 시각부터 이벤트 접수를 허용할까요?"))
+                if (
+                  confirm(
+                    "이벤트 페이지를 모든 사람에게 공개할까요? 접수 중인 이벤트는 예약된 시작 시각부터 참여할 수 있습니다.",
+                  )
+                )
                   void onAction("admin", { p_action: "publish" });
               }}
             >
-              참여 접수 활성화
+              이벤트 공개
             </button>
           )}
           <button
@@ -299,6 +318,12 @@ export default function EventAdmin({
             {e.ends_at ? `${time(e.ends_at)} 종료` : "운영자가 마감"}
           </span>
         </div>
+        {!e.published && (
+          <p className="event-notice">
+            운영자만 볼 수 있는 비공개 상태입니다. 시작 시각이 지나도 자동
+            공개되지 않습니다.
+          </p>
+        )}
         <DrawStage
           tickets={eligible}
           drawing={drawing}
