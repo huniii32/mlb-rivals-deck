@@ -13,6 +13,9 @@ from PIL import Image, ImageTk
 from core import (Collector, CaptureOptions, StopCapture, crop, distance, save_json,
                   validate_config, app_level, SKILL_LEVEL_CAPS, TYPE_IDS, preset_levels, level_file, identity)
 from windows_backend import Windows, enable_dpi_awareness, windows
+from player_core import PlayerCollector, validate_player_config
+from player_gui import PlayerCaptureMixin, MODE_LABELS
+from player_ocr import process_players
 
 
 class Selector(tk.Toplevel):
@@ -47,7 +50,7 @@ class Selector(tk.Toplevel):
 
     def current_instruction(self):
         key, mode, text = self.steps[self.index]
-        suffix = '드래그로 사각형 선택' if mode == 'rect' else '각 항목을 위에서 아래로 클릭 후 Enter' if mode == 'points' else '보이면 한 번 클릭, 없으면 선택 없이 Enter' if mode == 'optional' else '한 번 클릭'
+        suffix = '드래그로 사각형 선택 (선택 항목은 없으면 Enter)' if mode in ('rect','optional_rect') else '각 항목을 위에서 아래로 클릭 후 Enter' if mode == 'points' else '보이면 한 번 클릭, 없으면 선택 없이 Enter' if mode == 'optional' else '한 번 클릭'
         self.caption.config(text=f'{self.index + 1}/{len(self.steps)} · {text}\n{suffix}')
         self.mode = mode
         self.reset()
@@ -61,7 +64,7 @@ class Selector(tk.Toplevel):
 
     def down(self, event):
         point = self.coord(event)
-        if self.mode == 'rect':
+        if self.mode in ('rect','optional_rect'):
             self.reset(); self.start = point
         elif self.mode in ('point', 'optional'):
             self.reset(); self.selection = [point]; self.mark(point)
@@ -74,19 +77,21 @@ class Selector(tk.Toplevel):
         self.canvas.create_text(x + 12, y, text=str(len(self.selection)), fill='#ff365b', tags='selection', anchor='w')
 
     def drag(self, event):
-        if self.mode == 'rect' and hasattr(self, 'start'):
+        if self.mode in ('rect','optional_rect') and hasattr(self, 'start'):
             end = self.coord(event)
             self.canvas.delete('selection')
             self.canvas.create_rectangle(*self.start, *end, outline='#ff365b', width=3, tags='selection')
 
     def up(self, event):
-        if self.mode == 'rect' and hasattr(self, 'start'):
+        if self.mode in ('rect','optional_rect') and hasattr(self, 'start'):
             self.selection = [self.start, self.coord(event)]
 
     def next(self):
         key, mode, _ = self.steps[self.index]
         points = [[round(x / self.scale), round(y / self.scale)] for x, y in self.selection]
-        if mode == 'rect':
+        if mode == 'optional_rect' and not points:
+            value = None
+        elif mode in ('rect','optional_rect'):
             if len(points) != 2 or abs(points[0][0] - points[1][0]) < 8 or abs(points[0][1] - points[1][1]) < 8:
                 messagebox.showinfo('영역 선택', '가로·세로가 있는 영역을 드래그하세요.', parent=self); return
             value = [min(p[0] for p in points), min(p[1] for p in points), max(p[0] for p in points), max(p[1] for p in points)]
@@ -109,11 +114,11 @@ class Selector(tk.Toplevel):
             self.current_instruction()
 
 
-class App:
+class App(PlayerCaptureMixin):
     def __init__(self, root):
         self.root = root
-        root.title('Rivals 스킬 도감 캡처')
-        root.geometry('790x700')
+        root.title('Rivals 도감 수집기 — 스킬 · 선수 능력치 · 미페')
+        root.geometry(f'940x{min(880, root.winfo_screenheight()-90)}')
         self.events, self.stop = queue.Queue(), threading.Event()
         self.busy, self.folder, self.config = False, None, None
         self.window_choices = []
@@ -122,8 +127,9 @@ class App:
         self.delay = tk.StringVar(value='0.6')
         self.kinds = {kind: tk.BooleanVar(value=True) for kind in SKILL_LEVEL_CAPS}
         frame = ttk.Frame(root, padding=16); frame.pack(fill='both', expand=True)
-        ttk.Label(frame, text='기본 S 저장 → 상위 레벨 저장 → >> 다음 스킬 → 다음 탭', font=('Malgun Gothic', 13, 'bold')).pack(anchor='w')
-        ttk.Label(frame, text='준비: 메인 → 구단관리 → 선수도감 → 스킬. 설명창을 닫은 스킬 탭 화면에서 시작하세요.', wraplength=750).pack(anchor='w', pady=(6, 12))
+        self.heading=ttk.Label(frame, text='기본 S 저장 → 상위 레벨 저장 → >> 다음 스킬 → 다음 탭', font=('Malgun Gothic', 13, 'bold')); self.heading.pack(anchor='w')
+        self.preparation=ttk.Label(frame, text='준비: 메인 → 구단관리 → 선수도감 → 스킬. 설명창을 닫은 스킬 탭 화면에서 시작하세요.', wraplength=880); self.preparation.pack(anchor='w', pady=(6, 12))
+        self.setup_player_controls(frame)
         row = ttk.Frame(frame); row.pack(fill='x', pady=4)
         ttk.Label(row, text='게임창', width=16).pack(side='left')
         self.combo = ttk.Combobox(row, state='readonly', width=55); self.combo.pack(side='left', fill='x', expand=True)
@@ -131,19 +137,29 @@ class App:
         self.entry(frame, '프로필 이름', self.profile)
         self.entry(frame, '저장 위치', self.base)
         self.entry(frame, '클릭 후 대기(초)', self.delay)
-        types = ttk.Frame(frame); types.pack(fill='x', pady=8)
+        self.skill_controls=ttk.Frame(frame);self.skill_controls.pack(fill='x',pady=8)
+        types = ttk.Frame(self.skill_controls); types.pack(fill='x', pady=4)
         for kind, maximum in SKILL_LEVEL_CAPS.items():
             ttk.Checkbutton(types, text=f'{kind} ({maximum})', variable=self.kinds[kind]).pack(side='left', padx=5)
-        ttk.Label(frame, text='수집할 탭을 선택한 뒤 위치 설정을 진행하세요. 첫 스킬로 돌아오면 다음 탭으로 이동합니다.', wraplength=750).pack(anchor='w')
-        actions = ttk.Frame(frame); actions.pack(fill='x', pady=12)
+        ttk.Label(self.skill_controls, text='수집할 탭을 선택한 뒤 위치 설정을 진행하세요. 첫 스킬로 돌아오면 다음 탭으로 이동합니다.', wraplength=750).pack(anchor='w')
+        self.player_controls=ttk.Frame(frame)
+        self.entry(self.player_controls,'현재 도감 필터',self.scope)
+        self.entry(self.player_controls,'능력치 항목(쉼표)',self.stat_names)
+        self.entry(self.player_controls,'최대 카드 수',self.max_cards)
+        ttk.Label(self.player_controls,text='능력치: 화면에 있는 항목 이름을 모두 입력하세요. 미페 전용 수집은 비워도 됩니다. 필터마다 새 프로필을 사용하세요.',wraplength=880).pack(anchor='w')
+        ttk.Checkbutton(self.player_controls,text='수집 후 Windows 로컬 문자 인식 (이미지 원본도 보관)',variable=self.auto_ocr).pack(anchor='w',pady=3)
+        actions = self.actions = ttk.Frame(frame); actions.pack(fill='x', pady=12)
         for label, command in [('① 위치 설정', self.calibrate), ('프로필 불러오기', self.load),
                                ('② 1개 테스트', lambda: self.run(True)), ('③ 전체 / 이어서', lambda: self.run(False)), ('중지', self.stop.set)]:
-            ttk.Button(actions, text=label, command=command).pack(side='left', padx=3)
+            button=ttk.Button(actions,text=label,command=command);button.pack(side='left',padx=3)
+            if label=='중지':self.stop_button=button
         ttk.Label(frame, text='중지: Esc, 마우스를 화면 왼쪽 위로 이동, 또는 다른 창으로 전환. 수집 중에는 게임을 조작하지 마세요.', wraplength=750).pack(anchor='w')
-        self.logbox = tk.Text(frame, height=15, wrap='word', state='disabled'); self.logbox.pack(fill='both', expand=True, pady=10)
+        self.logbox = tk.Text(frame, height=9, wrap='word', state='disabled'); self.logbox.pack(fill='both', expand=True, pady=10)
         bottom = ttk.Frame(frame); bottom.pack(fill='x')
         ttk.Button(bottom, text='결과 폴더', command=self.open_folder).pack(side='left')
         ttk.Button(bottom, text='결과 ZIP 만들기', command=self.export).pack(side='left', padx=8)
+        ttk.Button(bottom,text='선수 문자 인식 / 재시도',command=self.read_players).pack(side='left',padx=8)
+        ttk.Button(bottom,text='선수 결과 검토',command=self.review_players).pack(side='left')
         root.protocol('WM_DELETE_WINDOW', self.close)
         root.after(100, self.poll)
         self.refresh()
@@ -161,11 +177,27 @@ class App:
         try:
             while True:
                 kind, value = self.events.get_nowait()
-                if kind == 'done': self.busy = False
+                if kind == 'done': self.set_busy(False)
                 self.log(value)
         except queue.Empty:
             pass
         self.root.after(100, self.poll)
+
+    def set_busy(self,value):
+        self.busy=value
+        if value:
+            self._busy_states=[]
+            def disable(widget):
+                for child in widget.winfo_children():
+                    if child is self.stop_button:continue
+                    if isinstance(child,(ttk.Button,ttk.Entry,ttk.Combobox,ttk.Checkbutton)):
+                        self._busy_states.append((child,str(child.cget('state'))));child.configure(state='disabled')
+                    disable(child)
+            disable(self.root)
+        else:
+            for widget,state in getattr(self,'_busy_states',[]):
+                if widget.winfo_exists():widget.configure(state=state)
+            self._busy_states=[]
 
     def refresh(self):
         if self.busy: return
@@ -188,6 +220,7 @@ class App:
 
     def calibrate(self):
         if self.busy: return
+        if MODE_LABELS[self.mode.get()]!='skills':return self.calibrate_player()
         try:
             profile = self.profile.get().strip()
             kinds = [kind for kind, value in self.kinds.items() if value.get()]
@@ -287,43 +320,58 @@ class App:
         filename = filedialog.askopenfilename(title='profile.json 선택', initialdir=self.base.get(), filetypes=[('프로필','profile.json')])
         if filename:
             try:
-                config = json.loads(Path(filename).read_text(encoding='utf-8')); validate_config(config)
+                config = json.loads(Path(filename).read_text(encoding='utf-8'))
+                player=config.get('schema')=='players-v1'
+                (validate_player_config if player else validate_config)(config)
                 self.config, self.folder = config, Path(filename).parent
                 self.profile.set(config['profile'])
-                selected = {tab['skill_type'] for tab in config['tabs']}
-                for kind, value in self.kinds.items(): value.set(kind in selected)
-                self.log('프로필 불러옴. 같은 창 크기로 스킬 탭 화면에서 시작하세요. 설명창과 드롭다운은 닫아 주세요.')
+                if player:
+                    self.mode.set(next(label for label,mode in MODE_LABELS.items() if mode==config['capture_mode']))
+                    self.scope.set(config['scope']);self.max_cards.set(str(config['max_cards']))
+                    self.stat_names.set(','.join(f['name'] for f in config['stat_boxes']))
+                    self.log('선수 프로필 불러옴. 같은 필터·정렬·창 크기의 첫 선수 상세 화면에서 시작하세요.')
+                else:
+                    self.mode.set('스킬 설명 수집');selected={tab['skill_type'] for tab in config['tabs']}
+                    for kind,value in self.kinds.items():value.set(kind in selected)
+                    self.log('스킬 프로필 불러옴. 설명창과 드롭다운을 닫은 스킬 탭 화면에서 시작하세요.')
+                self.update_mode_help()
             except Exception as error: messagebox.showerror('프로필', str(error))
 
     def run(self, test):
         if self.busy: return
         try:
             if self.config is None: raise ValueError('먼저 위치 설정 또는 프로필 불러오기를 진행하세요.')
-            if [kind for kind, value in self.kinds.items() if value.get()] != [tab['skill_type'] for tab in self.config['tabs']]:
+            player=self.config.get('schema')=='players-v1'
+            if player and (MODE_LABELS[self.mode.get()]!=self.config['capture_mode'] or self.scope.get().strip()!=self.config['scope'] or int(self.max_cards.get())!=self.config['max_cards'] or (self.config['capture_mode']!='portrait' and [n.strip() for n in self.stat_names.get().split(',') if n.strip()]!=[f['name'] for f in self.config['stat_boxes']])):
+                raise ValueError('선수 수집 설정이 바뀌었습니다. 새 프로필 이름으로 위치 설정을 진행하세요.')
+            if not player and [kind for kind, value in self.kinds.items() if value.get()] != [tab['skill_type'] for tab in self.config['tabs']]:
                 raise ValueError('탭 선택이 바뀌었습니다. 새 프로필 이름으로 위치 설정을 진행하세요.')
             delay = float(self.delay.get())
             if not 0.2 <= delay <= 3: raise ValueError('대기 시간은 0.2~3초로 지정하세요.')
             backend, title, exe = self.backend()
             if (self.config['executable'] and self.config['executable'] != exe) or self.config['window_title'] != title:
                 raise ValueError('설정 때 선택한 게임창과 다릅니다.')
-            self.stop.clear(); self.busy = True
+            self.stop.clear(); self.set_busy(True)
             config, folder = self.config, self.folder
-            self.log('3초 뒤 시작합니다. 설명창을 닫은 도감 스킬 탭 화면에서 대기하세요.')
+            auto_ocr=self.auto_ocr.get()
+            self.log('3초 뒤 시작합니다. '+('설정 때 첫 선수 상세 화면에서 대기하세요.' if player else '설명창을 닫은 도감 스킬 탭 화면에서 대기하세요.'))
             def worker():
                 try:
                     for _ in range(30):
                         if self.stop.is_set(): raise StopCapture('시작을 취소했습니다.')
                         time.sleep(0.1)
                     backend.focus()
-                    collector = Collector(backend, config, folder, self.stop, lambda s: self.events.put(('log', s)), CaptureOptions(delay=delay, test_only=test))
+                    log=lambda s:self.events.put(('log',s))
+                    collector = PlayerCollector(backend,config,folder,self.stop,log,delay=delay,test_only=test) if player else Collector(backend, config, folder, self.stop, log, CaptureOptions(delay=delay, test_only=test))
                     collector.run()
                     self.events.put(('log', collector.state.get('message', '완료')))
+                    if player and auto_ocr and not self.stop.is_set() and collector.state['status'] in ('complete','test_complete'):process_players(folder,self.stop,log)
                 except Exception as error:
-                    self.events.put(('log', '중단: ' + str(error) + '\n설명창/드롭다운을 닫고 도감 스킬 탭 화면에서 이어서 실행하세요.'))
+                    self.events.put(('log', '중단: ' + str(error) + ('\n같은 필터의 첫 선수 상세 화면에서 이어서 실행하세요.' if player else '\n설명창/드롭다운을 닫고 도감 스킬 탭 화면에서 이어서 실행하세요.')))
                 finally: self.events.put(('done', '수집 작업 종료. 저장된 결과는 유지됩니다.'))
             threading.Thread(target=worker, daemon=True).start()
         except Exception as error:
-            self.busy = False
+            self.set_busy(False)
             messagebox.showerror('수집 시작', str(error), parent=self.root)
 
     def open_folder(self):
@@ -333,7 +381,7 @@ class App:
     def export(self):
         if self.busy: return
         if not self.folder or not (self.folder / 'state.json').exists():
-            messagebox.showinfo('결과 ZIP', '먼저 한 개 이상의 스킬을 수집하세요.'); return
+            messagebox.showinfo('결과 ZIP', '먼저 한 개 이상의 스킬 또는 선수를 수집하세요.'); return
         filename = filedialog.asksaveasfilename(defaultextension='.zip', initialfile=self.folder.name + '.zip', filetypes=[('ZIP', '*.zip')])
         if not filename: return
         target = Path(filename).resolve()

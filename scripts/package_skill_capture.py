@@ -4,7 +4,7 @@ from pathlib import Path
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-FILES = ('README.md', '시작.bat', 'app.py', 'core.py', 'windows_backend.py', 'requirements.txt')
+FILES = ('README.md', '시작.bat', 'app.py', 'core.py', 'windows_backend.py', 'requirements.txt', 'GUI_README.md', 'player_core.py', 'player_gui.py', 'player_ocr.py', 'windows_ocr.ps1')
 
 
 def main():
@@ -20,7 +20,10 @@ def main():
             if name.endswith('.bat'):
                 data = data.replace(b'\n', b'\r\n')
             bundle.writestr(info, data)
+    alias=target.with_name('rivals-guide-capture-windows.zip')
+    alias.write_bytes(target.read_bytes())
     print(target)
+    print(alias)
 
 
 if __name__ == '__main__':
