@@ -1,7 +1,7 @@
 import type { PlayerInput, PlayerResult } from "../lib/engine";
 import { DECK_WEIGHTS, deckTotals } from "../lib/engine";
 
-/** 덱랭킹 탭 하단: 현재 덱 점수 + 내 선수 랭킹 (스킬 1:1 비교는 스킬비교 탭) */
+/** 라인업의 접힌 상세 영역: 현재 덱 점수 + 내 선수 랭킹 (스킬 1:1 비교는 스킬비교 탭) */
 export function ResultPanel({ players, results }: { players: PlayerInput[]; results: PlayerResult[] }) {
   const { sp: dSP, rp: dRP, bt: dBT, total } = deckTotals(players, results);
 

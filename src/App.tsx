@@ -104,7 +104,7 @@ export default function App() {
   const [tables, setTables] = useState<SkillTables>(loadTables);
   const [selected, setSelected] = useState<number | null>(null);
   const [lineupMode, setLineupMode] = useState<"illustration" | "table">("illustration");
-  const [tab, setTab] = useState<"lineup" | "skills" | "ranking" | "news">("lineup");
+  const [tab, setTab] = useState<"lineup" | "skills" | "ranking" | "news">(() => /#d=([A-Za-z0-9\-_]+)/.test(window.location.hash) ? "ranking" : "lineup");
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "dark");
   const [modal, setModal] = useState<"inquiry" | "patch" | "guide" | null>(null);
   const [preview, setPreview] = useState<Deck | null>(null);
@@ -456,12 +456,10 @@ export default function App() {
         <>
           <SharePanel
             decks={decks} tables={tables} activeId={deck.id}
-            links={links} setLinks={setLinks} code={code} onRestoreDeck={restoreDeck} onSaveDeck={() => setSaveOpen(true)}
-            onSelectDeck={(id) => { setActiveId(id); setSelected(null); }}
-            onImportDeck={(d) => addDeckData(d, "공유받은 덱")}
+            links={links} setLinks={setLinks} code={code} onRestoreDeck={(d, id, credential) => { restoreDeck(d, id, credential); setTab("lineup"); }} onSaveDeck={() => setSaveOpen(true)}
+            onImportDeck={(d) => { addDeckData(d, "공유받은 덱"); setTab("lineup"); }}
             onPreviewDeck={(d) => setPreview(d)}
           />
-          <ResultPanel players={players} results={results} />
         </>
       )}
 
