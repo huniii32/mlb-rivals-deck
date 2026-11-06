@@ -572,3 +572,16 @@ button.dia-opt.on { border-color: #facc15; box-shadow: 0 0 14px rgba(250, 204, 2
   .ranking-row-actions { display: grid; grid-template-columns: 1fr 1fr; }
   .ranking-row-actions .primary, .ranking-row-actions .ranking-delete { grid-column: 1 / -1; margin: 0; }
 }
+
+.toolbar-main label { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.toolbar-main select { max-width: min(380px, 65vw); min-width: 0; }
+.toolbar-status { margin: 0; }
+.deck-tools { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 20px; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 4px; }
+.deck-tools section { min-width: 0; }
+.deck-tools h4 { margin: 0 0 10px; }
+.deck-tools .muted { margin: 10px 0 0; }
+.deck-tools-delete button { color: var(--danger); }
+@media (max-width: 760px) {
+  .deck-tools { grid-template-columns: 1fr; gap: 18px; }
+  .deck-tools section + section { border-top: 1px solid var(--border); padding-top: 16px; }
+}

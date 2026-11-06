@@ -111,7 +111,7 @@ export default function App() {
   const { links, setLinks, status, code } = useRankSync(decks, tables);
   const [saveOpen, setSaveOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const xlRef = useRef<HTMLInputElement>(null);
+  const [toolsOpen, setToolsOpen] = useState(false);
 
   const deck = decks.find((d) => d.id === activeId) ?? decks[0];
   const { players, chem, flags, yearInputs } = deck;
@@ -198,9 +198,6 @@ export default function App() {
     setSelected(null);
     setSaveOpen(true);
   };
-  const renameDeck = () => {
-    setSaveOpen(true);
-  };
   const saveDeck = async (name: string, password: string, publish: boolean) => {
     if (!validDeckName(name)) throw new Error("덱 이름을 입력하세요.");
     const named = { ...deck, name: name.trim(), updatedAt: Date.now() };
@@ -227,30 +224,29 @@ export default function App() {
     } catch (e) { throw new Error(`이 기기에 저장했습니다. ${passwordError(e)}`); }
   };
   const deleteDeck = () => {
-    if (decks.length <= 1) {
-      if (!confirm(`마지막 덱이라 삭제 대신 '${deck.name}' 내용을 비웁니다. 계속할까요?`)) return;
-      const fresh = blankDeck(deck.name);
-      patchDeck({ players: fresh.players, chem: fresh.chem, flags: fresh.flags, yearInputs: fresh.yearInputs, bullpenTactics: fresh.bullpenTactics });
-      setSelected(null);
-      return;
-    }
-    if (!confirm(`'${deck.name}' 삭제할까요?`)) return;
-    const rest = decks.filter((d) => d.id !== deck.id);
+    if (!confirm(`'${deck.name || "이름 없는 덱"}'을 이 기기에서 삭제할까요? 공개 랭킹은 유지됩니다.`)) return;
+    const rest = decks.filter(d => d.id !== deck.id);
+    if (!rest.length) rest.push(blankDeck(""));
     setDecks(rest);
     setActiveId(rest[0].id);
     setSelected(null);
   };
+
   const download = (name: string, data: unknown) => {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `${name}.json`;
     a.click();
-    URL.revokeObjectURL(a.href);
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
   // 랭킹 연동 덱은 다른 기기에서 같은 행을 갱신할 수 있게 id·토큰을 파일에만 담는다
   const exportDeck = () => { if (!validDeckName(deck.name)) { setSaveOpen(true); return; } download(deck.name, withRank(deck, links)); };
-  const exportAll = () => { if (!validDeckName(deck.name)) { setSaveOpen(true); return; } download("내 덱 전체", buildBundle(decks.filter((d) => validDeckName(d.name)), links)); };
+  const savedDecks = decks.filter(d => validDeckName(d.name));
+  const exportAll = () => {
+    if (!savedDecks.length) { setSaveOpen(true); return; }
+    download("내 덱 전체", buildBundle(savedDecks, links));
+  };
   const importDeck = (f: File | undefined) => {
     if (!f) return;
     const rd = new FileReader();
@@ -292,10 +288,6 @@ export default function App() {
     // 흔한 오선택 먼저 걸러내기 (엑셀 잠금파일·JSON을 엑셀 버튼으로 여는 경우)
     if (f.name.startsWith("~$")) {
       alert("엑셀 잠금파일(~$)입니다. 엑셀이 열려 있을 때 생기는 임시파일이니, 원본 .xlsx 파일을 닫지 않은 채로 다시 선택해주세요.");
-      return;
-    }
-    if (/\.json$/i.test(f.name)) {
-      alert("JSON 덱 파일은 '가져오기'로 여세요. '엑셀 가져오기'는 덱관리 .xlsx/.xlsm 전용입니다.");
       return;
     }
     try {
@@ -378,32 +370,40 @@ export default function App() {
       </div>}
       {storageError && <p className="bad" role="alert">{storageError}</p>}
       <div className="card toolbar">
-        <div className="row">
+        <div className="row toolbar-main">
           <label>내 덱{" "}
             <select value={deck.id} onChange={(e) => { setActiveId(e.target.value); setSelected(null); }}>
               {decks.map((d) => <option key={d.id} value={d.id}>{d.name || "이름 없는 덱 · 저장 전"}</option>)}
             </select>
           </label>
           <button onClick={newDeck}>+ 새 덱</button>
-          <button className="primary" onClick={() => setSaveOpen(true)}>덱 저장</button>
-          <button onClick={renameDeck}>이름변경</button>
-          <button onClick={deleteDeck}>삭제</button>
-          <button onClick={exportDeck}>내보내기</button>
-          <button onClick={exportAll} title="모든 덱을 파일 하나로 (랭킹 연동 정보 포함)">전체 내보내기</button>
-          <button onClick={() => fileRef.current?.click()}>가져오기</button>
-          <button onClick={() => xlRef.current?.click()}>엑셀 가져오기</button>
-          <input ref={fileRef} type="file" accept=".json" style={{ display: "none" }}
-            onChange={(e) => { importDeck(e.target.files?.[0]); e.target.value = ""; }} />
-          {activeLink && (
-            <span className={`pill ${status === "error" ? "bad-pill" : status === "ok" ? "" : "pill-idle"}`}>
-              🏆 랭킹 연동{status === "syncing" ? " · 반영 중…" : status === "ok" ? " · 방금 반영됨" : status === "error" ? " · 반영 실패(다음 수정 때 재시도)" : ""}
-            </span>
-          )}
-          <input ref={xlRef} type="file" accept=".xlsx,.xlsm,.xls" style={{ display: "none" }}
-            onChange={(e) => { importExcel(e.target.files?.[0]); e.target.value = ""; }} />
+          {tab !== "ranking" && <button className="primary" title="덱 이름·랭킹 연결 설정" onClick={() => setSaveOpen(true)}>덱 저장</button>}
+          <button aria-expanded={toolsOpen} aria-controls="deck-tools" onClick={() => setToolsOpen(!toolsOpen)}>덱 도구 <span aria-hidden="true">{toolsOpen ? "⌃" : "⌄"}</span></button>
+          {activeLink && <span className={`pill ${status === "error" ? "bad-pill" : status === "ok" ? "" : "pill-idle"}`}>
+            🏆 랭킹 연동{status === "syncing" ? " · 반영 중…" : status === "ok" ? " · 방금 반영됨" : status === "error" ? " · 반영 실패(다음 수정 때 재시도)" : ""}
+          </span>}
         </div>
-        <p className="muted">{validDeckName(deck.name) ? "변경사항은 자동 저장되며, 랭킹에 연결된 덱은 수정 즉시 같은 글에 반영됩니다." : "덱 이름을 정하고 ‘덱 저장’을 눌러야 저장됩니다. 이름 없는 덱은 새로고침하면 사라집니다."} 다른 기기에서는 덱랭킹의 가져오기에서 비밀번호를 입력하세요.</p>
-        <p className="muted">내보낸 파일에는 랭킹 수정 권한(비밀 토큰)이 들어 있어요 — 다른 사람에게 보내지 마세요.</p>
+        <p className="muted toolbar-status">{validDeckName(deck.name) ? "변경사항은 자동 저장됩니다." : "이름을 정해 저장하세요. 이름 없는 덱은 새로고침하면 사라집니다."}</p>
+        {toolsOpen && <div id="deck-tools" className="deck-tools" role="region" aria-label="덱 도구">
+          <section><h4>파일 백업</h4><div className="row">
+            <button onClick={exportDeck} disabled={!validDeckName(deck.name)}>현재 덱 백업</button>
+            {(savedDecks.length > 1 || (!validDeckName(deck.name) && savedDecks.length > 0)) && <button onClick={exportAll}>전체 {savedDecks.length}개 백업</button>}
+          </div><p className="muted">랭킹에 연결된 백업에는 수정 권한이 포함됩니다. 본인 보관용으로 사용하세요.</p></section>
+          <section><h4>파일 불러오기</h4><button onClick={() => fileRef.current?.click()}>파일 선택</button>
+            <p className="muted">JSON 백업과 덱관리 엑셀 파일을 읽습니다.</p></section>
+          <section className="deck-tools-delete"><h4>기기에서 삭제</h4><button onClick={deleteDeck}>이 기기에서 덱 삭제</button>
+            <p className="muted">공개 랭킹은 유지됩니다.</p></section>
+        </div>}
+        <input ref={fileRef} type="file" accept=".json,.xlsx,.xlsm,.xls" aria-label="덱 파일 불러오기" style={{ display: "none" }}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) {
+              if (/\.json$/i.test(f.name)) importDeck(f);
+              else if (/\.xlsx?$|\.xlsm$/i.test(f.name)) void importExcel(f);
+              else alert("JSON 백업 또는 덱관리 엑셀(.xlsx, .xlsm, .xls) 파일을 선택하세요.");
+            }
+            e.target.value = "";
+          }} />
       </div>
 
       <div className="tabs">
