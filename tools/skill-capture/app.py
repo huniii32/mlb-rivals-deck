@@ -10,7 +10,8 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import zipfile
 from PIL import Image, ImageTk
-from core import Collector, CaptureOptions, StopCapture, crop, distance, save_json, validate_config, app_level
+from core import (Collector, CaptureOptions, StopCapture, crop, distance, save_json,
+                  validate_config, app_level, SKILL_LEVEL_CAPS, TYPE_IDS, preset_levels, level_file, identity)
 from windows_backend import Windows, enable_dpi_awareness, windows
 
 
@@ -46,7 +47,7 @@ class Selector(tk.Toplevel):
 
     def current_instruction(self):
         key, mode, text = self.steps[self.index]
-        suffix = '드래그로 사각형 선택' if mode == 'rect' else '각 항목을 위에서 아래로 클릭 후 Enter' if mode == 'points' else '한 번 클릭'
+        suffix = '드래그로 사각형 선택' if mode == 'rect' else '각 항목을 위에서 아래로 클릭 후 Enter' if mode == 'points' else '보이면 한 번 클릭, 없으면 선택 없이 Enter' if mode == 'optional' else '한 번 클릭'
         self.caption.config(text=f'{self.index + 1}/{len(self.steps)} · {text}\n{suffix}')
         self.mode = mode
         self.reset()
@@ -62,7 +63,7 @@ class Selector(tk.Toplevel):
         point = self.coord(event)
         if self.mode == 'rect':
             self.reset(); self.start = point
-        elif self.mode == 'point':
+        elif self.mode in ('point', 'optional'):
             self.reset(); self.selection = [point]; self.mark(point)
         else:
             self.selection.append(point); self.mark(point)
@@ -93,6 +94,8 @@ class Selector(tk.Toplevel):
             if len(points) < 2 or any(b[1] <= a[1] for a, b in zip(points, points[1:])):
                 messagebox.showinfo('항목 위치', '완전히 보이는 항목을 위에서 아래 순서로 최소 두 개 선택하세요.', parent=self); return
             value = points
+        elif mode == 'optional' and not points:
+            value = None
         else:
             if len(points) != 1:
                 messagebox.showinfo('위치 선택', '위치를 한 번 클릭하세요.', parent=self); return
@@ -110,43 +113,41 @@ class App:
     def __init__(self, root):
         self.root = root
         root.title('Rivals 스킬 도감 캡처')
-        root.geometry('760x640')
+        root.geometry('790x700')
         self.events, self.stop = queue.Queue(), threading.Event()
-        self.busy = False
-        self.folder = None
-        self.config = None
+        self.busy, self.folder, self.config = False, None, None
         self.window_choices = []
-        self.profile = tk.StringVar(value='골드-타자')
-        self.levels = tk.StringVar(value='S4,S3,S2,S1,S,A,B,C,D')
+        self.profile = tk.StringVar(value='스킬도감-' + time.strftime('%Y-%m-%d'))
         self.base = tk.StringVar(value=str(Path.home() / 'Documents' / 'RivalsSkillCapture'))
-        self.delay = tk.StringVar(value='0.45')
+        self.delay = tk.StringVar(value='0.6')
+        self.kinds = {kind: tk.BooleanVar(value=True) for kind in SKILL_LEVEL_CAPS}
         frame = ttk.Frame(root, padding=16); frame.pack(fill='both', expand=True)
-        ttk.Label(frame, text='스킬 도감만 열어 두면, 설명을 레벨별로 저장합니다.', font=('Malgun Gothic', 13, 'bold')).pack(anchor='w')
-        ttk.Label(frame, text='한 프로필에는 같은 타자/투수·티어 필터를 사용하세요. 다른 필터는 새 프로필로 수집합니다.', wraplength=710).pack(anchor='w', pady=(5, 14))
+        ttk.Label(frame, text='기본 S 저장 → 상위 레벨 저장 → >> 다음 스킬 → 다음 탭', font=('Malgun Gothic', 13, 'bold')).pack(anchor='w')
+        ttk.Label(frame, text='준비: 메인 → 구단관리 → 선수도감 → 스킬. 설명창을 닫은 스킬 탭 화면에서 시작하세요.', wraplength=750).pack(anchor='w', pady=(6, 12))
         row = ttk.Frame(frame); row.pack(fill='x', pady=4)
-        ttk.Label(row, text='게임창').pack(side='left', padx=(0, 10))
-        self.combo = ttk.Combobox(row, state='readonly', width=65); self.combo.pack(side='left', fill='x', expand=True)
+        ttk.Label(row, text='게임창', width=16).pack(side='left')
+        self.combo = ttk.Combobox(row, state='readonly', width=55); self.combo.pack(side='left', fill='x', expand=True)
         ttk.Button(row, text='새로고침', command=self.refresh).pack(side='right', padx=6)
         self.entry(frame, '프로필 이름', self.profile)
-        self.entry(frame, '캡처할 레벨', self.levels)
-        ttk.Label(frame, text='현재 화면에 실제로 있는 레벨만 입력하세요. S가 앱의 S0입니다. 버튼이 없는 S3·S4는 추가하지 마세요.', wraplength=700).pack(anchor='w', pady=4)
         self.entry(frame, '저장 위치', self.base)
         self.entry(frame, '클릭 후 대기(초)', self.delay)
+        types = ttk.Frame(frame); types.pack(fill='x', pady=8)
+        for kind, maximum in SKILL_LEVEL_CAPS.items():
+            ttk.Checkbutton(types, text=f'{kind} ({maximum})', variable=self.kinds[kind]).pack(side='left', padx=5)
+        ttk.Label(frame, text='수집할 탭을 선택한 뒤 위치 설정을 진행하세요. 첫 스킬로 돌아오면 다음 탭으로 이동합니다.', wraplength=750).pack(anchor='w')
         actions = ttk.Frame(frame); actions.pack(fill='x', pady=12)
-        ttk.Button(actions, text='① 위치 설정', command=self.calibrate).pack(side='left', padx=3)
-        ttk.Button(actions, text='프로필 불러오기', command=self.load).pack(side='left', padx=3)
-        ttk.Button(actions, text='② 1개 테스트', command=lambda: self.run(True)).pack(side='left', padx=3)
-        ttk.Button(actions, text='③ 전체 수집 / 이어서', command=lambda: self.run(False)).pack(side='left', padx=3)
-        ttk.Button(actions, text='중지', command=self.stop.set).pack(side='left', padx=3)
-        ttk.Label(frame, text='중지: Esc를 누르거나 마우스를 화면 왼쪽 위로 이동. 다른 창으로 전환해도 자동 중단됩니다.', wraplength=710).pack(anchor='w')
-        self.logbox = tk.Text(frame, height=13, wrap='word', state='disabled'); self.logbox.pack(fill='both', expand=True, pady=10)
+        for label, command in [('① 위치 설정', self.calibrate), ('프로필 불러오기', self.load),
+                               ('② 1개 테스트', lambda: self.run(True)), ('③ 전체 / 이어서', lambda: self.run(False)), ('중지', self.stop.set)]:
+            ttk.Button(actions, text=label, command=command).pack(side='left', padx=3)
+        ttk.Label(frame, text='중지: Esc, 마우스를 화면 왼쪽 위로 이동, 또는 다른 창으로 전환. 수집 중에는 게임을 조작하지 마세요.', wraplength=750).pack(anchor='w')
+        self.logbox = tk.Text(frame, height=15, wrap='word', state='disabled'); self.logbox.pack(fill='both', expand=True, pady=10)
         bottom = ttk.Frame(frame); bottom.pack(fill='x')
-        ttk.Button(bottom, text='결과 폴더 열기', command=self.open_folder).pack(side='left')
-        ttk.Button(bottom, text='공유용 ZIP 만들기', command=self.export).pack(side='left', padx=8)
+        ttk.Button(bottom, text='결과 폴더', command=self.open_folder).pack(side='left')
+        ttk.Button(bottom, text='결과 ZIP 만들기', command=self.export).pack(side='left', padx=8)
         root.protocol('WM_DELETE_WINDOW', self.close)
         root.after(100, self.poll)
         self.refresh()
-        self.log('준비: 게임을 창 모드로 기본 모니터에 배치 → 도감에서 한 필터 선택 → 목록 맨 위로 이동.')
+        self.log('Windows Steam 창 모드에서 실행하세요. 설명된 경로는 모바일 기준이며 Steam의 실제 버튼 위치를 처음 한 번 지정합니다.')
 
     def entry(self, parent, label, variable):
         row = ttk.Frame(parent); row.pack(fill='x', pady=4)
@@ -178,64 +179,104 @@ class App:
         index = self.combo.current()
         if index < 0 or index >= len(self.window_choices): raise ValueError('게임창을 선택하세요.')
         hwnd, title, exe = self.window_choices[index]
-        backend = Windows(hwnd)
-        return backend, title, exe
+        return Windows(hwnd), title, exe
+
+    def select(self, image, steps):
+        result = Selector(self.root, image, steps).result
+        if result is None: raise StopCapture('위치 설정을 취소했습니다. 열린 설명창/목록은 직접 닫아 주세요.')
+        return result
 
     def calibrate(self):
         if self.busy: return
         try:
             profile = self.profile.get().strip()
-            if not profile: raise ValueError('프로필 이름을 입력하세요.')
-            labels = [s.strip().upper() for s in self.levels.get().split(',') if s.strip()]
-            if not labels or len(labels) > 9 or any(s not in ('D','C','B','A','S','S0','S1','S2','S3','S4','SS','SS+') for s in labels):
-                raise ValueError('게임에 표시된 레벨을 쉼표로 구분해 입력하세요.')
+            kinds = [kind for kind, value in self.kinds.items() if value.get()]
+            if not profile or not kinds: raise ValueError('프로필 이름과 수집할 탭을 선택하세요.')
             slug = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', profile).rstrip('. ')
             folder = Path(self.base.get()).expanduser() / ('profile-' + slug)
-            if (folder / 'state.json').exists():
-                raise ValueError('이미 수집 기록이 있는 프로필입니다. 이어서 수집은 프로필 불러오기, 위치 재설정은 새 프로필 이름을 사용하세요.')
+            if (folder / 'state.json').exists(): raise ValueError('수집 기록이 있습니다. 이어서는 프로필 불러오기, 새 설정은 새 프로필 이름을 사용하세요.')
             backend, title, exe = self.backend()
             self.root.withdraw(); backend.focus()
-            list_shot = backend.screenshot()
-            values = Selector(self.root, list_shot, [
-                ('filter_box','rect','선택한 티어·타자/투수 필터를 식별하는 고정 영역. 시간·재화·목록 항목은 제외하세요.'),
-                ('list_box','rect','스킬 목록의 이름 열 전체. 아이콘·스크롤바·제목은 제외하고 위부터 아래까지 잡으세요.'),
-                ('rows','points','완전히 보이는 각 스킬 행의 클릭 위치를 선택하세요. 잘린 첫/마지막 행은 제외하세요.'),
-                ('neutral_point','point','마우스를 둘 빈 공간. 스킬 행·설명창·버튼 위는 피하세요.'),
-            ]).result
-            if values is None: return
-            backend.focus(); backend.click(values['rows'][0]); time.sleep(0.6); backend.move(values['neutral_point']); time.sleep(0.2)
-            detail_shot = backend.screenshot()
-            steps = [
-                ('detail_box','rect','저장할 설명창 전체. 스킬명·선택 레벨·효과 설명을 모두 포함하세요.'),
-                ('name_box','rect','스킬명 글자만. 아이콘·레벨·설명·움직이는 효과는 제외하세요.'),
-                ('level_box','rect','레벨 버튼 줄 전체. 선택 표시까지 포함하고 스킬명·설명은 제외하세요.'),
-                ('close_point','point','설명창을 닫는 X 버튼'),
-            ] + [(f'level:{label}','point',f'{label} 레벨 버튼 중앙') for label in labels]
-            detail = Selector(self.root, detail_shot, steps).result
-            if detail is None: return
-            config = {'schema': 1, 'profile': profile, 'window_title': title, 'executable': exe,
-                      'window_size': list(list_shot.size), **values,
-                      **{k:v for k,v in detail.items() if not k.startswith('level:')},
-                      'levels': labels, 'level_points': {label: detail[f'level:{label}'] for label in labels}}
-            validate_config(config)
-            backend.focus()
+            screen = backend.screenshot()
+            values = self.select(screen, [
+                ('tab_box', 'rect', '일반/모먼트/WBC/블랙/HOF 탭 줄 전체. 선택 표시를 포함하고 목록·재화·시간은 제외하세요.'),
+                ('neutral_point', 'point', '마우스를 둘 빈 공간. 버튼·설명창·드롭다운 위는 피하세요.'),
+            ] + [(f'tab:{kind}', 'point', f'{kind} 탭 버튼 중앙') for kind in kinds])
+            config = {'schema': 3, 'profile': profile, 'window_title': title, 'executable': exe,
+                      'window_size': list(screen.size), 'tab_box': values['tab_box'],
+                      'neutral_point': values['neutral_point'], 'tabs': []}
             templates = {}
-            for label in labels:
+            def click(point):
                 if backend.escape_pressed(): raise StopCapture('설정을 중지했습니다.')
-                backend.click(config['level_points'][label]); time.sleep(0.5); backend.move(values['neutral_point']); time.sleep(0.2)
-                image = crop(backend.screenshot(), config['level_box'])
-                if any(distance(image, other) < 0.0025 for other in templates.values()):
-                    raise ValueError(f'{label}의 선택 상태가 다른 레벨과 구분되지 않습니다. 버튼 위치/레벨 영역/존재하는 레벨을 다시 확인하세요.')
-                templates[label] = image
-            backend.click(config['close_point']); time.sleep(0.5)
-            if distance(crop(backend.screenshot(), values['filter_box']), crop(list_shot, values['filter_box'])) > 0.045:
-                raise ValueError('설명창을 닫은 뒤 목록 화면을 확인하지 못했습니다.')
-            (folder / 'calibration').mkdir(parents=True, exist_ok=True)
-            crop(list_shot, values['filter_box']).save(folder / 'calibration/filter.png')
-            for label, image in templates.items(): image.save(folder / 'calibration' / f'level-{app_level(label)}.png')
+                backend.click(point); time.sleep(0.6)
+                backend.move(config['neutral_point']); time.sleep(0.2)
+            for kind in kinds:
+                backend.focus(); click(values[f'tab:{kind}'])
+                screen = backend.screenshot()
+                first = self.select(screen, [('first_point', 'point', f'{kind} 탭에서 첫 번째 스킬을 여는 위치')])['first_point']
+                images = {'tab.png': crop(screen, config['tab_box'])}
+                backend.focus(); click(first)
+                opened = backend.screenshot()
+                if not config['tabs']:
+                    config.update(self.select(opened, [
+                        ('detail_box', 'rect', '저장할 설명창 전체: 스킬명·S/S1 등 선택 레벨·효과 설명을 포함하세요.'),
+                        ('name_box', 'rect', '스킬명 글자만. 레벨·아이콘·움직이는 배경은 제외하세요.'),
+                        ('level_box', 'rect', 'S에서 S1 등으로 바뀌는 선택 레벨 표시만. 스킬명·효과 수치는 제외하세요.'),
+                        ('next_point', 'point', '다음 스킬로 이동하는 하단 >> 버튼'),
+                        ('close_point', 'point', '스킬 설명창을 닫고 탭 목록으로 돌아가는 버튼'),
+                    ]))
+                images['first-name.png'] = crop(opened, config['name_box'])
+                images['level-S0.png'] = crop(opened, config['level_box'])
+                tab = {'skill_type': kind, 'tab_point': values[f'tab:{kind}'], 'first_point': first,
+                       'levels': preset_levels(kind), 'level_points': {}}
+                backend.focus()
+                if len(tab['levels']) > 1:
+                    if 'dropdown_point' not in config:
+                        config.update(self.select(opened, [('dropdown_point', 'point', '상위 레벨 선택 목록을 여는 현재레벨 오른쪽 버튼')]))
+                        backend.focus()
+                    click(config['dropdown_point'])
+                    menu = backend.screenshot()
+                    selected = self.select(menu, [
+                        ('menu_box', 'rect', f'{kind}의 레벨 선택 목록 전체. 선택 표시를 포함하고 스킬명은 제외하세요.'),
+                        ('S', 'optional', '기본 S로 돌아가는 항목이 보이면 선택하세요. 없다면 선택 없이 Enter. 이 경우 >> 이동 뒤 S로 돌아와야 합니다.'),
+                    ] + [(label, 'point', f'{kind} · {label} 선택 항목 중앙') for label in tab['levels'][1:]])
+                    tab['menu_box'] = selected.pop('menu_box')
+                    tab['level_points'] = {label: point for label, point in selected.items() if point is not None}
+                    images['menu-S0.png'] = crop(menu, tab['menu_box'])
+                    backend.focus()
+                    backend.move(config['neutral_point']); time.sleep(0.2)
+                    if distance(crop(backend.screenshot(), tab['menu_box']), images['menu-S0.png']) > 0.045:
+                        click(config['dropdown_point'])
+                        if distance(crop(backend.screenshot(), tab['menu_box']), images['menu-S0.png']) > 0.045:
+                            raise ValueError('게임으로 돌아온 뒤 레벨 목록을 확인하지 못했습니다. 위치 설정을 다시 진행하세요.')
+                    known = [images['level-S0.png']]
+                    for label in tab['levels'][1:]:
+                        click(tab['level_points'][label])
+                        closed = backend.screenshot()
+                        if identity(crop(closed, config['name_box'])) != identity(images['first-name.png']):
+                            raise ValueError('레벨 선택 중 스킬명이 달라졌습니다. 영역/버튼 위치를 확인하세요.')
+                        template = crop(closed, config['level_box'])
+                        if any(distance(template, previous) < 0.0025 for previous in known):
+                            raise ValueError(f'{kind} {label}의 표시가 다른 레벨과 구분되지 않습니다. 선택 레벨이 변하는 영역을 지정하세요.')
+                        known.append(template)
+                        images[f'level-{level_file(label)}.png'] = template
+                        click(config['dropdown_point'])
+                        images[f'menu-{level_file(label)}.png'] = crop(backend.screenshot(), tab['menu_box'])
+                    # Dropdown is open at the end: select the last grade to close it.
+                    click(tab['level_points'][tab['levels'][-1]])
+                config['tabs'].append(tab)
+                templates[kind] = images
+                click(config['close_point'])
+                if distance(crop(backend.screenshot(), config['tab_box']), images['tab.png']) > 0.045:
+                    raise ValueError('설명창을 닫은 뒤 스킬 탭 화면을 확인하지 못했습니다.')
+            config.setdefault('dropdown_point', config['neutral_point'])
+            validate_config(config)
+            for kind, images in templates.items():
+                dest = folder / 'calibration' / TYPE_IDS[kind]; dest.mkdir(parents=True, exist_ok=True)
+                for name, image in images.items(): image.save(dest / name)
             save_json(folder / 'profile.json', config)
             self.config, self.folder = config, folder
-            self.log(f'위치 설정 완료: {folder}\n먼저 1개 테스트를 실행해 캡처를 확인하세요.')
+            self.log(f'설정 완료: {folder}\n먼저 1개 테스트에서 S부터 상한까지 설명과 선택 표시를 확인하세요.')
         except Exception as error:
             messagebox.showerror('위치 설정', str(error), parent=self.root)
         finally:
@@ -248,35 +289,38 @@ class App:
             try:
                 config = json.loads(Path(filename).read_text(encoding='utf-8')); validate_config(config)
                 self.config, self.folder = config, Path(filename).parent
-                self.profile.set(config['profile']); self.levels.set(','.join(config['levels']))
-                self.log('프로필 불러옴. 같은 필터·창 크기로 도감 목록 맨 위에서 시작하세요. 열린 설명창은 닫아 주세요.')
+                self.profile.set(config['profile'])
+                selected = {tab['skill_type'] for tab in config['tabs']}
+                for kind, value in self.kinds.items(): value.set(kind in selected)
+                self.log('프로필 불러옴. 같은 창 크기로 스킬 탭 화면에서 시작하세요. 설명창과 드롭다운은 닫아 주세요.')
             except Exception as error: messagebox.showerror('프로필', str(error))
 
     def run(self, test):
         if self.busy: return
         try:
             if self.config is None: raise ValueError('먼저 위치 설정 또는 프로필 불러오기를 진행하세요.')
+            if [kind for kind, value in self.kinds.items() if value.get()] != [tab['skill_type'] for tab in self.config['tabs']]:
+                raise ValueError('탭 선택이 바뀌었습니다. 새 프로필 이름으로 위치 설정을 진행하세요.')
             delay = float(self.delay.get())
             if not 0.2 <= delay <= 3: raise ValueError('대기 시간은 0.2~3초로 지정하세요.')
             backend, title, exe = self.backend()
             if (self.config['executable'] and self.config['executable'] != exe) or self.config['window_title'] != title:
-                raise ValueError('프로필을 만든 게임창과 현재 선택한 창이 다릅니다.')
+                raise ValueError('설정 때 선택한 게임창과 다릅니다.')
             self.stop.clear(); self.busy = True
-            options = CaptureOptions(delay=delay, test_only=test)
             config, folder = self.config, self.folder
-            self.log('3초 뒤 시작합니다. 같은 필터의 목록 맨 위에 있고 설명창이 닫혔는지 확인하세요.')
+            self.log('3초 뒤 시작합니다. 설명창을 닫은 도감 스킬 탭 화면에서 대기하세요.')
             def worker():
                 try:
                     for _ in range(30):
                         if self.stop.is_set(): raise StopCapture('시작을 취소했습니다.')
                         time.sleep(0.1)
                     backend.focus()
-                    collector = Collector(backend, config, folder, self.stop, lambda s: self.events.put(('log',s)), options)
+                    collector = Collector(backend, config, folder, self.stop, lambda s: self.events.put(('log', s)), CaptureOptions(delay=delay, test_only=test))
                     collector.run()
-                    self.events.put(('log',collector.state.get('message','완료')))
+                    self.events.put(('log', collector.state.get('message', '완료')))
                 except Exception as error:
-                    self.events.put(('log','중단: ' + str(error) + '\n이어서는 설명창을 닫고 같은 필터의 목록 맨 위에서 시작하세요.'))
-                finally: self.events.put(('done','수집 작업 종료. 저장된 결과는 유지됩니다.'))
+                    self.events.put(('log', '중단: ' + str(error) + '\n설명창/드롭다운을 닫고 도감 스킬 탭 화면에서 이어서 실행하세요.'))
+                finally: self.events.put(('done', '수집 작업 종료. 저장된 결과는 유지됩니다.'))
             threading.Thread(target=worker, daemon=True).start()
         except Exception as error:
             self.busy = False
@@ -289,13 +333,13 @@ class App:
     def export(self):
         if self.busy: return
         if not self.folder or not (self.folder / 'state.json').exists():
-            messagebox.showinfo('결과 ZIP','먼저 한 개 이상의 스킬을 수집하세요.'); return
-        filename = filedialog.asksaveasfilename(defaultextension='.zip', initialfile=self.folder.name + '.zip', filetypes=[('ZIP','*.zip')])
+            messagebox.showinfo('결과 ZIP', '먼저 한 개 이상의 스킬을 수집하세요.'); return
+        filename = filedialog.asksaveasfilename(defaultextension='.zip', initialfile=self.folder.name + '.zip', filetypes=[('ZIP', '*.zip')])
         if not filename: return
         target = Path(filename).resolve()
-        with zipfile.ZipFile(target,'w',zipfile.ZIP_DEFLATED) as z:
+        with zipfile.ZipFile(target, 'w', zipfile.ZIP_DEFLATED) as z:
             for path in self.folder.rglob('*'):
-                if path.is_file() and path.resolve()!=target and path.suffix!='.zip': z.write(path, path.relative_to(self.folder))
+                if path.is_file() and path.resolve() != target and path.suffix != '.zip': z.write(path, path.relative_to(self.folder))
         self.log(f'ZIP 저장: {target}')
 
     def close(self):
@@ -306,8 +350,6 @@ class App:
 
 if __name__ == '__main__':
     if sys.platform != 'win32':
-        raise SystemExit('이 캡처 도구는 Windows 데스크톱에서 실행하세요.')
+        raise SystemExit('Windows 데스크톱에서 실행하세요.')
     enable_dpi_awareness()
-    root = tk.Tk()
-    App(root)
-    root.mainloop()
+    root = tk.Tk(); App(root); root.mainloop()
