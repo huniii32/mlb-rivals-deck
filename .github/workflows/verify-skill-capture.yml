@@ -36,10 +36,14 @@ jobs:
       - name: Verify the downloadable ZIP matches source
         shell: python
         run: |
-          import hashlib
           from pathlib import Path
           import subprocess
+          import zipfile
           target = Path('public/downloads/steam-skill-capture-windows.zip')
-          before = hashlib.sha256(target.read_bytes()).hexdigest()
+          def contents():
+              with zipfile.ZipFile(target) as archive:
+                  assert archive.testzip() is None
+                  return {name: archive.read(name) for name in archive.namelist()}
+          before = contents()
           subprocess.run(['python', 'scripts/package_skill_capture.py'], check=True)
-          assert hashlib.sha256(target.read_bytes()).hexdigest() == before, 'Regenerate the Windows download ZIP'
+          assert contents() == before, 'Regenerate the Windows download ZIP'

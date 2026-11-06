@@ -16,9 +16,9 @@ def main():
             info = zipfile.ZipInfo('RivalsSkillCapture/' + name, (2026, 1, 1, 0, 0, 0))
             info.compress_type = zipfile.ZIP_DEFLATED
             info.external_attr = 0o644 << 16
-            data = (source / name).read_bytes()
+            data = (source / name).read_bytes().replace(b'\r\n', b'\n')
             if name.endswith('.bat'):
-                data = data.replace(b'\r\n', b'\n').replace(b'\n', b'\r\n')
+                data = data.replace(b'\n', b'\r\n')
             bundle.writestr(info, data)
     print(target)
 
