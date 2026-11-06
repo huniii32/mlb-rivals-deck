@@ -8,6 +8,7 @@ import type { BullpenRole } from "./lib/bullpen";
 import { BullpenControls } from "./components/BullpenControls";
 import { readStoredDecks } from "./lib/deckStorage";
 import { applyDeckUpdate } from "./lib/playerUpdates";
+import { selectDeckScoreSide, type DeckScoreRegion, type DeckScoreSide } from "./lib/deckScoreTargets";
 import { DeckSaveModal } from "./components/DeckSaveModal";
 import { passwordError, passwordResult, validDeckName, type PasswordCredential } from "./lib/deckPassword";
 import { getClientId, supabase } from "./lib/supabase";
@@ -32,7 +33,6 @@ import { RenewalDialog } from "./components/renewal/Dialog";
 import { SkillLab } from "./components/renewal/SkillLab";
 import "./styles.css";
 import "./components/renewal/renewal.css";
-import "./components/renewal/live.css";
 
 const Simulator = lazy(() => import("./components/Simulator"));
 
@@ -169,20 +169,8 @@ export default function App() {
   const patchDeck = (patch: Partial<Deck>) =>
     setDecks((prev) => prev.map((d) => (d.id === deck.id ? { ...applyDeckUpdate(d, patch, tables), updatedAt: Date.now() } : d)));
 
-  // 행별 좌/우 택1: 고른 쪽만 켜고 반대쪽은 끈다. 이미 켜진 쪽을 다시 누르면 둘 다 끈다.
-  const pickRowSide = (region: string, row: number, side: "L" | "R") => {
-    const next = { ...deck.flags };
-    const a = `${row}-${region}-L`;
-    const b = `${row}-${region}-R`;
-    if (next[`${row}-${region}-${side}`]) {
-      next[a] = false;
-      next[b] = false;
-    } else {
-      next[a] = side === "L";
-      next[b] = side === "R";
-    }
-    patchDeck({ flags: next });
-  };
+  const pickRowSide = (region: DeckScoreRegion, row: number, side: DeckScoreSide) =>
+    patchDeck({ flags: selectDeckScoreSide(deck.flags, region, row, side) });
 
   const update = (excelRow: number, p: Partial<PlayerInput>) => {
     const current = players.find((x) => x.excelRow === excelRow);

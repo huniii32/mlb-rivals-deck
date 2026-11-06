@@ -4,10 +4,22 @@ import { bullpenRole } from "../src/lib/bullpen";
 import { calcDeckTotal, deckPlayerResults } from "../src/lib/engine";
 import { applyDeckUpdate } from "../src/lib/playerUpdates";
 import { buildBundle, parseDeckFile } from "../src/lib/deckFile";
+import { decadeStatus, selectDeckScoreSide } from "../src/lib/deckScoreTargets";
+import { DECK_SCORE_OPTIONS } from "../src/lib/deckScoreOptions";
 
 let checks = 0;
 function eq(actual: unknown, expected: unknown) { assert.deepEqual(actual, expected); checks++; }
 const tables = { overrides: {}, customs: [] };
+const initialFlags = { "10-team-L": true };
+const right = selectDeckScoreSide(initialFlags, "spec", 33, "R");
+const left = selectDeckScoreSide(right, "spec", 33, "L");
+eq(left, { "10-team-L": true, "33-spec-L": true, "33-spec-R": false });
+eq(selectDeckScoreSide(left, "spec", 33, "L"), { "10-team-L": true, "33-spec-L": false, "33-spec-R": false });
+eq(initialFlags, { "10-team-L": true });
+eq(DECK_SCORE_OPTIONS.spec.filter(r => r.targetRow).map(r => [r.threshold, r.yearRow, r.sides]), [[615, 33, ["L", "R"]], [645, 35, ["L", "R"]]]);
+eq(DECK_SCORE_OPTIONS.spec.find(r => r.threshold === 680)?.sides, []);
+eq(DECK_SCORE_OPTIONS.team.every(r => r.yearRow === undefined), true);
+eq(decadeStatus(615, "pitcher", 2020), "2020~2029 투수 · 평가 능력치 변화 +1");
 const base: Deck = {
   id: "target-training", name: "계산 검증", updatedAt: 1, flags: {}, yearInputs: {},
   chem: { ...DEFAULT_CHEM },

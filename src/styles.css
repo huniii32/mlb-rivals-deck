@@ -428,66 +428,6 @@ button.dia-opt.on { border-color: #facc15; box-shadow: 0 0 14px rgba(250, 204, 2
 .diamond .dcard.empty { min-height: 84px; }
 .diamond .gc-ovr { font-size: 18px; }
 
-/* 일러스트를 기본으로, 같은 엔진 결과를 한 장 요약표로 전환 */
-.lineup-view-bar{display:flex;justify-content:space-between;align-items:center;margin:0 0 12px;color:var(--muted);font-size:13px}
-.lineup-view-bar>div{display:flex;gap:3px;padding:3px;border:1px solid var(--border2);border-radius:8px}
-.lineup-view-bar button{border:0;background:transparent;padding:6px 12px;border-radius:5px}
-.lineup-view-bar button[aria-pressed="true"]{background:var(--accent-soft);color:var(--text);box-shadow:inset 0 0 0 1px var(--accent)}
-.lineup-sheet{--sheet-gold:#f2d262;--sheet-cyan:#79bbd7;background:#121720;color:#cdd2dc;border:1px solid #282e3a;padding:24px 28px;margin:0 auto 14px;width:100%;font-variant-numeric:tabular-nums}
-.sheet-header{display:flex;align-items:center;justify-content:space-between;gap:14px;border-bottom:1px solid #343b47;padding-bottom:15px}
-.sheet-header>div:first-child{min-width:0}.sheet-header h3{margin:0;font-size:26px;color:#e5e8ef;overflow-wrap:anywhere}
-.sheet-header p{margin:4px 0 0;color:#818b9b;font-size:11px}.sheet-total{text-align:right;flex:none}.sheet-total small{display:block;font-size:9px;color:#858f9e;letter-spacing:1px}.sheet-total b{font-size:32px;color:var(--sheet-gold);line-height:1.2}
-.lineup-sheet h4{font-size:12px;font-weight:600;color:#a0aabb;margin:17px 0 4px}
-.lineup-sheet-table{table-layout:fixed;width:100%;border-collapse:collapse}
-.lineup-sheet-table col:nth-child(1){width:11%}.lineup-sheet-table col:nth-child(2){width:31%}.lineup-sheet-table col:nth-child(3),.lineup-sheet-table col:nth-child(4),.lineup-sheet-table col:nth-child(5){width:7%}.lineup-sheet-table col:nth-child(6){width:12%}.lineup-sheet-table col:nth-child(7){width:11%}.lineup-sheet-table col:nth-child(8){width:14%}
-.lineup-sheet-table th{font-size:10px;font-weight:400;color:#7e8797;background:transparent;padding:3px 3px 5px;border:0;position:static}
-.lineup-sheet-table td{height:30px;padding:3px;border-bottom:1px solid #1e2530;font-size:12px;white-space:nowrap}
-.lineup-sheet-table th,.lineup-sheet-table td{text-align:right}.lineup-sheet-table th:nth-child(-n+2),.lineup-sheet-table td:nth-child(-n+2){text-align:left}.lineup-sheet-table td:first-child,.lineup-sheet-table th:first-child{padding-left:0}.lineup-sheet-table td:last-child,.lineup-sheet-table th:last-child{padding-right:0}
-.lineup-sheet-table tbody tr:hover{background:#1b2431}.lineup-sheet-table .sheet-role-start td{border-top:1px solid #343c49}.sheet-pos{font-size:11px!important;color:#929eaf;overflow:hidden;text-overflow:ellipsis}
-.sheet-player{display:flex;align-items:center;gap:5px;width:100%;padding:0;border:0;background:none!important;text-align:left;min-height:24px;border-radius:2px;color:#cfd5df}
-.sheet-name{overflow:hidden;text-overflow:ellipsis;font-size:12px;font-weight:550}.sheet-enh{flex:none;font-size:8px;font-weight:700;background:#813b9c;color:#f1d9fb;border-radius:2px;padding:0 2px;min-width:20px;text-align:center}.sheet-grade{font-size:9px;color:#889cb5;overflow:hidden;text-overflow:ellipsis;max-width:32%;flex-shrink:0}.sheet-grade.black{color:#b492df}.sheet-grade.sig{color:#d67d99}.sheet-grade.prime{color:#d2bd71}
-.sheet-ability{color:#a4afbf}.sheet-skill{color:var(--sheet-cyan)}.sheet-score{color:var(--sheet-gold);font-size:14px!important;font-weight:650}.sheet-bonus,.sheet-tactics b{color:#81c7a7;font-weight:500}.sheet-tactics{font-size:10px;color:#8b99ab;display:flex;flex-wrap:wrap;gap:5px;margin:8px 0}.sheet-tactics span{margin-left:auto}
-.sheet-deckscore{margin-top:20px}.sheet-strip{display:flex;gap:3px;margin:8px 0;align-items:center}.sheet-strip>span{font-size:9px;width:42px;flex:none;color:#8d98a9}.sheet-strip>div{display:flex;gap:2px;flex:1;min-width:0}.sheet-cell{flex:1;text-align:center;min-width:0}.sheet-cell small{display:block;font-size:6px;color:#758091;margin-bottom:2px}.sheet-cell i{display:block;font-size:7px;line-height:12px;height:12px;background:#d4bc72;color:#392f17;font-style:normal}.sheet-cell.right i{background:#b995cd;color:#302139}.sheet-cell.off i{background:#303845;color:#95a1b4}.sheet-subtotals{font-size:10px;color:#a8b4c5;margin-top:12px}
-.lineup-sheet footer{border-top:1px solid #343b47;margin-top:18px;padding-top:12px;font-size:9px;color:#8591a3;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.sheet-settings{width:100%;margin:0 auto 12px}.sheet-settings summary{cursor:pointer}.sheet-settings>.card{border:0;padding:12px 0 0;margin:0}.sheet-settings-grid{width:100%;margin:auto;display:grid;grid-template-columns:1fr 1fr;gap:12px}.sheet-settings-grid>details{width:100%;min-width:0}
-[data-theme="light"] .lineup-sheet{background:#121720}
-@media(max-width:640px){.lineup-sheet{padding:16px 10px}.sheet-header{gap:8px}.sheet-header h3{font-size:20px}.sheet-header p{font-size:9px}.sheet-total b{font-size:25px}.sheet-total small{font-size:7px;letter-spacing:.4px}.lineup-sheet h4{font-size:10px}.lineup-sheet-table th{font-size:8px;padding:3px 1px 5px}.lineup-sheet-table td{height:27px;font-size:10px;padding:3px 1px}.lineup-sheet-table .sheet-score{font-size:11px!important}.sheet-pos{font-size:9px!important}.sheet-player{gap:2px}.sheet-name{font-size:10px}.sheet-enh{font-size:6px;min-width:15px}.sheet-grade{font-size:7px}.sheet-tactics{font-size:8px}.sheet-strip>span{font-size:8px;width:33px}.sheet-strip>div{gap:1px}.sheet-cell small{font-size:4.5px;letter-spacing:-.4px}.sheet-cell i{font-size:6px;line-height:10px;height:10px}.sheet-subtotals{font-size:8px}.lineup-sheet footer{font-size:8px}.sheet-settings-grid{grid-template-columns:1fr}}
-
-.sheet-warnings { margin: 12px 0; color: #fcd34d; font-size: 12px; }
-.sheet-warnings summary { cursor: pointer; padding: 8px 0; }
-.sheet-warnings ul { padding-left: 18px; }
-.sheet-warnings li { margin: 8px 0; }
-.sheet-warnings button { color: #bae6fd; border: 1px solid #475569; background: transparent; padding: 4px 8px; }
-.sheet-warnings li span { display: block; margin-top: 4px; overflow-wrap: anywhere; }
-
-/* 데스크톱에서는 본문 너비를 활용하고 표의 글자와 행도 함께 확대한다. */
-@media (min-width: 960px) {
-  .lineup-sheet { --sheet-text-size: clamp(16px, 1.3vw, 18px); padding: 28px 32px; }
-  .sheet-header { padding-bottom: 20px; }
-  .sheet-header h3 { font-size: clamp(30px, 2.5vw, 36px); }
-  .sheet-header p { font-size: 14px; margin-top: 8px; }
-  .sheet-total small { font-size: 12px; }
-  .sheet-total b { font-size: clamp(40px, 3.3vw, 48px); }
-  .lineup-sheet h4 { font-size: 16px; margin-top: 24px; }
-  .lineup-sheet-table th { font-size: 14px; padding: 6px 6px 8px; }
-  .lineup-sheet-table td { font-size: var(--sheet-text-size); height: 44px; padding: 6px; }
-  .lineup-sheet .sheet-pos { font-size: clamp(14px, 1.15vw, 16px) !important; }
-  .sheet-player { min-height: 32px; gap: 8px; }
-  .sheet-name { font-size: var(--sheet-text-size); }
-  .sheet-enh { font-size: 10px; min-width: 24px; padding: 1px 3px; }
-  .sheet-grade { font-size: 12px; }
-  .lineup-sheet .sheet-score { font-size: clamp(18px, 1.45vw, 20px) !important; }
-  .sheet-tactics { font-size: 14px; gap: 8px; margin-top: 12px; }
-  .sheet-strip { gap: 8px; margin: 12px 0; }
-  .sheet-strip > span { font-size: 12px; width: 52px; }
-  .sheet-strip > div { gap: 3px; }
-  .sheet-cell small { font-size: 9px; }
-  .sheet-cell i { font-size: 10px; line-height: 18px; height: 18px; }
-  .sheet-subtotals { font-size: 14px; }
-  .lineup-sheet footer { font-size: 12px; margin-top: 24px; padding-top: 16px; }
-  .sheet-warnings { font-size: 14px; }
-}
-
 /* 공개 랭킹 목록에 집중하고 개별 동작은 선택한 덱 아래에 표시한다. */
 .ranking-board { padding: 28px; }
 .ranking-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; }

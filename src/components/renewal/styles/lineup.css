@@ -1,0 +1,509 @@
+.renewal select {
+  font: inherit;
+  color: var(--text);
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 9px;
+  max-width: 100%;
+  min-width: 0;
+}
+.renewal select:focus-visible {
+  outline: 3px solid #5689de;
+  outline-offset: 2px;
+}
+.renewal .field-board {
+  padding: 18px 13px 14px;
+  background: #142d29;
+}
+.renewal .position-field {
+  position: relative;
+  aspect-ratio: 740/680;
+  width: 100%;
+  isolation: isolate;
+}
+.renewal .baseball-field {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.renewal .field-player {
+  position: absolute;
+  width: 16%;
+  left: var(--x);
+  top: var(--y);
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+.renewal .field-player .player-card,
+.renewal .pitcher-grid .player-card {
+  width: 100%;
+  padding: 0;
+  border: 1px solid #a5b69866;
+  background: #192230;
+  border-radius: 7px;
+  overflow: hidden;
+  box-shadow: 0 5px 12px #0003;
+  color: white;
+  text-align: left;
+}
+.renewal .field-player .player-art,
+.renewal .pitcher-grid .player-art {
+  aspect-ratio: 100/108;
+}
+.renewal .field-player .player-art .gc-art,
+.renewal .pitcher-grid .player-art .gc-art {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.renewal .field-player .player-caption {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 5px 7px;
+}
+.renewal .field-player .player-caption strong {
+  font-size: 11px;
+}
+.renewal .field-player .player-caption > span {
+  font-size: 7px;
+}
+.renewal .field-player .player-art > b {
+  font-size: 15px;
+  right: 5px;
+  top: 5px;
+}
+.renewal .field-player .position {
+  font-size: 7px;
+  left: 5px;
+  top: 5px;
+}
+.renewal .field-wordmark {
+  position: absolute;
+  left: 50%;
+  top: 60%;
+  transform: translate(-50%, -50%);
+  font-size: 22px;
+  color: #bdcbae28;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 4px;
+  text-align: center;
+  line-height: 1.1;
+}
+.renewal .field-wordmark small {
+  font-size: 7px;
+  letter-spacing: 3px;
+}
+.renewal .pitcher-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  max-width: 650px;
+  margin: 0 auto;
+}
+.renewal .pitcher-grid .player-card {
+  height: 100%;
+}
+.renewal .pitcher-grid .player-caption {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 9px 10px;
+  gap: 4px;
+}
+.renewal .pitcher-grid .player-caption strong {
+  font-size: 13px;
+}
+.renewal .pitcher-grid .player-caption > span {
+  font-size: 9px;
+}
+.renewal .pitcher-grid .position {
+  font-size: 8px;
+}
+.renewal .pitcher-grid .player-art > b {
+  font-size: 19px;
+}
+.renewal .pitcher-grid .vacant,
+.renewal .pitcher-grid .empty-player {
+  min-height: 190px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  color: #9cb3c3;
+  border: 1px dashed #688599;
+  background: #ffffff04;
+  font-size: 11px;
+}
+.renewal .vacant > b,
+.renewal .pitcher-grid .empty-player > b {
+  font-size: 28px;
+  font-weight: 400;
+}
+.renewal .vacant .position {
+  background: none;
+  top: 12px;
+  left: 10px;
+  color: #9cb3c3;
+}
+.renewal .wide-dialog {
+  width: min(880px, calc(100% - 32px));
+}
+.renewal .working-settings h3 {
+  font-size: 17px;
+  margin-bottom: 15px;
+}
+.renewal .working-settings .row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 17px;
+}
+.renewal .working-settings label {
+  display: flex !important;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 12px !important;
+}
+.renewal .working-settings .row select {
+  width: 100%;
+}
+.renewal .working-settings .bad {
+  color: #c38751;
+}
+.renewal .working-settings .pill {
+  font-size: 11px;
+  padding: 4px 8px;
+  background: var(--nav);
+  border-radius: 4px;
+  margin-left: 8px;
+}
+.renewal .settings-note {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+.renewal .skill-lab {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.renewal .skill-filters {
+  display: flex;
+  gap: 8px;
+}
+.renewal .skill-filters select {
+  font-size: 12px;
+}
+.renewal .skill-slot {
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+.renewal .skill-slot label > span {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--muted);
+  margin-bottom: 7px;
+}
+.renewal .skill-slot label b {
+  color: var(--blue);
+  font-size: 11px;
+}
+.renewal .skill-slot select {
+  width: 100%;
+  font-size: 12px;
+}
+.renewal .skill-condition {
+  display: block;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 9px;
+}
+.renewal .skill-condition select {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  padding: 7px;
+}
+.renewal .skill-destination {
+  margin: 20px 0;
+  display: flex;
+  align-items: end;
+  gap: 15px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.renewal .skill-destination label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.renewal .skill-destination select {
+  font-size: 12px;
+}
+.renewal .skill-destination > span {
+  padding-bottom: 10px;
+}
+.renewal .directory-list {
+  max-height: 550px;
+  overflow: auto;
+}
+.renewal .directory-row {
+  display: grid;
+  grid-template-columns: 35px minmax(100px, 1fr) minmax(100px, 1.1fr) 60px 90px;
+  gap: 12px;
+  align-items: center;
+  border-top: 1px solid var(--line);
+  padding: 15px 0;
+}
+.renewal .skill-grade {
+  background: #e9dab4;
+  color: #7d622d;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 35px;
+  border-radius: 6px;
+  font-family: Georgia, serif;
+  font-size: 17px;
+}
+.renewal .directory-row strong {
+  font-size: 13px;
+}
+.renewal .directory-row select,
+.renewal .directory-condition {
+  font-size: 10px;
+  color: var(--muted);
+}
+.renewal .directory-row > b {
+  font-size: 13px;
+  color: var(--blue);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.renewal .directory-row button {
+  font-size: 10px;
+  padding: 9px;
+}
+.renewal .empty-search {
+  padding: 28px 0;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+.renewal .sim-hero {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 240px;
+  padding-right: 42%;
+}
+.renewal .banner-illustration {
+  position: absolute;
+  right: 3%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 38%;
+  max-width: 360px;
+}
+.renewal .sim-art {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 210px;
+  margin: 0 auto 20px;
+}
+.renewal .banner-illustration .sim-art {
+  margin: 0;
+  max-height: none;
+}
+.renewal .sim-hero h2 {
+  position: relative;
+  z-index: 1;
+}
+@media (min-width: 1550px) {
+  .renewal .field-player .player-caption strong {
+    font-size: 13px;
+  }
+  .renewal .field-player .player-caption > span {
+    font-size: 8px;
+  }
+  .renewal .field-player .player-art > b {
+    font-size: 18px;
+  }
+}
+@media (max-width: 1100px) and (min-width: 761px) {
+  .renewal .field-player .player-caption strong {
+    font-size: 9px;
+  }
+  .renewal .field-player .player-caption > span {
+    font-size: 6px;
+  }
+  .renewal .field-player .player-art > b {
+    font-size: 11px;
+  }
+  .renewal .field-player .position {
+    font-size: 6px;
+    left: 3px;
+  }
+  .renewal .field-player .player-caption {
+    padding: 4px;
+  }
+  .renewal .pitcher-grid {
+    gap: 10px;
+  }
+  .renewal .pitcher-grid .player-caption strong {
+    font-size: 11px;
+  }
+  .renewal .pitcher-grid .position {
+    font-size: 6px;
+  }
+  .renewal .pitcher-grid .player-art > b {
+    font-size: 14px;
+  }
+}
+@media (max-width: 760px) {
+  .renewal .position-field {
+    aspect-ratio: 740/760;
+  }
+  .renewal .baseball-field {
+    height: 90%;
+    top: 5%;
+  }
+  .renewal .field-player {
+    width: 18.5%;
+  }
+  .renewal .field-player .player-caption {
+    padding: 4px;
+    gap: 0;
+  }
+  .renewal .field-player .player-caption strong {
+    font-size: 8px;
+    white-space: nowrap;
+  }
+  .renewal .field-player .player-caption > span {
+    font-size: 5px;
+  }
+  .renewal .field-player .player-art > b {
+    font-size: 10px;
+    right: 3px;
+    top: 3px;
+  }
+  .renewal .field-player .position {
+    font-size: 6px;
+    left: 3px;
+    top: 3px;
+    padding: 0 2px;
+  }
+  .renewal .field-wordmark {
+    font-size: 15px;
+    top: 62%;
+    letter-spacing: 2px;
+  }
+  .renewal .field-wordmark small {
+    font-size: 5px;
+    letter-spacing: 1px;
+  }
+  .renewal .pitcher-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .renewal .pitcher-grid .player-caption strong {
+    font-size: 12px;
+  }
+  .renewal .pitcher-grid .player-caption > span {
+    font-size: 8px;
+  }
+  .renewal .pitcher-grid .player-art > b {
+    font-size: 19px;
+  }
+  .renewal .pitcher-grid .position {
+    font-size: 8px;
+  }
+  .renewal .field-board {
+    padding: 15px 7px 12px;
+  }
+  .renewal .field-board .stadium-label,
+  .renewal .field-board .stadium-footer {
+    padding-left: 6px;
+    padding-right: 6px;
+    font-size: 6px;
+  }
+  .renewal .working-settings .row {
+    grid-template-columns: 1fr;
+  }
+  .renewal .skill-directory .panel-heading {
+    flex-wrap: wrap;
+  }
+  .renewal .skill-directory .search {
+    width: 100%;
+    margin-top: 8px;
+  }
+  .renewal .skill-directory .search input {
+    width: 85%;
+    max-width: none;
+  }
+  .renewal .skill-destination {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .renewal .skill-destination > span {
+    font-size: 9px;
+    padding: 0;
+  }
+  .renewal .directory-row {
+    grid-template-columns: 30px minmax(0, 1fr) 56px;
+    gap: 9px;
+  }
+  .renewal .directory-row strong {
+    font-size: 12px;
+  }
+  .renewal .directory-row select,
+  .renewal .directory-condition {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .renewal .directory-row > b {
+    grid-column: 3;
+    grid-row: 1;
+    font-size: 12px;
+  }
+  .renewal .directory-row button {
+    grid-column: 3;
+    grid-row: 2;
+    font-size: 8px;
+    padding: 8px 3px;
+  }
+  .renewal .skill-grade {
+    width: 27px;
+    height: 30px;
+    font-size: 14px;
+  }
+  .renewal .skill-lab .panel-heading {
+    flex-wrap: wrap;
+  }
+  .renewal .sim-hero {
+    min-height: 280px;
+    padding: 25px 23px 130px;
+  }
+  .renewal .sim-hero h2 {
+    font-size: 25px;
+  }
+  .renewal .banner-illustration {
+    width: 180px;
+    right: 14px;
+    top: auto;
+    bottom: -3px;
+    transform: none;
+  }
+  .renewal .sim-art {
+    max-height: 150px;
+    margin-bottom: 16px;
+  }
+}

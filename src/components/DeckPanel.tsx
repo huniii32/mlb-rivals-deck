@@ -1,8 +1,9 @@
 import { useState } from "react";
 import type { Chem } from "../lib/engine";
-import { LOOKUP, allThresholds, referencedFlags } from "../lib/engine";
-import { LINEUP, YEAR_ANCHOR } from "../lib/deck";
-import { DECADE_TARGET_ROWS, decadeTarget } from "../lib/deckScoreTargets";
+import { LOOKUP } from "../lib/engine";
+import { LINEUP } from "../lib/deck";
+import { decadeTarget, decadeStatus, type DeckScoreRegion, type DeckScoreSide } from "../lib/deckScoreTargets";
+import { DECK_SCORE_OPTIONS } from "../lib/deckScoreOptions";
 
 const CHEM_LABELS: [keyof Chem, string][] = [
   ["commander", "커맨더"],
@@ -48,41 +49,12 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
 }: {
   flags: Record<string, boolean>;
   toggleFlag: (key: string) => void;
-  setRowSide: (region: string, row: number, side: "L" | "R") => void;
+  setRowSide: (region: DeckScoreRegion, row: number, side: DeckScoreSide) => void;
   yearInputs: Record<number, number | "">;
   setYearInput: (row: number, v: number | "") => void;
 }) {
   const [scoreTab, setScoreTab] = useState<"team" | "spec">("team");
-  const all = referencedFlags();
-  // (region, row)별 L/R 묶기. 게임 화면처럼 행마다 좌·우 둘 중 하나만 선택.
-  const rows = new Map<string, { region: string; row: number; threshold: number | null; sides: ("L" | "R")[] }>();
-  for (const f of all) {
-    const k = `${f.region}-${f.row}`;
-    const g = rows.get(k) ?? { region: f.region, row: f.row, threshold: f.threshold, sides: [] };
-    if (!g.sides.includes(f.side as "L" | "R")) g.sides.push(f.side as "L" | "R");
-    if (g.threshold === null) g.threshold = f.threshold;
-    rows.set(k, g);
-  }
-  const list = [...rows.values()]
-    .filter((g) => g.region === scoreTab)
-    .sort((a, b) => (a.threshold ?? 9999) - (b.threshold ?? 9999) || a.row - b.row);
-  // 규칙 미참조 팀덱코행(330/345): 엑셀에도 O표시만 있고 점수에 안 들어감. 표시·토글은 되게 추가.
-  if (scoreTab === "team") {
-    const have = new Set(list.map((g) => g.row));
-    for (const { row, threshold } of allThresholds("team")) {
-      if (!have.has(row)) list.push({ region: "team", row, threshold, sides: ["L", "R"] });
-    }
-    list.sort((a, b) => (a.threshold ?? 9999) - (b.threshold ?? 9999) || a.row - b.row);
-  }
-  // 아직 좌/우 선택 규칙이 없는 연도행(680)도 표시한다.
-  if (scoreTab === "spec") {
-    const have = new Set(list.map((g) => g.threshold));
-    for (const [th, yrow] of Object.entries(YEAR_ANCHOR)) {
-      const t = Number(th);
-      if (!have.has(t)) list.push({ region: "spec", row: yrow, threshold: t, sides: [] });
-    }
-    list.sort((a, b) => (a.threshold ?? 9999) - (b.threshold ?? 9999) || a.row - b.row);
-  }
+  const list = DECK_SCORE_OPTIONS[scoreTab];
 
   return (
     <div>
@@ -107,8 +79,7 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
           {list.map((g) => {
             const onL = !!flags[`${g.row}-${g.region}-L`];
             const onR = !!flags[`${g.row}-${g.region}-R`];
-            const yearRow = g.region === "spec" && g.threshold !== null ? YEAR_ANCHOR[g.threshold] : undefined;
-            const targetRow = g.region === "spec" && g.threshold !== null ? DECADE_TARGET_ROWS[g.threshold] : undefined;
+            const { yearRow, targetRow } = g;
             const target = targetRow === undefined ? null : decadeTarget(flags, targetRow);
             return (
               <div key={`${g.region}-${g.row}`} className={`deckscore-row${targetRow !== undefined ? " deckscore-target-row" : ""}`}>
@@ -151,9 +122,7 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
                 )}
                 {targetRow !== undefined && (
                   <p className="deckscore-target-status" role="status">
-                    {!target ? "대상 미선택 · 미적용 (기존 덱도 대상을 선택해주세요)"
-                      : typeof yearInputs[targetRow] !== "number" ? "기준 연도를 입력해주세요 · 미적용"
-                      : `${yearInputs[targetRow]}~${Number(yearInputs[targetRow]) + 9} ${target === "batter" ? "타자" : "투수"} · 평가 능력치 ${target === "pitcher" ? g.threshold === 615 ? "변화" : "구위" : g.threshold === 615 ? "정확·선구" : "파워"} +1`}
+                    {decadeStatus(g.threshold!, target, yearInputs[targetRow])}
                   </p>
                 )}
                 {g.region === "team" && (g.threshold === 330 || g.threshold === 345) && <span className="muted deckscore-no-points">평가 능력치 가산 없음</span>}

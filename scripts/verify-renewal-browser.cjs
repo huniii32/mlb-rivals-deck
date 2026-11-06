@@ -164,6 +164,9 @@ const baseURL = process.env.RENEWAL_URL || "http://localhost:5176";
         .click();
     await p.goto(baseURL);
     await p.locator(".stadium-board").waitFor();
+    if (process.env.RENEWAL_EXPECT_PREVIEW !== undefined) {
+      check("preview notice matches deployment context", await p.locator('.preview-strip').count() === Number(process.env.RENEWAL_EXPECT_PREVIEW));
+    }
     await p.getByRole("button", { name: "라이트 모드로 전환" }).click();
     await nav("덱랭킹");
     await p.locator(".ranking-deck-toggle").first().waitFor();
@@ -183,6 +186,13 @@ const baseURL = process.env.RENEWAL_URL || "http://localhost:5176";
     );
     await p.getByLabel("덱 이름 검색").fill("");
     await p.getByRole("button", { name: `${source.name} 덱 메뉴` }).click();
+    await p.getByRole("button", { name: "라인업 보기", exact: true }).click();
+    check("read-only preview uses saved score flags without default bonuses", (await p.locator('.modal-box .sb-total b').innerText()) === calcDeckTotal(source, tables).total.toFixed(1));
+    check("preview retains all special deck score options", await p.locator('.modal-box tr').filter({has: p.locator('td b', {hasText:/^615$/})}).count() === 1);
+    await p.getByRole("button", { name: "닫기 ✕", exact: true }).click();
+    await p.getByRole("button", { name: "현재 덱과 비교", exact: true }).click();
+    check("deck comparison remains available after legacy file cleanup", await p.locator('.compare-cols .stadium').count() === 2);
+    await p.getByRole("button", { name: "닫기 ✕", exact: true }).click();
     await p.getByRole("button", { name: "비밀번호로 가져오기" }).click();
     await p.getByLabel("가져올 덱 비밀번호").fill("9999");
     await p.getByRole("button", { name: "덱 가져오기", exact: true }).click();

@@ -50,17 +50,18 @@ export function RenewalShell({
   openModal: (modal: "guide" | "patch" | "inquiry") => void;
   children: ReactNode;
 }) {
+  const preview = import.meta.env.DEV || import.meta.env.VITE_DEPLOYMENT_CONTEXT === "preview";
   const current = pages.find((p) => p.id === page)!;
   const home = (e: React.MouseEvent) => {
     e.preventDefault();
     navigate("lineup");
   };
   return (
-    <div className={`renewal ${theme === "dark" ? "night" : ""}`}>
-      <div className="preview-strip">
+    <div className={`renewal ${theme === "dark" ? "night" : ""}${preview ? " is-preview" : ""}`}>
+      {preview && <div className="preview-strip">
         <b>RENEWAL PREVIEW</b>
         <span>실제 덱 저장 · 공개 랭킹과 연결되는 미리보기입니다.</span>
-      </div>
+      </div>}
       <aside className="sidebar">
         <a
           className="brand"
