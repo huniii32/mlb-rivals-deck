@@ -688,7 +688,7 @@ button.dia-opt.on { border-color: #facc15; box-shadow: 0 0 14px rgba(250, 204, 2
 .sim-skill strong { font-size:22px; line-height:1.35; overflow-wrap:anywhere; }
 .sim-tier { font-size:12px; color:var(--tier-color); font-weight:800; }
 .sim-match { color:var(--good); font-size:12px; font-weight:700; }
-.tier-Bronze { --tier-color:#bc8556; }.tier-Silver { --tier-color:#9caec8; }.tier-Gold { --tier-color:#d6ac38; }.tier-Moment { --tier-color:#32bba0; }.tier-HOF { --tier-color:#e6a53d; }.tier-Black { --tier-color:#b18cff; }.tier-WBC { --tier-color:#5c9dff; }
+.tier-Iron { --tier-color:#849096; }.tier-Bronze { --tier-color:#bc8556; }.tier-Silver { --tier-color:#9caec8; }.tier-Gold { --tier-color:#d6ac38; }.tier-Moment { --tier-color:#32bba0; }.tier-HOF { --tier-color:#e6a53d; }.tier-Black { --tier-color:#b18cff; }.tier-WBC { --tier-color:#5c9dff; }
 [data-theme="light"] .tier-Silver { --tier-color:#596d8b; }
 [data-theme="light"] .tier-Gold, [data-theme="light"] .tier-HOF { --tier-color:#976b06; }
 [data-theme="light"] .tier-Moment { --tier-color:#087b63; }

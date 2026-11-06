@@ -4,14 +4,16 @@ export const POSITIONS = { SP: "선발 투수", RP: "중계 투수", CP: "마무
 export type SimPosition = keyof typeof POSITIONS;
 export const CARD_TYPES = { normal: "일반 · 임팩트 · 프라임 · 시그니처", moment: "모먼트 (전용 스킬 1종)", supreme: "슈프림 모먼트", hof: "HOF", black: "시그니처 블랙", wbc: "WBC 시그니처 · 프라임", wbcBlack: "WBC 블랙 시그니처" } as const;
 export type SimCard = keyof typeof CARD_TYPES;
-export const TIERS = { Bronze: "브론즈", Silver: "실버", Gold: "골드", Moment: "모먼트", HOF: "HOF", Black: "블랙", WBC: "WBC" } as const;
+export const TICKETS = { superior: "최고급", advanced: "고급", basic: "일반" } as const;
+export type Ticket = keyof typeof TICKETS;
+export const TIERS = { Iron: "아이언", Bronze: "브론즈", Silver: "실버", Gold: "골드", Moment: "모먼트", HOF: "HOF", Black: "블랙", WBC: "WBC" } as const;
 export type Tier = keyof typeof TIERS;
 export type Level = "D" | "C" | "B" | "A" | "S";
 export const LEVELS: Level[] = ["D", "C", "B", "A", "S"];
 export interface RateSkill { name: string; tier: Tier; rates: number[] }
-type Sheet = "normal" | "hof" | "black" | "blackOther" | "wbc" | "wbcBlack" | "wbcBlackOther" | "supreme";
+type Sheet = "normal" | "hof" | "black" | "blackOther" | "wbc" | "wbcBlack" | "wbcBlackOther" | "supreme" | "basic" | "hofBasic" | "hofAdvanced" | "blackAdvanced" | "wbcBasic" | "wbcAdvanced" | "wbcBlackAdvanced";
 export const PROBABILITY_DATA = source as unknown as { asOf: string; checkedAt: string; overview: { url: string }; sources: Record<Sheet, { url: string; sha256: string }>; tables: Record<Sheet, Record<SimPosition, RateSkill[]>> };
-export interface SimSettings { card: SimCard; position: SimPosition; protectS: boolean; momentSkill: string }
+export interface SimSettings { card: SimCard; position: SimPosition; protectS: boolean; momentSkill: string; ticket?: Ticket }
 export interface DrawSkill { id: string; name: string; tier: Tier; level: Level }
 export type Board = DrawSkill[];
 export const skillId = (skill: Pick<RateSkill, "tier" | "name">) => `${skill.tier}:${skill.name}`;
@@ -46,7 +48,21 @@ interface Rule { sheet: Sheet; tiers: Partial<Record<Tier, number>> }
 const normalRest: Rule = { sheet: "normal", tiers: { Bronze: 35, Silver: 40, Gold: 25 } };
 const gold: Rule = { sheet: "normal", tiers: { Gold: 100 } };
 const wbc: Rule = { sheet: "wbc", tiers: { Gold: 90, WBC: 10 } };
+const basic: Rule = { sheet: "basic", tiers: { Iron: 35, Bronze: 30, Silver: 20, Gold: 15 } };
+const wbcAdvanced: Rule = { sheet: "wbcAdvanced", tiers: { Gold: 99.5, WBC: .5 } };
 export function slotRules(settings: SimSettings, blackSlot = 0): Rule[] {
+  const ticket = settings.ticket ?? "superior";
+  if (ticket !== "superior") {
+    let rule: Rule = basic;
+    if (settings.card === "hof") rule = ticket === "basic"
+      ? { sheet: "hofBasic", tiers: { Iron: 34.965, Bronze: 29.97, Silver: 19.98, Gold: 14.985, HOF: .1 } }
+      : { sheet: "hofAdvanced", tiers: { Iron: 34.475, Bronze: 29.55, Silver: 19.7, Gold: 14.775, HOF: 1.5 } };
+    if (settings.card === "black" && ticket === "advanced") rule = { sheet: "blackAdvanced", tiers: { Iron: 33.25, Bronze: 28.5, Silver: 19, Gold: 14.25, Black: 5 } };
+    if (settings.card === "wbc" || settings.card === "wbcBlack") rule = ticket === "basic"
+      ? { sheet: "wbcBasic", tiers: { Gold: 100 } }
+      : settings.card === "wbcBlack" ? { sheet: "wbcBlackAdvanced", tiers: { Gold: 94.5, WBC: .5, Black: 5 } } : wbcAdvanced;
+    return Array.from({ length: slotCount(settings.card) }, () => rule);
+  }
   switch (settings.card) {
     case "normal": return [gold, normalRest, normalRest];
     case "moment": return [{ sheet: "supreme", tiers: { Gold: 94, Moment: 6 } }, normalRest, normalRest];
@@ -76,16 +92,25 @@ export function availableSkills(settings: SimSettings): RateSkill[] {
 }
 export function createSimulator(settings: SimSettings, random: Random = browserRandom()): () => Board {
   if (!(settings.card in CARD_TYPES) || !(settings.position in POSITIONS)) throw new Error("카드 종류와 포지션을 확인하세요.");
-  if (settings.card === "moment" && !momentSkills(settings.position).some(s => s.name === settings.momentSkill)) throw new Error("카드의 전용 모먼트 스킬을 선택하세요.");
-  const variants = Array.from({ length: slotCount(settings.card) }, (_, blackSlot) => slotRules(settings, blackSlot).map(rule => ({
+  const ticket = settings.ticket ?? "superior";
+  if (!(ticket in TICKETS)) throw new Error("변경권 종류를 확인하세요.");
+  if (settings.card === "moment" && ticket === "superior" && !momentSkills(settings.position).some(s => s.name === settings.momentSkill)) throw new Error("카드의 전용 모먼트 스킬을 선택하세요.");
+  const prepare = (rule: Rule) => ({
     tiers: Object.keys(rule.tiers) as Tier[], weights: Object.values(rule.tiers) as number[],
     pools: Object.fromEntries((Object.keys(rule.tiers) as Tier[]).map(tier => [tier, candidates(settings, rule, tier)])) as Partial<Record<Tier, RateSkill[]>>,
-  })));
+  });
+  const variants = Array.from({ length: slotCount(settings.card) }, (_, blackSlot) => slotRules(settings, blackSlot).map(prepare));
+  const afterBlack = prepare(settings.card === "wbcBlack" ? wbcAdvanced : basic);
   return () => {
-    const rules = variants[slotCount(settings.card) === 4 ? Math.floor(unit(random) * 4) : 0];
+    const rules = variants[ticket === "superior" && slotCount(settings.card) === 4 ? Math.floor(unit(random) * 4) : 0];
     const used = new Set<string>();
-    return rules.map(rule => {
+    let blackDrawn = false;
+    return rules.map(initialRule => {
+      // Advanced tickets allow at most one Black. Subsequent slots use the
+      // official normal advanced distribution, not a renormalized 95% pool.
+      const rule = ticket === "advanced" && blackDrawn ? afterBlack : initialRule;
       const tier = pick(rule.tiers, rule.weights, random);
+      if (tier === "Black") blackDrawn = true;
       const pool = rule.pools[tier]!.filter(skill => !used.has(skill.name));
       const skill = pick(pool, pool.map(s => s.rates.reduce((a, b) => a + b, 0)), random);
       used.add(skill.name);
@@ -105,6 +130,7 @@ export function goalPossible(settings: SimSettings, ids: string[]) {
   const skills = availableSkills(settings);
   const targets = ids.map(id => skills.find(s => skillId(s) === id));
   if (targets.some(t => !t)) return false;
+  if (targets.filter(t => t!.tier === "Black").length > 1) return false;
   for (let blackSlot = 0; blackSlot < slotCount(settings.card); blackSlot++) {
     const rules = slotRules(settings, blackSlot);
     function assign(index: number, used: number): boolean {
@@ -117,7 +143,13 @@ export function goalPossible(settings: SimSettings, ids: string[]) {
   }
   return false;
 }
-export function ruleSummary(card: SimCard) {
+export function ruleSummary(card: SimCard, ticket: Ticket = "superior") {
+  if (ticket !== "superior") {
+    if (card === "hof") return `모든 슬롯 HOF ${ticket === "basic" ? "0.1" : "1.5"}% · 나머지는 아이언/브론즈/실버/골드 35:30:20:15`;
+    if (card === "wbc" || card === "wbcBlack") return ticket === "basic" ? "모든 슬롯 골드 100% · S 레벨 확정 · 전용 스킬 등장 없음" : card === "wbcBlack" ? "골드 94.5% / WBC 0.5% / 블랙 5% · 블랙 등장 후 골드 99.5% / WBC 0.5% · 모두 S" : "모든 슬롯 골드 99.5% / WBC 0.5% · S 레벨 확정";
+    if (card === "black" && ticket === "advanced") return "아이언 33.25% / 브론즈 28.5% / 실버 19% / 골드 14.25% / 블랙 5% · 블랙은 최대 1개, 등장 후 일반 고급 확률";
+    return "모든 슬롯 아이언 35% / 브론즈 30% / 실버 20% / 골드 15% · 전용 스킬 등장 없음";
+  }
   switch (card) {
     case "normal": return "첫 슬롯 골드 100% · 나머지 슬롯 브론즈 35% / 실버 40% / 골드 25%";
     case "moment": return "첫 슬롯 전용 모먼트 6% / 골드 94% · 나머지 슬롯은 일반 확률";
@@ -127,4 +159,23 @@ export function ruleSummary(card: SimCard) {
     case "wbc": return "모든 슬롯 골드 90% / WBC 10% · S 레벨 확정";
     case "wbcBlack": return "블랙 1개 확정 · 위치는 각 25% · 나머지 골드 90% / WBC 10% · 모두 S";
   }
+}
+
+/** Guaranteed Black on superior tickets must not cause every batch to stop at 1. */
+export function dedicatedTiers(settings: SimSettings): Tier[] {
+  const ticket = settings.ticket ?? "superior";
+  if (settings.card === "hof") return ["HOF"];
+  if (settings.card === "moment" || settings.card === "supreme") return ticket === "superior" ? ["Moment"] : [];
+  if (settings.card === "wbc" || settings.card === "wbcBlack") return ticket === "basic" ? [] : settings.card === "wbcBlack" && ticket === "advanced" ? ["WBC", "Black"] : ["WBC"];
+  return settings.card === "black" && ticket === "advanced" ? ["Black"] : [];
+}
+
+/** Record the winning draw before stopping; never consume a ticket after it. */
+export function runTrialChunk(draw: () => Board, limit: number, record: (board: Board) => void, stop: (board: Board) => boolean) {
+  for (let completed = 1; completed <= limit; completed++) {
+    const board = draw();
+    record(board);
+    if (stop(board)) return { completed, stopped: true };
+  }
+  return { completed: limit, stopped: false };
 }

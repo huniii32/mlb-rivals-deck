@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { availableSkills, browserRandom, CARD_TYPES, createSimulator, goalPossible, LEVELS, matchesGoal, momentSkills, POSITIONS, PROBABILITY_DATA, ruleSummary, skillId, slotCount, TIERS, type Board, type Level, type SimSettings, type Tier } from "../lib/skillSimulator";
+import { availableSkills, browserRandom, CARD_TYPES, createSimulator, dedicatedTiers, runTrialChunk, TICKETS, goalPossible, LEVELS, matchesGoal, momentSkills, POSITIONS, PROBABILITY_DATA, ruleSummary, skillId, slotCount, TIERS, type Board, type Level, type SimSettings, type Tier } from "../lib/skillSimulator";
 
 interface Trial { number: number; board: Board; hit: boolean }
 interface Stats { total: number; hits: number; firstHit: Trial | null; recent: Trial[]; tiers: Partial<Record<Tier, number>> }
 const blankStats = (): Stats => ({ total: 0, hits: 0, firstHit: null, recent: [], tiers: {} });
-const initial: SimSettings = { card: "normal", position: "SP", protectS: true, momentSkill: "" };
+const initial: SimSettings = { ticket: "superior", card: "normal", position: "SP", protectS: true, momentSkill: "" };
 const nf = new Intl.NumberFormat("ko-KR");
 const tick = () => new Promise<void>(resolve => setTimeout(resolve, 0));
 
@@ -27,6 +27,8 @@ export default function SkillSimulator() {
   const numericLimit = Number(limit);
   const limitValid = limit.trim() !== "" && Number.isInteger(numericLimit) && numericLimit >= 1 && numericLimit <= 100000;
   const latest = stats.recent[0];
+  const specialTiers = dedicatedTiers(settings);
+  const ticketName = TICKETS[settings.ticket ?? "superior"];
 
   function reset() { setStats(blankStats()); setMessage(""); }
   function change(patch: Partial<SimSettings>) {
@@ -49,20 +51,20 @@ export default function SkillSimulator() {
       const draw = createSimulator(settings, browserRandom());
       while (completed < trials && !abort.signal.aborted && !found) {
         const chunk = Math.min(200, trials - completed);
-        for (let i = 0; i < chunk; i++) {
-          const board = draw();
+        const result = runTrialChunk(draw, chunk, board => {
           const hit = matchesGoal(board, ids, minimum);
-          next.total++; completed++;
+          next.total++;
           const record = { number: next.total, board, hit };
           if (hit) { next.hits++; next.firstHit ??= record; }
           for (const s of board) next.tiers[s.tier] = (next.tiers[s.tier] ?? 0) + 1;
           next.recent = [record, ...next.recent].slice(0, 8);
-          if (stopAtGoal && hit) { found = true; break; }
-        }
+        }, board => stopAtGoal ? matchesGoal(board, ids, minimum) : board.some(s => specialTiers.includes(s.tier)));
+        completed += result.completed;
+        found = result.stopped;
         if (mounted.current) setStats({ ...next, tiers: { ...next.tiers }, recent: [...next.recent] });
         if (completed < trials && !found) await tick();
       }
-      if (mounted.current) setMessage(abort.signal.aborted ? `${nf.format(completed)}회 진행 후 중지했습니다.` : found ? `목표 조합 등장! 이번 실행 ${nf.format(completed)}회 · 누적 ${nf.format(next.total)}회` : stopAtGoal ? `${nf.format(completed)}회 안에 목표 조합이 나오지 않았습니다.` : `${nf.format(completed)}회 시뮬레이션 완료`);
+      if (mounted.current) setMessage(abort.signal.aborted ? `${nf.format(completed)}회 진행 후 중지했습니다.` : found ? `${stopAtGoal ? "목표 조합" : "전용 스킬"} 등장! 이번 실행 ${nf.format(completed)}장 사용 · 누적 ${nf.format(next.total)}장` : stopAtGoal ? `${nf.format(completed)}회 안에 목표 조합이 나오지 않았습니다.` : `${nf.format(completed)}회 시뮬레이션 완료`);
     } catch (error) {
       if (mounted.current) setMessage(error instanceof Error ? error.message : "시뮬레이션을 실행하지 못했습니다.");
     } finally {
@@ -71,18 +73,19 @@ export default function SkillSimulator() {
     }
   }
 
-  return <section className="skill-simulator" aria-label="최고급 스킬 변경권 시뮬레이터">
+  return <section className="skill-simulator" aria-label="스킬 변경권 시뮬레이터">
     <div className="card sim-intro">
-      <div><span className="sim-eyebrow">SKILL LAB · 공식 확률표 {PROBABILITY_DATA.asOf}</span><h2>최고급 스킬 변경</h2><p className="muted">원하는 조합이 나올 때까지, 가상 변경권으로 미리 돌려보세요.</p></div>
-      <span className="sim-ticket">최고급 변경권 <strong>∞</strong></span>
+      <div><span className="sim-eyebrow">SKILL LAB · 공식 확률표 {PROBABILITY_DATA.asOf}</span><h2>스킬 변경 시뮬레이터</h2><p className="muted">원하는 조합이 나올 때까지, 가상 변경권으로 미리 돌려보세요.</p></div>
+      <span className="sim-ticket">{ticketName} 변경권 <strong>∞</strong></span>
     </div>
     <div className="card">
       <div className="sim-settings">
+        <label>변경권 종류<select aria-label="변경권 종류" disabled={busy} value={settings.ticket ?? "superior"} onChange={e => change({ ticket: e.target.value as SimSettings["ticket"] })}>{Object.entries(TICKETS).map(([key, name]) => <option key={key} value={key}>{name} 스킬 변경권</option>)}</select></label>
         <label>카드 종류<select aria-label="시뮬레이션 카드 종류" disabled={busy} value={settings.card} onChange={e => change({ card: e.target.value as SimSettings["card"] })}>{Object.entries(CARD_TYPES).map(([key, name]) => <option key={key} value={key}>{name}</option>)}</select></label>
         <label>포지션<select aria-label="시뮬레이션 포지션" disabled={busy} value={settings.position} onChange={e => change({ position: e.target.value as SimSettings["position"] })}>{Object.entries(POSITIONS).map(([key, name]) => <option key={key} value={key}>{key} · {name}</option>)}</select></label>
-        {settings.card === "moment" && <label>카드의 전용 모먼트 스킬<select aria-label="전용 모먼트 스킬" disabled={busy} value={settings.momentSkill} onChange={e => change({ momentSkill: e.target.value })}>{moments.map(s => <option key={s.name}>{s.name}</option>)}</select></label>}
+        {settings.card === "moment" && settings.ticket === "superior" && <label>카드의 전용 모먼트 스킬<select aria-label="전용 모먼트 스킬" disabled={busy} value={settings.momentSkill} onChange={e => change({ momentSkill: e.target.value })}>{moments.map(s => <option key={s.name}>{s.name}</option>)}</select></label>}
       </div>
-      <p className="sim-rule">{ruleSummary(settings.card)}</p>
+      <p className="sim-rule">{ruleSummary(settings.card, settings.ticket)}</p>
       <div className="row sim-options">
         <label><input type="checkbox" checked={settings.protectS} disabled={busy || ["moment", "supreme", "wbc", "wbcBlack"].includes(settings.card)} onChange={e => change({ protectS: e.target.checked })} /> S 레벨 보호 상태</label>
         <span className="muted">같은 결과에 동일 스킬은 중복 등장하지 않습니다.</span>
@@ -116,6 +119,7 @@ export default function SkillSimulator() {
         <button disabled={busy || !limitValid || !possible} onClick={() => void play(numericLimit)}>입력 횟수만큼</button>
         <button className="primary" disabled={busy || !limitValid || !ids.length || !possible} onClick={() => void play(numericLimit, true)}>목표 조합까지</button>
       </div>
+      {specialTiers.length > 0 && <p className="sim-rule">{specialTiers.map(t => TIERS[t]).join("·")} 전용 스킬이 하나라도 나오면 즉시 멈추고 실제 사용량만 집계합니다. ‘목표 조합까지’는 선택한 조합 완성 시 멈춥니다.</p>}
       {!limitValid && <p className="sim-error">횟수는 1~100,000의 정수로 입력하세요.</p>}
       <div className="sim-message" role="status">{busy ? `${nf.format(stats.total)}회 진행 중…` : message || "카드와 포지션을 고른 뒤 변경 버튼을 누르세요."}</div>
     </div>
@@ -125,7 +129,7 @@ export default function SkillSimulator() {
       <p className="muted">선택한 스킬이 한 번의 결과에 모두 등장하면 성공입니다. 슬롯 순서는 상관없습니다.</p>
       <div className="sim-goal-inputs">{Array.from({ length: count }, (_, i) => <label key={i}>목표 {i + 1}<select aria-label={`목표 스킬 ${i + 1}`} value={targets[i] ?? ""} disabled={busy} onChange={e => target(i, e.target.value)}><option value="">선택 안 함</option>{candidates.map(s => <option key={skillId(s)} value={skillId(s)} disabled={ids.includes(skillId(s)) && targets[i] !== skillId(s)}>{s.name} · {TIERS[s.tier]}</option>)}</select></label>)}</div>
       <label className="sim-minimum">목표 최소 레벨 <select aria-label="목표 최소 레벨" value={minimum} disabled={busy} onChange={e => { setMinimum(e.target.value as Level); reset(); }}>{LEVELS.map(l => <option key={l} value={l}>{l === "D" ? "레벨 무관" : `${l} 이상`}</option>)}</select></label>
-      {!possible && <p className="sim-error" role="alert">이 카드에서는 함께 나올 수 없는 조합입니다. 목표 스킬을 바꿔 주세요.</p>}
+      {!possible && <p className="sim-error" role="alert">이 카드·변경권에서는 함께 나올 수 없는 조합입니다. 목표 스킬을 바꿔 주세요.</p>}
     </div>
 
     <div className="sim-stats" aria-label="시뮬레이션 통계">
@@ -146,10 +150,10 @@ export default function SkillSimulator() {
         <li>한 번의 변경 결과에서 동일한 스킬은 중복 등장하지 않습니다. 이 규칙은 사용자의 게임 확인을 반영했습니다. 시뮬레이터는 티어를 먼저 뽑고 이미 나온 이름을 제외하며, 이 처리 순서는 공식 표에 공개되지 않은 모델 가정입니다.</li>
         <li>개별 확률의 소수점 반올림 오차는 같은 티어 내 상대 비율로 보정합니다. 모먼트는 선택한 카드의 전용 스킬이 1종인 경우를 기준으로 합니다.</li>
         <li>확정 누적 보상·슬롯 잠금은 적용하지 않습니다. S 보호 해제 시 매 시도 D~S 기본 분포를 사용합니다. 모먼트 계열은 전체 S 보호 상태를 기준으로 하며, WBC는 원래 S가 확정됩니다.</li>
-        <li>관측 비율은 이번 가상 실험의 결과입니다. 목표 달성 시 멈추는 실험은 고정 횟수 실험과 집계 방식이 다르며, 실제 획득 횟수를 보장하지 않습니다.</li>
+        <li>관측 비율은 이번 가상 실험의 결과입니다. 전용 스킬·목표 달성 시 멈추는 실험은 고정 횟수 실험과 집계 방식이 다르며, 실제 획득 횟수를 보장하지 않습니다.</li>
       </ul>
       <p><a href={PROBABILITY_DATA.overview.url} target="_blank" rel="noreferrer">공식 티어·슬롯 확률 안내</a> · <a href="https://community.withhive.com/MLB9IRIVALS/ko/board/9/6062" target="_blank" rel="noreferrer">첫 슬롯 골드 보장 안내</a></p>
-      <div className="row">{Object.entries(PROBABILITY_DATA.sources).map(([key, s]) => <a key={key} href={s.url} target="_blank" rel="noreferrer">{{ normal: "일반", hof: "HOF", black: "블랙", blackOther: "블랙 나머지", wbc: "WBC", wbcBlack: "WBC 블랙", wbcBlackOther: "WBC 블랙 나머지", supreme: "슈프림 모먼트" }[key]} 개별표</a>)}</div>
+      <div className="row">{Object.entries(PROBABILITY_DATA.sources).map(([key, s]) => <a key={key} href={s.url} target="_blank" rel="noreferrer">{{ normal: "일반", hof: "HOF", black: "블랙", blackOther: "블랙 나머지", wbc: "WBC", wbcBlack: "WBC 블랙", wbcBlackOther: "WBC 블랙 나머지", supreme: "슈프림 모먼트", basic: "일반·고급", hofBasic: "HOF 일반", hofAdvanced: "HOF 고급", blackAdvanced: "블랙 고급", wbcBasic: "WBC 일반", wbcAdvanced: "WBC 고급", wbcBlackAdvanced: "WBC 블랙 고급" }[key]} 개별표</a>)}</div>
     </details>
   </section>;
 }

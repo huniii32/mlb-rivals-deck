@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Import the official 2026-11-05 Superior Skill Change tables, preserving displayed rates."""
+"""Import the official 2026-11-05 Skill Change tables (normal, advanced, superior), preserving displayed rates."""
 import argparse
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -15,7 +15,9 @@ CACHE = ROOT / 'data/skill-probabilities'
 BASE = 'https://futuremlb-fn.qpyou.cn/futuremlb/push/IndividualRates/261105/'
 OVERVIEW = 'https://hive-fn.qpyou.cn/markup/img/tf/mlbrv/mlb9irivals_ko.html'
 SHEETS = {'normal': 200, 'hof': 203, 'black': 206, 'blackOther': 207,
-          'wbc': 210, 'wbcBlack': 212, 'wbcBlackOther': 213, 'supreme': 214}
+          'wbc': 210, 'wbcBlack': 212, 'wbcBlackOther': 213, 'supreme': 214,
+          'basic': 199, 'hofBasic': 201, 'hofAdvanced': 202, 'blackAdvanced': 205,
+          'wbcBasic': 208, 'wbcAdvanced': 209, 'wbcBlackAdvanced': 211}
 POSITIONS = dict(zip(('Starting Pitcher', 'Relief Pitcher', 'Closing Pitcher', 'Catcher', 'First Baseman',
                      'Second Baseman', 'Third Baseman', 'Short Stop', 'Left Fielder', 'Center Fielder',
                      'Right Fielder', 'Designated Hitter'), ('SP','RP','CP','C','1B','2B','3B','SS','LF','CF','RF','DH')))

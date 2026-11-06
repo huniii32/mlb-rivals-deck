@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { availableSkills, CARD_TYPES, createSimulator, goalPossible, LEVELS, matchesGoal, momentSkills, POSITIONS, PROBABILITY_DATA, skillId, slotCount, type SimSettings, type Tier } from "../src/lib/skillSimulator";
+import { availableSkills, CARD_TYPES, createSimulator, dedicatedTiers, runTrialChunk, slotRules, TICKETS, goalPossible, LEVELS, matchesGoal, momentSkills, POSITIONS, PROBABILITY_DATA, skillId, slotCount, type Board, type SimSettings, type Ticket, type Tier } from "../src/lib/skillSimulator";
 let assertions = 0;
 function check(value: unknown, message: string) { assertions++; assert.ok(value, message); }
 function rng(seed: number) { return () => { seed += 0x6D2B79F5; let t = seed; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -65,4 +65,56 @@ check(!matchesGoal(board, [], 'S'), 'empty goal is not a success');
 assert.throws(() => createSimulator({ ...base, card: 'moment', momentSkill: 'unknown' }, rng(1)));
 assert.throws(() => createSimulator(base, () => 1)());
 assert.throws(() => createSimulator(base, () => NaN)());
-console.log(`Skill simulator: ${assertions} checks passed (all card/position pools, slot guarantees, seeded frequency tests, target feasibility).`);
+for (const ticket of Object.keys(TICKETS) as Ticket[]) for (const card of Object.keys(CARD_TYPES) as SimSettings['card'][]) for (const position of Object.keys(POSITIONS) as SimSettings['position'][]) {
+  const settings = { ...base, ticket, card, position, momentSkill: momentSkills(position)[0].name };
+  const allowed = new Set(availableSkills(settings).map(skillId));
+  for (const rule of slotRules(settings)) check(Math.abs(Object.values(rule.tiers).reduce((a,b) => a+b,0)-100)<1e-9, 'slot probabilities total 100');
+  const draw = createSimulator(settings, rng(842));
+  for (let i=0;i<60;i++) {
+    const b=draw();
+    check(b.length===slotCount(card) && b.every(s=>allowed.has(s.id)), 'ticket/card/position pool');
+    check(new Set(b.map(s=>s.name)).size===b.length, 'no duplicate names for any ticket');
+    check(b.filter(s=>s.tier==='Black').length<=1, 'at most one Black for all tickets');
+    if (ticket!=='superior') check(b.every(s=>s.tier!=='Moment'), 'Moment requires superior ticket');
+    if (ticket==='basic') check(b.every(s=>s.tier!=='Black' && s.tier!=='WBC'), 'basic has no Black/WBC');
+  }
+}
+for (const ticket of ['basic','advanced'] as const) {
+  const draw=createSimulator({...base,ticket,protectS:false},rng(991));
+  const counts:Partial<Record<Tier,number>>={}; const levelCounts=Object.fromEntries(LEVELS.map(l=>[l,0]));
+  for(let i=0;i<30000;i++){const b=draw(); counts[b[0].tier]=(counts[b[0].tier]??0)+1;levelCounts[b[0].level]++;}
+  for(const [tier,rate] of [['Iron',.35],['Bronze',.3],['Silver',.2],['Gold',.15]] as const) check(Math.abs(counts[tier]!/30000-rate)<.012, `${ticket} ${tier} frequency`);
+  for(const [i,rate] of [.4,.3,.2,.07,.03].entries()) check(Math.abs(levelCounts[LEVELS[i]]/30000-rate)<.012, `${ticket} level ${LEVELS[i]}`);
+  for(const [card,tier,rate] of [['hof','HOF',ticket==='basic'?.001:.015],['wbc','WBC',ticket==='basic'?0:.005],['black','Black',ticket==='basic'?0:.05]] as const){
+    const special=createSimulator({...base,card,ticket},rng(893));let hits=0;
+    for(let i=0;i<50000;i++)if(special()[0].tier===tier)hits++;
+    check(Math.abs(hits/50000-rate)<.0025, `${ticket}/${card} dedicated probability`);
+  }
+}
+// After Black, WBC must use .5% (not .5/95%); normal Black returns to 35/30/20/15.
+for(const card of ['black','wbcBlack'] as const){
+  let calls=0;const b=createSimulator({...base,card,ticket:'advanced'},()=>calls++===0?.999: .1)();
+  check(b[0].tier==='Black' && b.slice(1).every(s=>s.tier!=='Black'),'advanced Black cannot recur');
+  check(!goalPossible({...base,card,ticket:'advanced'},availableSkills({...base,card,ticket:'advanced'}).filter(s=>s.tier==='Black').slice(0,2).map(skillId)),'advanced two Black goal impossible');
+}
+check(goalPossible({...base,ticket:'basic'},PROBABILITY_DATA.tables.basic.SP.filter(s=>s.tier==='Iron').slice(0,3).map(skillId)), 'basic permits three Iron');
+const transitionRandom=[.999,0,.9949,0,.1,0,.1,0];let transitionIndex=0;
+const transitioned=createSimulator({...base,card:'wbcBlack',ticket:'advanced'},()=>transitionRandom[transitionIndex++])();
+check(transitioned[0].tier==='Black' && transitioned[1].tier==='Gold', 'after Black uses exactly Gold 99.5%, not 94.5/95');
+check(!goalPossible({...base,card:'moment',ticket:'advanced'},[skillId(momentSkills('SP')[0])]), 'lower ticket cannot target Moment');
+// Regression: 100 requested, dedicated skill on draw 97 => exactly 97 consumed and winner retained.
+for(const [card,tier] of [['moment','Moment'],['supreme','Moment'],['hof','HOF'],['wbc','WBC'],['wbcBlack','WBC']] as const){
+  for(const [limit,at] of [[100,97],[10,7],[100,1],[100,100],[10,11]]){
+    let drawn=0,recorded=0;let last:Board=[];
+    const special=dedicatedTiers({...base,card});
+    const result=runTrialChunk(()=>{drawn++;return [{...board[0],tier:drawn===at?tier:'Gold'}];},limit,b=>{last=b;recorded++;},b=>b.some(s=>special.includes(s.tier)));
+    check(result.completed===Math.min(limit,at) && drawn===recorded && drawn===result.completed,'actual consumption at first dedicated skill');
+    check(result.stopped===(at<=limit) && last[0].tier===(at<=limit?tier:'Gold'),'winning result preserved');
+  }
+}
+check(!dedicatedTiers({...base,card:'wbcBlack'}).includes('Black'),'guaranteed Black does not stop superior');
+check(dedicatedTiers({...base,card:'wbcBlack',ticket:'advanced'}).includes('Black'),'rare Black stops advanced');
+let goalDraws=0;
+const goalResult=runTrialChunk(()=>{goalDraws++;return [{...board[0],id:goalDraws===5?'target':'other',tier:'Moment'}];},10,()=>{},b=>matchesGoal(b,['target'],'S'));
+check(goalResult.completed===5 && goalResult.stopped,'goal mode continues through other dedicated skills');
+console.log(`Skill simulator: ${assertions} checks passed (three tickets, all card/position pools, official probabilities, exact stop counts).`);
