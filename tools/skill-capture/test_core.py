@@ -96,7 +96,7 @@ class CollectorTests(unittest.TestCase):
                          CaptureOptions(delay=0, test_only=test_only))
 
     def state(self):
-        return json.loads((self.folder / 'state.json').read_text())
+        return json.loads((self.folder / 'state.json').read_text(encoding='utf-8'))
 
     def test_all_levels_and_bottom_detection(self):
         self.collector().run()
