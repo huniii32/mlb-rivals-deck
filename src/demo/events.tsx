@@ -4,11 +4,17 @@ import {pickCombination,shuffleCandidates} from '../lib/momentCombination';
 import {drawHof} from '../lib/hofRecruitment';
 import {claim,challenge,closeEvent,drawRaffle,EVALUATOR,freshEvent,MISSIONS,ranks,record,register,SAMPLE_ENTRIES,type EventState,type Mission} from './eventModel';
 import './events.css';
+import { EVENT_OPEN_LABEL } from './eventAvailability';
+import { useEventOpen } from './useEventOpen';
 const KEY='rivals-event-demo-v2';
 function load():EventState {try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s?.version===2&&Array.isArray(s.attempts)&&s.attempts.length<=5&&Array.isArray(s.entries)&&s.evidence&&Array.isArray(s.snapshot)&&Array.isArray(s.excluded)&&['open','closed'].includes(s.phase))return s;}catch{}return freshEvent();}
 const number=(n:number)=>n.toFixed(2);
 const time=(s:string)=>s==='데모 예시'?s:new Date(s).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
 export default function EventDemo(){
+ const open=useEventOpen();
+ return open?<EventDemoContent/>:<section className="card event-locked" role="status"><h2>🔒 이벤트 오픈 준비 중</h2><p>{EVENT_OPEN_LABEL}에 공개됩니다.</p></section>;
+}
+function EventDemoContent(){
  const [state,setState]=useState(load);const [view,setView]=useState<'join'|'draw'>('join');const [name,setName]=useState(state.name);const [message,setMessage]=useState('');const [error,setError]=useState('');const [busy,setBusy]=useState(false);const pending=useRef<ReturnType<typeof setTimeout>|null>(null);
  useEffect(()=>{try{localStorage.setItem(KEY,JSON.stringify(state));}catch{setError('이 브라우저에 데모를 저장하지 못했습니다. 새로고침하면 기록이 사라질 수 있습니다.');}},[state]);
  useEffect(()=>()=>{if(pending.current)clearTimeout(pending.current);},[]);

@@ -784,3 +784,5 @@ button.dia-opt.on { border-color: #facc15; box-shadow: 0 0 14px rgba(250, 204, 2
 [data-theme="light"] .site-move-primary { color: #fff; }
 .event-option .sim-hub-icon { color: #e6a44c; border-color: #e6a44c; }
 .event-option strong small { font-size: 12px; color: var(--muted); font-weight: 500; }
+.sim-hub-option.event-option:disabled { opacity: 1; cursor: default; border-style: dashed; }
+.event-option:disabled .sim-hub-enter { color: var(--muted); }

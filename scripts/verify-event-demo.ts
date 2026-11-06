@@ -1,4 +1,9 @@
 import assert from 'node:assert/strict';
+import { EVENT_OPENS_AT, isEventOpen } from '../src/demo/eventAvailability';
+assert.equal(EVENT_OPENS_AT, Date.parse('2026-11-08T15:00:00Z'));
+assert.equal(isEventOpen(EVENT_OPENS_AT - 1), false);
+assert.equal(isEventOpen(EVENT_OPENS_AT), true);
+assert.equal(isEventOpen(EVENT_OPENS_AT + 1), true);
 import { freshEvent, register, challenge, record, claim, closeEvent, drawRaffle, ranks, SAMPLE_ENTRIES, SETTINGS, EVALUATOR } from '../src/demo/eventModel';
 let state = freshEvent();
 assert.equal(challenge(state), state);
