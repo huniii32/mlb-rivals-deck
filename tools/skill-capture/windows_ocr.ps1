@@ -4,7 +4,8 @@ $ErrorActionPreference = 'Stop'
 [Console]::InputEncoding = New-Object System.Text.UTF8Encoding($false)
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 Add-Type -AssemblyName System.Runtime.WindowsRuntime
-$null = [Windows.Storage.StorageFile, Windows.Storage, ContentType=WindowsRuntime]
+$null = [Windows.Storage.Streams.InMemoryRandomAccessStream, Windows.Storage.Streams, ContentType=WindowsRuntime]
+$null = [Windows.Storage.Streams.DataWriter, Windows.Storage.Streams, ContentType=WindowsRuntime]
 $null = [Windows.Storage.Streams.IRandomAccessStream, Windows.Storage.Streams, ContentType=WindowsRuntime]
 $null = [Windows.Graphics.Imaging.BitmapDecoder, Windows.Graphics.Imaging, ContentType=WindowsRuntime]
 $null = [Windows.Graphics.Imaging.SoftwareBitmap, Windows.Graphics.Imaging, ContentType=WindowsRuntime]
@@ -25,17 +26,22 @@ if ($null -eq $engine) { throw 'Windows OCR language is unavailable. Install Kor
 function Read-Images($paths) {
 $result = @()
 foreach ($path in $paths) {
-    $stream = $null; $bitmap = $null; $converted = $null
+    $stream = $null; $writer = $null; $bitmap = $null; $converted = $null
     try {
-        $file = Await ([Windows.Storage.StorageFile]::GetFileFromPathAsync([string]$path)) ([Windows.Storage.StorageFile])
-        $stream = Await ($file.OpenAsync([Windows.Storage.FileAccessMode]::Read)) ([Windows.Storage.Streams.IRandomAccessStream])
+        # Decode a memory copy so WinRT cannot retain a lock on the next capture file.
+        $stream = [Windows.Storage.Streams.InMemoryRandomAccessStream]::new()
+        $writer = [Windows.Storage.Streams.DataWriter]::new($stream)
+        $writer.WriteBytes([System.IO.File]::ReadAllBytes([string]$path))
+        $null = Await ($writer.StoreAsync()) ([uint32])
+        $null = $writer.DetachStream()
+        $stream.Seek(0)
         $decoder = Await ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($stream)) ([Windows.Graphics.Imaging.BitmapDecoder])
         $bitmap = Await ($decoder.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.SoftwareBitmap])
         $converted = [Windows.Graphics.Imaging.SoftwareBitmap]::Convert($bitmap, [Windows.Graphics.Imaging.BitmapPixelFormat]::Bgra8)
         $ocr = Await ($engine.RecognizeAsync($converted)) ([Windows.Media.Ocr.OcrResult])
         $result += @{path=[string]$path; text=$ocr.Text; language=$engine.RecognizerLanguage.LanguageTag; error=$null}
     } catch { $result += @{path=[string]$path; text=''; language=$engine.RecognizerLanguage.LanguageTag; error=$_.Exception.Message} }
-    finally { if ($converted) {$converted.Dispose()}; if ($bitmap) {$bitmap.Dispose()}; if ($stream) {$stream.Dispose()} }
+    finally { if ($writer) {$writer.Dispose()}; if ($converted) {$converted.Dispose()}; if ($bitmap) {$bitmap.Dispose()}; if ($stream) {$stream.Dispose()} }
 }
 return ConvertTo-Json -InputObject @($result) -Depth 5 -Compress
 
