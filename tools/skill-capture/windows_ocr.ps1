@@ -1,4 +1,5 @@
 # Local Windows OCR. Input: JSON array of image paths. Output: JSON result array.
+param([switch]$Server)
 $ErrorActionPreference = 'Stop'
 [Console]::InputEncoding = New-Object System.Text.UTF8Encoding($false)
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
@@ -21,7 +22,7 @@ $language = [Windows.Media.Ocr.OcrEngine]::AvailableRecognizerLanguages | Where-
 if ($null -eq $language) { $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages() }
 else { $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage($language) }
 if ($null -eq $engine) { throw 'Windows OCR language is unavailable. Install Korean language OCR in Windows settings.' }
-$paths = @([Console]::In.ReadToEnd() | ConvertFrom-Json)
+function Read-Images($paths) {
 $result = @()
 foreach ($path in $paths) {
     $stream = $null; $bitmap = $null; $converted = $null
@@ -36,4 +37,16 @@ foreach ($path in $paths) {
     } catch { $result += @{path=[string]$path; text=''; language=$engine.RecognizerLanguage.LanguageTag; error=$_.Exception.Message} }
     finally { if ($converted) {$converted.Dispose()}; if ($bitmap) {$bitmap.Dispose()}; if ($stream) {$stream.Dispose()} }
 }
-ConvertTo-Json -InputObject @($result) -Depth 5 -Compress
+return ConvertTo-Json -InputObject @($result) -Depth 5 -Compress
+
+}
+if ($Server) {
+    while ($null -ne ($line = [Console]::In.ReadLine())) {
+        $paths = @($line | ConvertFrom-Json)
+        [Console]::WriteLine((Read-Images $paths))
+        [Console]::Out.Flush()
+    }
+} else {
+    $paths = @([Console]::In.ReadToEnd() | ConvertFrom-Json)
+    Read-Images $paths
+}

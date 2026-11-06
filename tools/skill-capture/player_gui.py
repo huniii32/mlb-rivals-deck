@@ -11,7 +11,7 @@ from core import StopCapture, crop, save_json
 from player_core import METADATA, card_identity, validate_player_config, export_players, safe_path, strict_stat
 from player_ocr import process_players
 
-MODE_LABELS={'스킬 설명 수집':'skills','선수 기본 능력치 수집':'stats','선수 미페 수집':'portrait','선수 정보 + 능력치 + 미페':'all'}
+MODE_LABELS={'스킬 설명 수집':'skills','선수 기본 능력치 수집':'stats','선수 미페 수집':'portrait','선수 정보 + 능력치 + 미페':'all','실제 게임 · 스킬 자동 변경':'reroll'}
 
 
 class PlayerCaptureMixin:
@@ -29,20 +29,26 @@ class PlayerCaptureMixin:
 
     def mode_changed(self):
         if self.busy:return
-        player=MODE_LABELS[self.mode.get()]!='skills'
+        mode=MODE_LABELS[self.mode.get()]
         self.config=self.folder=None
-        self.profile.set(('선수도감-' if player else '스킬도감-')+time.strftime('%Y-%m-%d'))
+        self.profile.set(('자동변경-' if mode=='reroll' else '스킬도감-' if mode=='skills' else '선수도감-')+time.strftime('%Y-%m-%d'))
+        self.reroll_locked.set(False)
         self.update_mode_help()
 
     def update_mode_help(self):
-        player=MODE_LABELS[self.mode.get()]!='skills'
-        if player:
-            self.skill_controls.pack_forget()
+        mode=MODE_LABELS[self.mode.get()]
+        for frame in (self.skill_controls,self.player_controls,self.reroll_controls):frame.pack_forget()
+        self.test_button.config(text='② 읽기 테스트' if mode=='reroll' else '② 1개 테스트')
+        self.run_button.config(text='③ 자동 변경 / 이어서' if mode=='reroll' else '③ 전체 / 이어서')
+        if mode=='reroll':
+            self.reroll_controls.pack(fill='x',before=self.actions,pady=8)
+            self.heading.config(text='첫 줄 잠금 준비 → 2·3번째 변경 → 목표 조합이면 중지')
+            self.preparation.config(text='준비: 게임에서 모먼트 전용 첫 스킬 확보/잠금 또는 시그니처 첫 줄 잠금을 직접 완료하고 사용할 변경권을 선택하세요.')
+        elif mode!='skills':
             self.player_controls.pack(fill='x',before=self.actions,pady=8)
             self.heading.config(text='선수 상세 화면 → 현재 카드 저장 → 다음 화살표 → 반복')
             self.preparation.config(text='준비: 선수도감에서 원하는 구단·등급 필터를 정한 뒤 첫 선수 상세 화면을 여세요. 능력치는 도감 기본값으로 저장합니다.')
         else:
-            self.player_controls.pack_forget()
             self.skill_controls.pack(fill='x',before=self.actions,pady=8)
             self.heading.config(text='기본 S 저장 → 상위 레벨 저장 → >> 다음 스킬 → 다음 탭')
             self.preparation.config(text='준비: 메인 → 구단관리 → 선수도감 → 스킬. 설명창을 닫은 스킬 탭 화면에서 시작하세요.')

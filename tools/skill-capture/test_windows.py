@@ -22,7 +22,9 @@ class WindowsIntegration(unittest.TestCase):
             with patch('app.windows',return_value=[]):app=App(root)
             for label,mode in MODE_LABELS.items():
                 app.mode.set(label);app.mode_changed();root.update()
-                self.assertEqual(bool(app.player_controls.winfo_ismapped()),mode!='skills')
+                self.assertEqual(bool(app.player_controls.winfo_ismapped()),mode in ('stats','portrait','all'))
+                self.assertEqual(bool(app.reroll_controls.winfo_ismapped()),mode=='reroll')
+                if mode=='reroll':self.assertEqual(app.test_button.cget('text'),'② 읽기 테스트')
                 app.set_busy(True);self.assertEqual(str(app.mode_combo.cget('state')),'disabled')
                 app.set_busy(False);self.assertEqual(str(app.mode_combo.cget('state')),'readonly')
             with tempfile.TemporaryDirectory() as tmp:
@@ -51,5 +53,21 @@ class WindowsIntegration(unittest.TestCase):
                 if 'language is unavailable' in str(e):self.skipTest('Windows runner OCR language not installed')
                 raise
             self.assertEqual(len(result),1);self.assertFalse(result[0].get('error'));self.assertEqual(result[0]['text'].strip(),'123')
+
+    def test_persistent_ocr(self):
+        from PIL import Image,ImageDraw,ImageFont
+        from ocr_session import OcrSession
+        from core import StopCapture
+        session=OcrSession()
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                for text in ('123','456'):
+                    path=Path(tmp)/'digits.png';im=Image.new('RGB',(500,180),'white')
+                    ImageDraw.Draw(im).text((30,25),text,font=ImageFont.truetype('arial.ttf',95),fill='black');im.save(path)
+                    result=session.recognize([path],lambda:None)
+                    self.assertEqual(len(result),1);self.assertFalse(result[0].get('error'));self.assertEqual(result[0]['text'].strip(),text)
+                def stop():raise StopCapture('stop')
+                with self.assertRaises(StopCapture):session.recognize([path],stop)
+        finally:session.close()
 
 if __name__=='__main__':unittest.main()

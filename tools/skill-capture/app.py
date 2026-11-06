@@ -16,6 +16,8 @@ from windows_backend import Windows, enable_dpi_awareness, windows
 from player_core import PlayerCollector, validate_player_config
 from player_gui import PlayerCaptureMixin, MODE_LABELS
 from player_ocr import process_players
+from reroll_gui import RerollMixin
+from reroll_core import validate_reroll_config
 
 
 class Selector(tk.Toplevel):
@@ -114,7 +116,7 @@ class Selector(tk.Toplevel):
             self.current_instruction()
 
 
-class App(PlayerCaptureMixin):
+class App(PlayerCaptureMixin, RerollMixin):
     def __init__(self, root):
         self.root = root
         root.title('Rivals 도감 수집기 — 스킬 · 선수 능력치 · 미페')
@@ -148,11 +150,14 @@ class App(PlayerCaptureMixin):
         self.entry(self.player_controls,'최대 카드 수',self.max_cards)
         ttk.Label(self.player_controls,text='능력치: 화면에 있는 항목 이름을 모두 입력하세요. 미페 전용 수집은 비워도 됩니다. 필터마다 새 프로필을 사용하세요.',wraplength=880).pack(anchor='w')
         ttk.Checkbutton(self.player_controls,text='수집 후 Windows 로컬 문자 인식 (이미지 원본도 보관)',variable=self.auto_ocr).pack(anchor='w',pady=3)
+        self.setup_reroll_controls(frame)
         actions = self.actions = ttk.Frame(frame); actions.pack(fill='x', pady=12)
         for label, command in [('① 위치 설정', self.calibrate), ('프로필 불러오기', self.load),
                                ('② 1개 테스트', lambda: self.run(True)), ('③ 전체 / 이어서', lambda: self.run(False)), ('중지', self.stop.set)]:
             button=ttk.Button(actions,text=label,command=command);button.pack(side='left',padx=3)
             if label=='중지':self.stop_button=button
+            if label.startswith('②'):self.test_button=button
+            if label.startswith('③'):self.run_button=button
         ttk.Label(frame, text='중지: Esc, 마우스를 화면 왼쪽 위로 이동, 또는 다른 창으로 전환. 수집 중에는 게임을 조작하지 마세요.', wraplength=750).pack(anchor='w')
         self.logbox = tk.Text(frame, height=9, wrap='word', state='disabled'); self.logbox.pack(fill='both', expand=True, pady=10)
         bottom = ttk.Frame(frame); bottom.pack(fill='x')
@@ -220,6 +225,7 @@ class App(PlayerCaptureMixin):
 
     def calibrate(self):
         if self.busy: return
+        if MODE_LABELS[self.mode.get()]=='reroll':return self.calibrate_reroll()
         if MODE_LABELS[self.mode.get()]!='skills':return self.calibrate_player()
         try:
             profile = self.profile.get().strip()
@@ -322,10 +328,13 @@ class App(PlayerCaptureMixin):
             try:
                 config = json.loads(Path(filename).read_text(encoding='utf-8'))
                 player=config.get('schema')=='players-v1'
-                (validate_player_config if player else validate_config)(config)
+                reroll=config.get('schema')=='reroll-v1'
+                (validate_reroll_config if reroll else validate_player_config if player else validate_config)(config)
                 self.config, self.folder = config, Path(filename).parent
                 self.profile.set(config['profile'])
-                if player:
+                if reroll:
+                    self.mode.set('실제 게임 · 스킬 자동 변경');self.load_reroll(config)
+                elif player:
                     self.mode.set(next(label for label,mode in MODE_LABELS.items() if mode==config['capture_mode']))
                     self.scope.set(config['scope']);self.max_cards.set(str(config['max_cards']))
                     self.stat_names.set(','.join(f['name'] for f in config['stat_boxes']))
@@ -339,6 +348,7 @@ class App(PlayerCaptureMixin):
 
     def run(self, test):
         if self.busy: return
+        if MODE_LABELS[self.mode.get()]=='reroll':return self.run_reroll(test)
         try:
             if self.config is None: raise ValueError('먼저 위치 설정 또는 프로필 불러오기를 진행하세요.')
             player=self.config.get('schema')=='players-v1'
@@ -381,7 +391,7 @@ class App(PlayerCaptureMixin):
     def export(self):
         if self.busy: return
         if not self.folder or not (self.folder / 'state.json').exists():
-            messagebox.showinfo('결과 ZIP', '먼저 한 개 이상의 스킬 또는 선수를 수집하세요.'); return
+            messagebox.showinfo('결과 ZIP', '먼저 수집 또는 자동 변경 읽기 테스트를 진행하세요.'); return
         filename = filedialog.asksaveasfilename(defaultextension='.zip', initialfile=self.folder.name + '.zip', filetypes=[('ZIP', '*.zip')])
         if not filename: return
         target = Path(filename).resolve()
