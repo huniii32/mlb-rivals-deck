@@ -1,0 +1,299 @@
+/* Shared application controls inherit the renewal palette. */
+.renewal {
+  --panel: var(--paper);
+  --panel2: var(--soft);
+  --input: var(--paper);
+  --border: var(--line);
+  --border2: var(--line);
+  --text2: var(--text);
+  --accent: var(--blue);
+}
+.renewal .topbar {
+  position: static;
+  margin: 0;
+  backdrop-filter: none;
+}
+.renewal .sidebar {
+  overflow-y: auto;
+}
+.renewal .workspace {
+  min-width: 0;
+}
+.renewal .toolbar {
+  padding: 18px 22px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+.renewal .toolbar label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.renewal .toolbar label select {
+  max-width: 300px;
+}
+.renewal .toolbar-status {
+  margin: 0;
+  font-size: 11px;
+}
+.renewal .deck-tools {
+  width: 100%;
+}
+.renewal .deck-tools p {
+  margin-top: 8px;
+}
+.renewal .card {
+  box-shadow: none;
+}
+.renewal .card p + p {
+  margin-top: 10px;
+}
+.renewal .card h3 {
+  margin-bottom: 12px;
+}
+.renewal button.on {
+  background: var(--nav);
+  border-color: var(--blue);
+  color: var(--blue);
+}
+.renewal button:disabled {
+  opacity: 0.55;
+}
+.renewal a:not(.brand) {
+  color: var(--blue);
+}
+.renewal .overview-breakdown > div > small {
+  font-size: 10px;
+  color: var(--muted);
+}
+.renewal .lineup-details,
+.renewal .skill-advanced {
+  margin-top: 24px;
+}
+.renewal .lineup-details > div,
+.renewal .skill-advanced > div {
+  margin-top: 18px;
+}
+.renewal .table-scroll th {
+  position: static;
+}
+.renewal .table-scroll td {
+  white-space: normal;
+}
+.renewal .player-card:hover {
+  transform: none;
+}
+.renewal .player-card img {
+  object-fit: contain;
+}
+.renewal .player-art .enhancement {
+  position: absolute;
+  bottom: 5px;
+  left: 5px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 800;
+  background: #efe5ff;
+  color: #683399;
+}
+.renewal .field-player .player-card.vacant {
+  position: relative;
+  aspect-ratio: 100 / 135;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  border-style: dashed;
+  background: #182f2be6;
+}
+.renewal .field-player .vacant > .position {
+  position: static;
+  color: #acc8bd;
+  font-size: 10px;
+}
+.renewal .field-player .vacant > b {
+  font-weight: 300;
+  font-size: 22px;
+}
+.renewal .field-player .vacant > span:last-child {
+  font-size: 10px;
+}
+.renewal .modal-overlay {
+  z-index: 100;
+}
+.renewal .modal-box {
+  background: var(--paper);
+}
+.renewal .modal-box p {
+  margin-top: 10px;
+  margin-bottom: 12px;
+}
+.renewal dialog {
+  margin: auto;
+}
+.renewal .working-settings .card {
+  overflow: visible;
+  padding: 10px 0;
+  border: 0;
+}
+.renewal .working-settings .grid {
+  min-width: 0;
+}
+.renewal dialog .sk-list {
+  font-size: 12px;
+}
+.renewal dialog .sk-list li {
+  white-space: normal;
+}
+.renewal .editor-skill-grid {
+  padding-bottom: 12px;
+}
+.renewal .ranking-filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  margin: 22px 0 12px;
+}
+.renewal .ranking-filters input {
+  min-width: 0;
+  max-width: 100%;
+}
+.renewal .ranking-table {
+  table-layout: fixed;
+}
+.renewal .ranking-deck-toggle {
+  background: none;
+  border: 0;
+  padding: 12px 0;
+}
+.renewal .ranking-deck-info {
+  min-width: 0;
+}
+.renewal .ranking-deck-info strong {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.renewal .ranking-row-actions {
+  flex-wrap: wrap;
+}
+.renewal .ranking-selected td {
+  background: var(--nav);
+}
+.renewal .sim-hub-description {
+  margin: 18px 0;
+}
+.renewal .sim-hub-options {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.renewal .sim-hub-option {
+  display: flex;
+  align-items: flex-start;
+  padding: 24px;
+  background: var(--paper);
+  border-color: var(--line);
+}
+.renewal .sim-hub-option .sim-art {
+  width: 190px;
+  max-width: 100%;
+  height: 132px;
+  align-self: center;
+  margin: 0 0 16px;
+}
+.renewal .sim-hub-option > strong {
+  color: var(--text);
+}
+.renewal .sim-hub-enter {
+  color: var(--blue);
+}
+.renewal .sim-hub-option:disabled {
+  opacity: 0.7;
+}
+.renewal .sim-back {
+  margin-bottom: 18px;
+}
+.renewal .skill-filters {
+  flex-wrap: wrap;
+}
+.renewal .skill-comparison.slots-4 {
+  grid-template-rows: auto repeat(4, minmax(143px, auto)) auto;
+}
+.renewal .slots-4 > .skill-combo {
+  grid-row: 1 / span 6;
+}
+@supports not (grid-template-rows: subgrid) {
+  .renewal .slots-4 > .skill-combo {
+    grid-template-rows: auto repeat(4, minmax(143px, auto)) auto;
+  }
+}
+@media (max-width: 760px) {
+  .renewal .topbar {
+    height: auto;
+    min-height: 48px;
+    padding: 10px 16px;
+  }
+  .renewal .topbar > div {
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .renewal .sidebar nav {
+    flex-wrap: wrap;
+  }
+  .renewal .toolbar {
+    padding: 14px;
+  }
+  .renewal .toolbar-main {
+    gap: 8px;
+  }
+  .renewal .toolbar-main > label {
+    width: 100%;
+  }
+  .renewal .toolbar label select {
+    flex: 1;
+    max-width: 100%;
+    width: 0;
+    min-width: 0;
+  }
+  .renewal .toolbar button {
+    font-size: 11px;
+    padding: 8px 12px;
+  }
+  .renewal .toolbar-status {
+    line-height: 1.8;
+  }
+  .renewal .field-player .vacant > span:last-child {
+    font-size: 7px;
+  }
+  .renewal .field-player .vacant > .position {
+    font-size: 8px;
+  }
+  .renewal .skill-comparison.slots-4 {
+    grid-template-rows: none;
+  }
+  .renewal .slots-4 > .skill-combo {
+    grid-row: auto;
+    grid-template-rows: auto repeat(4, auto) auto;
+  }
+  .renewal .ranking-filters {
+    flex-direction: column;
+  }
+  .renewal .ranking-header-actions {
+    flex-wrap: wrap;
+  }
+  .renewal .ranking-table .ranking-score-col {
+    width: 74px;
+  }
+  .renewal .ranking-row-actions button {
+    padding: 9px;
+    font-size: 11px;
+  }
+  .renewal .sim-hub-options {
+    grid-template-columns: 1fr;
+  }
+  .renewal .modal-box {
+    max-width: calc(100vw - 24px);
+  }
+}
