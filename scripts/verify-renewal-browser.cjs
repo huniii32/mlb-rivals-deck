@@ -462,6 +462,45 @@ const baseURL = process.env.RENEWAL_URL || "http://localhost:5176";
         !layout.overlapping && layout.dhGap >= 8,
       );
     }
+    // Desktop fitting must react to height as well as width, without a reload.
+    for (const [width, height] of [
+      [1024, 640], [1280, 720], [1366, 768], [1440, 900],
+      [1536, 864], [1920, 1080], [2560, 1440],
+    ]) {
+      await p.setViewportSize({ width, height });
+      await p.evaluate(() => scrollTo(0, 0));
+      const fitted = await p.locator(".field-board").evaluate((board) => {
+        const field = board.querySelector(".position-field").getBoundingClientRect();
+        const bounds = board.getBoundingClientRect();
+        const cards = [...board.querySelectorAll(".field-player button")].map((el) => ({
+          pos: el.querySelector(".position").textContent,
+          r: el.getBoundingClientRect(),
+        }));
+        return {
+          height: field.height,
+          panelTop: board.closest(".roster-panel").getBoundingClientRect().top,
+          overflow: document.documentElement.scrollWidth > innerWidth,
+          clipped: cards.some((c) =>
+            c.r.left < bounds.left || c.r.right > bounds.right ||
+            c.r.top < bounds.top || c.r.bottom > bounds.bottom,
+          ),
+          overlapping: cards.some((a, i) => cards.slice(i + 1).some((b) =>
+            Math.min(a.r.right, b.r.right) > Math.max(a.r.left, b.r.left) &&
+            Math.min(a.r.bottom, b.r.bottom) > Math.max(a.r.top, b.r.top),
+          )),
+          gap: cards.find((c) => c.pos === "DH").r.top -
+            cards.find((c) => c.pos === "1B").r.bottom,
+        };
+      });
+      check(
+        `desktop field fits viewport ${width}x${height}`,
+        fitted.height <= 620 && fitted.panelTop < height * .52 && !fitted.overflow,
+      );
+      check(
+        `desktop cards remain separated and visible ${width}x${height}`,
+        !fitted.clipped && !fitted.overlapping && fitted.gap >= 8,
+      );
+    }
     await p.locator(".roster-tabs button").filter({ hasText: "불펜" }).click();
     assert.deepEqual(await p.locator(".bullpen-role h3").allTextContents(), [
       "승리조",
