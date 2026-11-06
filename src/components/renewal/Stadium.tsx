@@ -1,17 +1,18 @@
 import type { CSSProperties } from "react";
 import { PlayerArt } from "../../components/CardArt";
 import { cardDisplayName } from "../../lib/cardNames";
+import { BULLPEN_ROLES, ROLE_LABELS } from "../../lib/bullpen";
 import type { RosterPlayer as Player } from "./Lineup";
 const FIELD: Record<string, [number, number]> = {
-  CF: [50, 17],
+  CF: [50, 15],
   LF: [15, 22],
   RF: [85, 22],
   SS: [35, 45],
   "2B": [65, 45],
-  "3B": [15, 60],
-  "1B": [85, 60],
+  "3B": [15, 58],
+  "1B": [85, 58],
   C: [50, 85],
-  DH: [77, 87],
+  DH: [77, 88],
 };
 export function Stadium({
   players,
@@ -25,6 +26,14 @@ export function Stadium({
   onAdd: () => void;
 }) {
   const bat = group === "타자";
+  const bullpenRows = BULLPEN_ROLES.map((role) => ({
+    role,
+    members: players.filter((p) => p.bullpenRole === role),
+  }));
+  const bullpenColumns = Math.max(
+    3,
+    ...bullpenRows.map((row) => row.members.length),
+  );
   function card(p: Player) {
     return (
       <button
@@ -81,6 +90,7 @@ export function Stadium({
           <svg
             className="baseball-field"
             viewBox="0 0 740 680"
+            preserveAspectRatio="none"
             aria-hidden="true"
           >
             <defs>
@@ -161,17 +171,46 @@ export function Stadium({
             <small>HOME FIELD</small>
           </span>
         </div>
+      ) : group === "불펜" ? (
+        <div
+          className="bullpen-rows"
+          style={{ "--bullpen-columns": bullpenColumns } as CSSProperties}
+        >
+          {bullpenRows.map(({ role, members }) => (
+            <section
+              className="bullpen-role"
+              aria-label={ROLE_LABELS[role]}
+              key={role}
+            >
+              <header>
+                <h3>{ROLE_LABELS[role]}</h3>
+                <span>
+                  {members.filter((p) => p.name.trim()).length} /{" "}
+                  {members.length}명
+                </span>
+              </header>
+              {members.length ? (
+                <div className="pitcher-grid bullpen-role-cards">
+                  {members.map((p) => (
+                    <div key={p.excelRow}>{card(p)}</div>
+                  ))}
+                </div>
+              ) : (
+                <p className="bullpen-role-empty">배치된 슬롯 없음</p>
+              )}
+            </section>
+          ))}
+          {players.length < 7 && (
+            <button className="bullpen-add" onClick={onAdd}>
+              ＋ 불펜 배치 추가
+            </button>
+          )}
+        </div>
       ) : (
         <div className="pitcher-grid">
           {players.map((p) => (
             <div key={p.excelRow}>{card(p)}</div>
           ))}
-          {group === "불펜" && players.length < 7 && (
-            <button className="empty-player" onClick={onAdd}>
-              <b>＋</b>
-              <span>불펜 배치 추가</span>
-            </button>
-          )}
         </div>
       )}
       <div className="stadium-footer">

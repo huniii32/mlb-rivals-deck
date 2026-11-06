@@ -1,7 +1,12 @@
 import { useState } from "react";
 import type { Deck } from "../../lib/deck";
 import { deckTotals, type PlayerResult } from "../../lib/engine";
-import { ROLE_LABELS, bullpenRole, tacticStatus } from "../../lib/bullpen";
+import {
+  ROLE_LABELS,
+  bullpenRole,
+  tacticStatus,
+  type BullpenRole,
+} from "../../lib/bullpen";
 import { cardDisplayName } from "../../lib/cardNames";
 import { Stadium } from "./Stadium";
 
@@ -17,6 +22,7 @@ export type RosterPlayer = {
   stats: number[];
   excelRow: number;
   enhLv: number | "";
+  bullpenRole?: BullpenRole;
 };
 export type Setting = "덱스코어" | "팀 버프" | "투수 전술";
 const format = (n: number) =>
@@ -46,6 +52,7 @@ export function RenewalLineup({
     const ordinal = role ? (counts[role] = (counts[role] ?? 0) + 1) : 0;
     return {
       ...p,
+      bullpenRole: role ?? undefined,
       artPos: p.pos,
       pos: role ? `${ROLE_LABELS[role]}${ordinal}` : p.pos,
       score: results[i].total,

@@ -87,6 +87,47 @@
 .renewal .player-card img {
   object-fit: contain;
 }
+/* Captions need fixed vertical room even when the field artwork gets narrower. */
+.renewal .position-field {
+  aspect-ratio: auto;
+  height: 0;
+  padding-bottom: calc(100% + 60px);
+}
+.renewal .bullpen-rows {
+  display: grid;
+  gap: 18px;
+  padding-top: 16px;
+}
+.renewal .bullpen-role > header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.renewal .bullpen-role h3 {
+  color: #e3edf3;
+  font-size: 13px;
+  margin: 0;
+}
+.renewal .bullpen-role > header span {
+  color: #9db5c3;
+  font-size: 10px;
+}
+.renewal .bullpen-role .pitcher-grid {
+  grid-template-columns: repeat(var(--bullpen-columns), minmax(0, 1fr));
+}
+.renewal .bullpen-role-empty {
+  font-size: 11px;
+  color: #9db5c3;
+  padding: 12px;
+  border: 1px dashed #627b8c;
+  border-radius: 7px;
+}
+.renewal .bullpen-add {
+  background: transparent;
+  border: 1px dashed #8da7b8;
+  color: #c6d9e4;
+}
 .renewal .player-art .enhancement {
   position: absolute;
   bottom: 5px;
@@ -281,6 +322,26 @@
   }
 }
 @media (max-width: 760px) {
+  .renewal .bullpen-role .pitcher-grid {
+    gap: 8px;
+  }
+  .renewal .bullpen-role .player-caption {
+    padding: 6px 4px;
+  }
+  .renewal .bullpen-role .player-caption strong {
+    font-size: 10px;
+  }
+  .renewal .bullpen-role .player-caption > span {
+    font-size: 6px;
+  }
+  .renewal .bullpen-role .player-art > b {
+    font-size: 12px;
+    right: 3px;
+  }
+  .renewal .bullpen-role .position {
+    font-size: 6px;
+    left: 3px;
+  }
   .renewal .ranking-mine {
     padding: 16px;
     gap: 12px;

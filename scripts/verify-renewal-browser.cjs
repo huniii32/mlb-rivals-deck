@@ -47,7 +47,14 @@ const source = normalizeDeck({
   ).map((p, i) => ({
     ...p,
     name: `검증선수${i + 1}`,
-    card: i < 9 ? "시그니처 블랙" : "시그니처",
+    card:
+      i === 8
+        ? "WBC 시그니처"
+        : i === 1
+          ? "명예의 전당"
+          : i < 9
+            ? "시그니처 블랙"
+            : "시그니처",
     team: "LAD",
     year: 2024,
     enhLv: 9,
@@ -353,6 +360,76 @@ const baseURL = process.env.RENEWAL_URL || "http://localhost:5176";
       (await p.getByTestId("deck-total").innerText()).replace(/[^\d.]/g, "") ===
         calcDeckTotal(finalDeck, tables).total.toFixed(1),
     );
+    for (const width of [
+      320, 360, 390, 419, 500, 760, 768, 820, 1024, 1440, 1920,
+    ]) {
+      await p.setViewportSize({ width, height: 1000 });
+      const layout = await p
+        .locator(".field-player button")
+        .evaluateAll((els) => {
+          const cards = els.map((el) => ({
+            pos: el.querySelector(".position").textContent,
+            rect: el.getBoundingClientRect(),
+          }));
+          const overlapping = cards.some((a, i) =>
+            cards
+              .slice(i + 1)
+              .some(
+                (b) =>
+                  Math.min(a.rect.right, b.rect.right) >
+                    Math.max(a.rect.left, b.rect.left) &&
+                  Math.min(a.rect.bottom, b.rect.bottom) >
+                    Math.max(a.rect.top, b.rect.top),
+              ),
+          );
+          return {
+            overlapping,
+            dhGap:
+              cards.find((c) => c.pos === "DH").rect.top -
+              cards.find((c) => c.pos === "1B").rect.bottom,
+          };
+        });
+      check(
+        `field cards do not overlap at ${width}px`,
+        !layout.overlapping && layout.dhGap >= 8,
+      );
+    }
+    await p.locator(".roster-tabs button").filter({ hasText: "불펜" }).click();
+    assert.deepEqual(await p.locator(".bullpen-role h3").allTextContents(), [
+      "승리조",
+      "추격조",
+      "롱릴리프",
+      "마무리",
+    ]);
+    passed++;
+    assert.deepEqual(
+      await p
+        .locator(".bullpen-role")
+        .evaluateAll((els) =>
+          els.map((el) => el.querySelectorAll(".player-card").length),
+        ),
+      [3, 2, 1, 1],
+    );
+    passed++;
+    for (const width of [320, 419, 1024, 1920]) {
+      await p.setViewportSize({ width, height: 1000 });
+      const aligned = await p.locator(".bullpen-role").evaluateAll((els) => {
+        const rows = els.map((el) => ({
+          rect: el.getBoundingClientRect(),
+          cards: [...el.querySelectorAll(".player-card")].map((c) =>
+            c.getBoundingClientRect(),
+          ),
+        }));
+        return rows.every(
+          (row, i) =>
+            row.cards.every(
+              (card) => Math.abs(card.top - row.cards[0].top) < 1,
+            ) &&
+            (!i || row.rect.top > rows[i - 1].rect.bottom),
+        );
+      });
+      check(`bullpen keeps one separate row per role at ${width}px`, aligned);
+    }
     await p.getByRole("button", { name: "☷ 표 보기", exact: true }).click();
     for (const width of [1920, 1440, 768, 390, 320]) {
       await p.setViewportSize({ width, height: 1000 });
