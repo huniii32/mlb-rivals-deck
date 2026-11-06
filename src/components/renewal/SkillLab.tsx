@@ -29,10 +29,6 @@ export function SkillLab({ tables }: { tables: SkillTables }) {
     l === "other" ? !/^\[S[0-4]\]/.test(name) : name.startsWith(`[${l}]`);
   const rows = allRows.filter((r) => atLevel(r.name, level));
   const names = [...new Set(rows.map((r) => base(r.name)))];
-  const seed =
-    kind === "batter"
-      ? ["배팅 머신", "클린업 트리오", "빠른발"]
-      : ["더블 스토퍼", "도전자", "라스트 카운트"];
   const [combos, setCombos] = useState<{ level: string; name: string }[][]>([
     [],
     [],
@@ -42,13 +38,7 @@ export function SkillLab({ tables }: { tables: SkillTables }) {
   const slotRows = (side: number, slot: number) =>
     allRows.filter((r) => atLevel(r.name, slotLevel(side, slot)));
   const selection = (side: number, slot: number) =>
-    combos[side][slot]?.name ??
-    (slot === 3
-      ? ""
-      : ((
-          slotRows(side, slot).find((r) => base(r.name) === seed[slot]) ??
-          slotRows(side, slot)[slot]
-        )?.name ?? ""));
+    combos[side][slot]?.name ?? "";
   const change = (
     side: number,
     slot: number,

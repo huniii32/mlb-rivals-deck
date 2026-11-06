@@ -203,6 +203,55 @@ const baseURL = process.env.RENEWAL_URL || "http://localhost:5176";
       "restore does not write back an unedited deck",
       calls.every((c) => c.endpoint === "restore_ranking_password"),
     );
+    const ownRow = rows.shift();
+    rows.push({ ...ownRow, total: 4100 });
+    await nav("덱랭킹");
+    await p.getByTestId("my-rank").waitFor();
+    check(
+      "own rank remains visible outside top five",
+      (await p.getByTestId("my-rank").innerText()) === "8위",
+    );
+    check(
+      "public list still starts at first place",
+      (await p.locator(".ranking-number").first().innerText()) === "1",
+    );
+    check(
+      "own rank is above public list",
+      await p
+        .locator(".ranking-mine")
+        .evaluate(
+          (el) =>
+            el.getBoundingClientRect().bottom <
+            document.querySelector(".ranking-table").getBoundingClientRect()
+              .top,
+        ),
+    );
+    await p.getByLabel("덱 이름 검색").fill("검색용덱1");
+    check(
+      "search does not change own overall rank",
+      (await p.getByTestId("my-rank").innerText()) === "8위",
+    );
+    await p.getByLabel("덱 이름 검색").fill("");
+    await p.getByRole("button", { name: "5등까지 보기", exact: true }).click();
+    for (const width of [1440, 390, 320]) {
+      await p.setViewportSize({ width, height: 1000 });
+      check(
+        `own rank fits ${width}px`,
+        await p.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      );
+    }
+    await p.setViewportSize({ width: 1440, height: 1050 });
+    if (process.env.RENEWAL_SCREENSHOTS) {
+      fs.mkdirSync(process.env.RENEWAL_SCREENSHOTS, { recursive: true });
+      await p.screenshot({
+        path: path.join(process.env.RENEWAL_SCREENSHOTS, "my-ranking.png"),
+        fullPage: true,
+        animations: "disabled",
+      });
+    }
+    await nav("내 라인업");
     await p.locator(".field-player button").first().click();
     const editor = p.getByRole("dialog", { name: "선수 편집" });
     await editor.waitFor();
@@ -335,7 +384,31 @@ const baseURL = process.env.RENEWAL_URL || "http://localhost:5176";
     }
     await p.setViewportSize({ width: 1440, height: 1050 });
     await nav("스킬 비교");
+    check(
+      "comparison starts with six empty slots",
+      await p
+        .locator(".skill-comparison input")
+        .evaluateAll(
+          (els) => els.length === 6 && els.every((e) => e.value === ""),
+        ),
+    );
+    check(
+      "both initial totals are zero",
+      (await p.locator(".skill-sum strong").allTextContents()).every(
+        (t) => t === "0.00점",
+      ),
+    );
     await p.getByLabel("현재 스킬 1 레벨").selectOption("S4");
+    check(
+      "changing an empty slot's level does not select a skill",
+      (await p
+        .getByRole("combobox", { name: "현재 조합 스킬 1", exact: true })
+        .inputValue()) === "",
+    );
+    await p
+      .getByRole("combobox", { name: "현재 조합 스킬 1", exact: true })
+      .fill("배팅 머신");
+    await p.getByRole("option", { name: "배팅 머신", exact: true }).click();
     check(
       "S4 score changes",
       (
@@ -367,6 +440,15 @@ const baseURL = process.env.RENEWAL_URL || "http://localhost:5176";
     check(
       "four-slot support retained",
       (await p.locator(".skill-slot").count()) === 8,
+    );
+    check(
+      "new fourth slots start empty",
+      (await p
+        .getByRole("combobox", { name: "현재 조합 스킬 4", exact: true })
+        .inputValue()) === "" &&
+        (await p
+          .getByRole("combobox", { name: "비교 조합 스킬 4", exact: true })
+          .inputValue()) === "",
     );
     await p.getByLabel("검색 스킬 레벨").selectOption("S2");
     await p.getByLabel("스킬 검색", { exact: true }).fill("배팅 머신");
@@ -467,13 +549,11 @@ const baseURL = process.env.RENEWAL_URL || "http://localhost:5176";
       "file backup contains selected deck",
       backedUp.name === "기기 저장 검증",
     );
-    await p
-      .getByLabel("덱 파일 불러오기")
-      .setInputFiles({
-        name: "fixture.json",
-        mimeType: "application/json",
-        buffer: Buffer.from(JSON.stringify(source)),
-      });
+    await p.getByLabel("덱 파일 불러오기").setInputFiles({
+      name: "fixture.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify(source)),
+    });
     await p.waitForFunction(() => {
       const data = JSON.parse(localStorage.getItem("rivals-decks-v1"));
       return (
@@ -482,6 +562,19 @@ const baseURL = process.env.RENEWAL_URL || "http://localhost:5176";
     });
     assert.deepEqual((await local()).players, source.players);
     passed++;
+    await nav("덱랭킹");
+    await p.locator(".ranking-deck-toggle").first().waitFor();
+    check(
+      "an unlinked same-name copy does not claim an owned ranking",
+      (await p.getByTestId("my-rank").count()) === 0,
+    );
+    check(
+      "unregistered deck explains how to see its rank",
+      (
+        await p.getByRole("region", { name: "내 덱 순위" }).innerText()
+      ).includes("미등록"),
+    );
+    await nav("내 라인업");
     await p.getByRole("button", { name: "덱 저장", exact: true }).click();
     await p.getByLabel("저장할 덱 이름").fill("신규 등록 검증");
     await p.getByLabel("덱 비밀번호", { exact: true }).fill("0123");

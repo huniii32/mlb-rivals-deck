@@ -101,6 +101,13 @@ export function SharePanel({ decks, tables, activeId, links, setLinks, code, onR
     const d = pubDeck(r); if (d) fn(d); else alert("이 덱은 미리보기를 지원하지 않습니다.");
   };
   const ranked = pub.map((row, index) => ({ row, rank: index + 1 }));
+  const myRank = ranked.find(({ row }) => links[row.id]?.deckId === active.id);
+  const myRankStatus = !isSupabaseOn() ? "미연결" : loading ? "확인 중" : loadError ? "확인 실패" : activeLinked ? "순위 확인 필요" : "미등록";
+  const myRankHint = !isSupabaseOn() ? "온라인 랭킹이 연결되지 않았습니다."
+    : loading ? "공개 랭킹에서 순위를 확인하고 있습니다."
+    : loadError ? "새로고침으로 순위를 다시 확인하세요."
+    : activeLinked ? "연결된 랭킹을 찾지 못했습니다. 현재 덱을 다시 등록해 주세요."
+    : "덱을 등록하거나 비밀번호로 가져오면 내 순위가 표시됩니다.";
   const visible = (scope === 'top5' ? ranked.slice(0, 5) : ranked)
     .filter(({ row }) => row.deck_name.replace(/\s/g, '').toLowerCase().includes(query.replace(/\s/g, '').toLowerCase()));
   return <section className="ranking-page" aria-label="덱랭킹">
@@ -109,6 +116,15 @@ export function SharePanel({ decks, tables, activeId, links, setLinks, code, onR
         <div><p className="ranking-eyebrow">PUBLIC RANKING</p><h2>덱 랭킹</h2><p className="muted">랭킹대전 기준 · 총점순 {pub.length}개</p></div>
         <div className="ranking-header-actions"><button onClick={() => setSharing(true)}>링크 공유</button><button className="primary" onClick={onSaveDeck}>{activeLinked ? "현재 덱 갱신" : "현재 덱 등록"}</button></div>
       </header>
+      <section className="ranking-mine" aria-label="내 덱 순위">
+        <div className="ranking-mine-info"><span>내 덱 순위</span><strong>{active.name || "이름 없는 덱"}</strong>
+          <p>{myRank ? `전체 ${pub.length}개 덱 중${loading || loadError ? " · 마지막 조회 기준" : ""}` : myRankHint}</p>
+        </div>
+        <div className="ranking-mine-result">
+          {myRank ? <><strong data-testid="my-rank">{myRank.rank}<small>위</small></strong><span>{Number(myRank.row.total).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}점</span></>
+            : <span className="ranking-mine-status">{myRankStatus}</span>}
+        </div>
+      </section>
       <div className="ranking-filters"><div className="segmented" role="group" aria-label="랭킹 표시 범위">
         <button className={scope === 'top5' ? 'selected' : ''} aria-pressed={scope === 'top5'} onClick={() => setScope('top5')}>5등까지 보기</button>
         <button className={scope === 'all' ? 'selected' : ''} aria-pressed={scope === 'all'} onClick={() => setScope('all')}>전체 랭킹보기</button>
