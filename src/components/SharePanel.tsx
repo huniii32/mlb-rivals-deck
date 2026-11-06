@@ -17,6 +17,8 @@ export function SharePanel({ decks, tables, activeId, links, setLinks, code, onR
   onImportDeck: (d: Deck) => void; onPreviewDeck: (d: Deck) => void;
 }) {
   const [pub, setPub] = useState<PublicRank[]>([]);
+  const [scope, setScope] = useState<'top5' | 'all'>('top5');
+  const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -37,9 +39,15 @@ export function SharePanel({ decks, tables, activeId, links, setLinks, code, onR
     if (!supabase) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase.from("rankings").select(RANK_COLS).order("total", { ascending: false }).limit(50);
-      if (error) throw error;
-      setPub((data ?? []) as PublicRank[]); setLoadError("");
+      const rows: PublicRank[] = [];
+      for (let offset = 0; ; offset += 500) {
+        const { data, error } = await supabase.from("rankings").select(RANK_COLS)
+          .order("total", { ascending: false }).order("id").range(offset, offset + 499);
+        if (error) throw error;
+        rows.push(...(data ?? []) as PublicRank[]);
+        if (!data || data.length < 500) break;
+      }
+      setPub(rows); setLoadError("");
     } catch { setLoadError("랭킹을 불러오지 못했습니다. 새로고침으로 다시 시도하세요."); }
     finally { setLoading(false); }
   };
@@ -92,12 +100,35 @@ export function SharePanel({ decks, tables, activeId, links, setLinks, code, onR
   const withPubDeck = (r: PublicRank, fn: (d: Deck) => void) => {
     const d = pubDeck(r); if (d) fn(d); else alert("이 덱은 미리보기를 지원하지 않습니다.");
   };
+  const ranked = pub.map((row, index) => ({ row, rank: index + 1 }));
+  const myRank = ranked.find(({ row }) => links[row.id]?.deckId === active.id);
+  const myRankStatus = !isSupabaseOn() ? "미연결" : loading ? "확인 중" : loadError ? "확인 실패" : activeLinked ? "순위 확인 필요" : "미등록";
+  const myRankHint = !isSupabaseOn() ? "온라인 랭킹이 연결되지 않았습니다."
+    : loading ? "공개 랭킹에서 순위를 확인하고 있습니다."
+    : loadError ? "새로고침으로 순위를 다시 확인하세요."
+    : activeLinked ? "연결된 랭킹을 찾지 못했습니다. 현재 덱을 다시 등록해 주세요."
+    : "덱을 등록하거나 비밀번호로 가져오면 내 순위가 표시됩니다.";
+  const visible = (scope === 'top5' ? ranked.slice(0, 5) : ranked)
+    .filter(({ row }) => row.deck_name.replace(/\s/g, '').toLowerCase().includes(query.replace(/\s/g, '').toLowerCase()));
   return <section className="ranking-page" aria-label="덱랭킹">
     <div className="card ranking-board">
       <header className="ranking-header">
-        <div><p className="ranking-eyebrow">PUBLIC RANKING</p><h2>덱 랭킹</h2><p className="muted">랭킹대전 기준 · 총점순 상위 50개</p></div>
+        <div><p className="ranking-eyebrow">PUBLIC RANKING</p><h2>덱 랭킹</h2><p className="muted">랭킹대전 기준 · 총점순 {pub.length}개</p></div>
         <div className="ranking-header-actions"><button onClick={() => setSharing(true)}>링크 공유</button><button className="primary" onClick={onSaveDeck}>{activeLinked ? "현재 덱 갱신" : "현재 덱 등록"}</button></div>
       </header>
+      <section className="ranking-mine" aria-label="내 덱 순위">
+        <div className="ranking-mine-info"><span>내 덱 순위</span><strong>{active.name || "이름 없는 덱"}</strong>
+          <p>{myRank ? `전체 ${pub.length}개 덱 중${loading || loadError ? " · 마지막 조회 기준" : ""}` : myRankHint}</p>
+        </div>
+        <div className="ranking-mine-result">
+          {myRank ? <><strong data-testid="my-rank">{myRank.rank}<small>위</small></strong><span>{Number(myRank.row.total).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}점</span></>
+            : <span className="ranking-mine-status">{myRankStatus}</span>}
+        </div>
+      </section>
+      <div className="ranking-filters"><div className="segmented" role="group" aria-label="랭킹 표시 범위">
+        <button className={scope === 'top5' ? 'selected' : ''} aria-pressed={scope === 'top5'} onClick={() => setScope('top5')}>5등까지 보기</button>
+        <button className={scope === 'all' ? 'selected' : ''} aria-pressed={scope === 'all'} onClick={() => setScope('all')}>전체 랭킹보기</button>
+      </div><input aria-label="덱 이름 검색" placeholder="덱 이름 검색" value={query} onChange={e => { setQuery(e.target.value); if (e.target.value.trim()) setScope('all'); }} /></div>
       <div className="ranking-list-bar"><span>덱 이름을 누르면 상세 메뉴가 열립니다.</span>
         {isSupabaseOn() && <button disabled={loading} onClick={() => void loadPub()}>{loading ? "불러오는 중…" : "새로고침"}</button>}
       </div>
@@ -108,9 +139,9 @@ export function SharePanel({ decks, tables, activeId, links, setLinks, code, onR
         </div> : <table className="ranking-table" aria-label="공개 덱 랭킹">
           <colgroup><col className="ranking-rank-col" /><col /><col className="ranking-score-col" /><col className="ranking-date-col" /></colgroup>
           <thead><tr><th scope="col">순위</th><th scope="col">덱</th><th scope="col">총점</th><th scope="col" className="ranking-date">등록일</th></tr></thead>
-          <tbody>{pub.map((r, i) => <Fragment key={r.id}>
+          <tbody>{visible.map(({ row: r, rank }) => <Fragment key={r.id}>
             <tr className={expanded === r.id ? "ranking-selected" : ""}>
-              <td><span className={`ranking-number ${i < 3 ? "ranking-top" : ""}`}>{i + 1}</span></td>
+              <td><span className={`ranking-number ${rank <= 3 ? "ranking-top" : ""}`}>{rank}</span></td>
               <td><button className="ranking-deck-toggle" aria-label={`${r.deck_name} 덱 메뉴`} aria-expanded={expanded === r.id} aria-controls={`ranking-actions-${r.id}`} onClick={() => setExpanded(expanded === r.id ? null : r.id)}>
                 <span className="ranking-deck-info"><strong>{r.deck_name}</strong><span className="ranking-deck-meta">{r.named}/{pubDeck(r)?.players.length ?? MAX_PLAYERS}명{links[r.id] && <span className="ranking-managed">관리 중</span>}</span></span>
                 <span className="ranking-chevron" aria-hidden="true">{expanded === r.id ? "⌃" : "⌄"}</span>
@@ -126,7 +157,7 @@ export function SharePanel({ decks, tables, activeId, links, setLinks, code, onR
                 {links[r.id] && <button className="ranking-delete" disabled={deleting === r.id} onClick={() => void deletePub(r.id)}>{deleting === r.id ? "삭제 중…" : "랭킹에서 삭제"}</button>}
               </div>
             </td></tr>}
-          </Fragment>)}</tbody>
+          </Fragment>)}{!visible.length && <tr><td colSpan={4} className="ranking-empty">검색 결과가 없습니다.</td></tr>}</tbody>
         </table>}
       </>}
       <p className="ranking-footnote">같은 이름·같은 비밀번호로 저장하면 기존 랭킹이 갱신됩니다.</p>

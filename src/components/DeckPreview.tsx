@@ -1,31 +1,18 @@
 import { cardDisplayName } from "../lib/cardNames";
 import { useMemo, useState } from "react";
-import type { Chem, PlayerResult, SkillTables } from "../lib/engine";
-import { allThresholds, deckPlayerResults, flagDefaults, fmtScore, referencedFlags, skillScore } from "../lib/engine";
+import type { PlayerResult, SkillTables } from "../lib/engine";
+import { deckPlayerResults, fmtScore, skillScore } from "../lib/engine";
 import { LineupView } from "./LineupView";
 import type { Deck } from "../lib/deck";
-import { DEFAULT_CHEM, YEAR_ANCHOR } from "../lib/deck";
+import { DECK_SCORE_OPTIONS } from "../lib/deckScoreOptions";
+import type { DeckScoreRegion } from "../lib/deckScoreTargets";
 
 // 엑셀 덱코표식 읽기 전용 표: 임계값 + 좌/우 O
 function ScoreTable({ region, title, flags, yearInputs }: {
-  region: string; title: string;
+  region: DeckScoreRegion; title: string;
   flags: Record<string, boolean>; yearInputs: Record<number, number | "">;
 }) {
-  const groups = useMemo(() => {
-    const m = new Map<number, { row: number; threshold: number | null; sides: string[] }>();
-    for (const f of referencedFlags()) {
-      if (f.region !== region) continue;
-      const g = m.get(f.row) ?? { row: f.row, threshold: f.threshold, sides: [] };
-      if (!g.sides.includes(f.side)) g.sides.push(f.side);
-      if (g.threshold === null) g.threshold = f.threshold;
-      m.set(f.row, g);
-    }
-    // 규칙 미참조행(팀 330/345, 스펙 연도행)도 엑셀처럼 표시
-    for (const { row, threshold } of allThresholds(region as "team" | "spec")) {
-      if (!m.has(row)) m.set(row, { row, threshold, sides: ["L", "R"] });
-    }
-    return [...m.values()].sort((a, b) => (a.threshold ?? 9999) - (b.threshold ?? 9999));
-  }, [region]);
+  const groups = DECK_SCORE_OPTIONS[region];
   return (
     <div className="card">
       <h3>{title}</h3>
@@ -33,7 +20,7 @@ function ScoreTable({ region, title, flags, yearInputs }: {
         <thead><tr><th></th><th>좌</th><th>우</th><th>연도</th></tr></thead>
         <tbody>
           {groups.map((g) => {
-            const yr = g.threshold !== null ? YEAR_ANCHOR[g.threshold] : undefined;
+            const yr = g.yearRow;
             return (
               <tr key={g.row}>
                 <td><b>{g.threshold}</b></td>
@@ -109,14 +96,10 @@ export function DeckPreviewModal({ deck, tables, close }: {
   deck: Deck; tables: SkillTables; close: () => void;
 }) {
   const [sel, setSel] = useState<number | null>(null);
-  const flags = useMemo(() => ({ ...flagDefaults(), ...deck.flags }), [deck]);
-  const chem = useMemo(
-    () => Object.fromEntries(Object.entries(DEFAULT_CHEM).map(([k, v]) => [k, deck.chem[k as keyof Chem] || v])) as Chem,
-    [deck],
-  );
+  const { flags, chem } = deck;
   const results = useMemo(
-    () => deckPlayerResults({ ...deck, flags, chem }, tables),
-    [deck, flags, chem, tables],
+    () => deckPlayerResults(deck, tables),
+    [deck, tables],
   );
 
   const selPlayer = sel === null ? null : deck.players.find((p) => p.excelRow === sel) ?? null;

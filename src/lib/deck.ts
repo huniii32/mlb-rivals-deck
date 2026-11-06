@@ -43,8 +43,7 @@ export const DEFAULT_CHEM: Chem = {
   commander: "S", catcher: "S", pitchChem: "S", batChem: "S", wbcP: "S", wbcB: "S1",
 };
 
-// 연도 입력행 -> 스덱코 임계값 행 옆에 표시 (규칙: 33→615, 35→645, 37→680)
-export const YEAR_ANCHOR: Record<number, number> = { 615: 33, 645: 35, 680: 37 };
+export { YEAR_ANCHOR } from "./deckScoreTargets";
 
 // skillB는 엔진이 무시하는 레거시 필드지만 호출부별 기존 값(앱 false / 엑셀 true)을 그대로 유지
 export function blankPlayer(

@@ -84,5 +84,9 @@
   {"key":"33-team-L","row":11,"card":"라이브/시즌","order":1,"enh":0,"delta":[1,0,0]},
   {"key":"33-team-R","row":22,"card":"라이브/시즌","order":1,"enh":0,"delta":[0,1,0]},
   {"key":"34-team-L","row":22,"card":"라이브/시즌","order":1,"enh":0,"delta":[1,1,0]},
-  {"key":"34-team-R","row":27,"card":"라이브/시즌","order":1,"enh":0,"delta":[2,2,0]}
+  {"key":"34-team-R","row":27,"card":"라이브/시즌","order":1,"enh":0,"delta":[2,2,0]},
+  {"key":"33-spec-L","row":11,"card":"시그니처","order":9,"enh":0,"delta":[0,1,1]},
+  {"key":"33-spec-R","row":22,"card":"시그니처","order":"","enh":0,"delta":[1,0,0]},
+  {"key":"35-spec-L","row":11,"card":"시그니처","order":9,"enh":0,"delta":[1,0,0]},
+  {"key":"35-spec-R","row":22,"card":"시그니처","order":"","enh":0,"delta":[0,1,0]}
 ]

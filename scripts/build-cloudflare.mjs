@@ -18,7 +18,10 @@ if(!publicKey){
 if(!publicKey)throw new Error('브라우저용 publishable 또는 anon 키만 사용하세요. service_role/secret 키는 사용할 수 없습니다.');
 
 const result=spawnSync(process.platform==='win32'?'npm.cmd':'npm',['run','build'],{
-  cwd:root,stdio:'inherit',env:{...env,VITE_BASE:'/'},
+  cwd:root,stdio:'inherit',env:{...env,VITE_BASE:'/',
+    // Cloudflare supplies the Git branch for each deployment; local release builds default to production.
+    VITE_DEPLOYMENT_CONTEXT: env.CF_PAGES_BRANCH && env.CF_PAGES_BRANCH !== 'main' ? 'preview' : 'production',
+  },
 });
 if(result.error)throw result.error;
 if(result.status!==0)process.exit(result.status??1);

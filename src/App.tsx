@@ -8,14 +8,12 @@ import type { BullpenRole } from "./lib/bullpen";
 import { BullpenControls } from "./components/BullpenControls";
 import { readStoredDecks } from "./lib/deckStorage";
 import { applyDeckUpdate } from "./lib/playerUpdates";
+import { selectDeckScoreSide, type DeckScoreRegion, type DeckScoreSide } from "./lib/deckScoreTargets";
 import { DeckSaveModal } from "./components/DeckSaveModal";
 import { passwordError, passwordResult, validDeckName, type PasswordCredential } from "./lib/deckPassword";
 import { getClientId, supabase } from "./lib/supabase";
-import { LineupTable } from "./components/LineupTable";
-import { LineupView } from "./components/LineupView";
-import { PlayerEditor } from "./components/PlayerEditor";
 import { ChemPanel, DeckScorePanel } from "./components/DeckPanel";
-import { SkillCompare, SkillPanel } from "./components/SkillPanel";
+import { SkillPanel } from "./components/SkillPanel";
 import { TableEditor } from "./components/TableEditor";
 import { NewsTab } from "./components/NewsTab";
 import { SharePanel } from "./components/SharePanel";
@@ -28,7 +26,13 @@ import { DeckPreviewModal } from "./components/DeckPreview";
 import { parseExcelDeck } from "./lib/excelImport";
 import { deckSig, rankArgs, useRankSync } from "./lib/rankSync";
 import { buildBundle, parseDeckFile, withRank } from "./lib/deckFile";
+import { RenewalShell, type Page } from "./components/renewal/Shell";
+import { RenewalLineup, type Setting } from "./components/renewal/Lineup";
+import { RenewalPlayerEditor } from "./components/renewal/PlayerEditor";
+import { RenewalDialog } from "./components/renewal/Dialog";
+import { SkillLab } from "./components/renewal/SkillLab";
 import "./styles.css";
+import "./components/renewal/renewal.css";
 
 const Simulator = lazy(() => import("./components/Simulator"));
 
@@ -106,9 +110,12 @@ export default function App() {
   const [activeId, setActiveId] = useState(boot.activeId);
   const [tables, setTables] = useState<SkillTables>(loadTables);
   const [selected, setSelected] = useState<number | null>(null);
-  const [lineupMode, setLineupMode] = useState<"illustration" | "table">("illustration");
+  const [setting, setSetting] = useState<Setting | null>(null);
   const [simulatorVisit, setSimulatorVisit] = useState(0);
-  const [tab, setTab] = useState<"lineup" | "skills" | "simulator" | "ranking" | "news">(() => window.location.hash === "#simulator" ? "simulator" : /#d=([A-Za-z0-9\-_]+)/.test(window.location.hash) ? "ranking" : "lineup");
+  const [tab, setTab] = useState<Page>(() => {
+    const hash = window.location.hash.slice(1);
+    return ["lineup", "skills", "simulator", "ranking", "news"].includes(hash) ? hash as Page : hash.startsWith("d=") ? "ranking" : "lineup";
+  });
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "dark");
   const [modal, setModal] = useState<"inquiry" | "patch" | "guide" | null>(null);
   const [preview, setPreview] = useState<Deck | null>(null);
@@ -147,6 +154,7 @@ export default function App() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setSelected(null);
+        setSetting(null);
         setModal(null);
         setPreview(null);
         setSaveOpen(false);
@@ -161,20 +169,8 @@ export default function App() {
   const patchDeck = (patch: Partial<Deck>) =>
     setDecks((prev) => prev.map((d) => (d.id === deck.id ? { ...applyDeckUpdate(d, patch, tables), updatedAt: Date.now() } : d)));
 
-  // 행별 좌/우 택1: 고른 쪽만 켜고 반대쪽은 끈다. 이미 켜진 쪽을 다시 누르면 둘 다 끈다.
-  const pickRowSide = (region: string, row: number, side: "L" | "R") => {
-    const next = { ...deck.flags };
-    const a = `${row}-${region}-L`;
-    const b = `${row}-${region}-R`;
-    if (next[`${row}-${region}-${side}`]) {
-      next[a] = false;
-      next[b] = false;
-    } else {
-      next[a] = side === "L";
-      next[b] = side === "R";
-    }
-    patchDeck({ flags: next });
-  };
+  const pickRowSide = (region: DeckScoreRegion, row: number, side: DeckScoreSide) =>
+    patchDeck({ flags: selectDeckScoreSide(deck.flags, region, row, side) });
 
   const update = (excelRow: number, p: Partial<PlayerInput>) => {
     const current = players.find((x) => x.excelRow === excelRow);
@@ -341,26 +337,18 @@ export default function App() {
     setSelected(null);
   };
 
-  return (
-    <div className="wrap">
-      <header className="topbar">
-        <div className="brand">
-          <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
-            <circle cx="13" cy="13" r="11" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1.5" />
-            <path d="M6 4.5c3 3.5 3 13.5 0 17M20 4.5c-3 3.5-3 13.5 0 17" fill="none" stroke="#dc2626" strokeWidth="1.6" strokeDasharray="2.5 1.8" />
-          </svg>
-          Rivals Deck <small>9이닝스 라이벌즈 덱관리</small>
-        </div>
-        <div className="topbar-actions">
-          <button className="theme-btn" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} title="테마 전환">
-            {theme === "dark" ? "☀️ 라이트" : "🌙 다크"}
-          </button>
-          <button onClick={() => setModal("inquiry")}>✉️ 문의하기</button>
-          <button onClick={() => setModal("guide")}>🧮 산정방식</button>
-          <button onClick={() => setModal("patch")}>📢 공지사항</button>
-        </div>
-      </header>
+  const navigate = (page: Page) => {
+    setTab(page);
+    setSelected(null);
+    setSetting(null);
+    if (page === "simulator") setSimulatorVisit(v => v + 1);
+    window.history.replaceState(null, "", `#${page}`);
+    window.scrollTo({ top: 0 });
+  };
 
+  return (
+    <RenewalShell page={tab} navigate={navigate} theme={theme}
+      toggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")} openModal={setModal}>
       <SiteMoveNotice count={savedDecks.length} backup={savedDecks.length ? exportAll : undefined} />
 
       {recovery !== null && <div className="card" role="status">
@@ -413,41 +401,23 @@ export default function App() {
       </div>
 
       }
-      <div className="tabs">
-        {(["lineup", "skills", "simulator", "ranking", "news"] as const).map((t) => (
-          <button key={t} className={tab === t ? "on" : ""} onClick={() => { setTab(t); if (t === "simulator") setSimulatorVisit(v => v + 1); }}>
-            {{ lineup: "라인업", skills: "스킬비교", simulator: "시뮬레이터", ranking: "덱랭킹", news: "정보글" }[t]}
-          </button>
-        ))}
-      </div>
-
       {tab === "lineup" && <>
-        <div className="lineup-view-bar"><span>라인업 보기</span><div role="group" aria-label="라인업 보기 방식">
-          <button aria-pressed={lineupMode === "illustration"} onClick={() => setLineupMode("illustration")}>일러스트</button>
-          <button aria-pressed={lineupMode === "table"} onClick={() => setLineupMode("table")}>표 보기</button>
-        </div></div>
-        {lineupMode === "table" ? <>
-          <LineupTable deck={deck} results={results} onSelect={setSelected} />
-          <details className="card sheet-settings"><summary>불펜 배치 · 투수 전술 변경</summary>
-            <BullpenControls players={players} tactics={deck.bullpenTactics} setCount={setBullpenCount}
-              setTactics={(bullpenTactics) => patchDeck({ bullpenTactics })} />
-          </details>
-          <div className="sheet-settings-grid">
-            <details className="card sheet-settings"><summary>팀 버프 · 케미스트리 변경</summary><ChemPanel chem={chem} setChem={chem => patchDeck({ chem })} /></details>
-            <details className="card sheet-settings"><summary>팀덱코 · 스페셜 덱코 변경</summary><DeckScorePanel flags={flags}
-              toggleFlag={k => patchDeck({ flags: { ...flags, [k]: !flags[k] } })} setRowSide={pickRowSide}
-              yearInputs={yearInputs} setYearInput={(r, v) => patchDeck({ yearInputs: { ...yearInputs, [r]: v } })} /></details>
-          </div>
-        </> : <div className="lineup-layout"><div>
-          <LineupView players={players} results={results} onSelect={setSelected}
-            bullpenControls={<BullpenControls players={players} tactics={deck.bullpenTactics} setCount={setBullpenCount}
-              setTactics={(bullpenTactics) => patchDeck({ bullpenTactics })} />} />
-          <ChemPanel chem={chem} setChem={chem => patchDeck({ chem })} />
-        </div><aside><DeckScorePanel flags={flags}
-          toggleFlag={k => patchDeck({ flags: { ...flags, [k]: !flags[k] } })} setRowSide={pickRowSide}
-          yearInputs={yearInputs} setYearInput={(r, v) => patchDeck({ yearInputs: { ...yearInputs, [r]: v } })} /></aside></div>}
-        <details className="card"><summary>선수별 점수와 덱코 상세 보기</summary><ResultPanel players={players} results={results} /></details>
+        <RenewalLineup deck={deck} results={results} onSelect={setSelected} openSettings={setSetting} openGuide={() => setModal("guide")} />
+        <details className="card lineup-details"><summary>선수별 점수와 덱코 상세 보기</summary><ResultPanel players={players} results={results} /></details>
       </>}
+
+      {setting && <RenewalDialog title={setting} close={() => setSetting(null)}>
+        <div className="working-settings">
+          {setting === "덱스코어" ? <DeckScorePanel flags={flags} yearInputs={yearInputs}
+            toggleFlag={k => patchDeck({ flags: { ...flags, [k]: !flags[k] } })} setRowSide={pickRowSide}
+            setYearInput={(r, v) => patchDeck({ yearInputs: { ...yearInputs, [r]: v } })} />
+            : setting === "팀 버프" ? <ChemPanel chem={chem} setChem={chem => patchDeck({ chem })} />
+            : <BullpenControls players={players} tactics={deck.bullpenTactics} setCount={setBullpenCount}
+                setTactics={bullpenTactics => patchDeck({ bullpenTactics })} />}
+          <p className="settings-note">변경 즉시 현재 덱과 선수 점수에 반영됩니다. 빈 슬롯은 선수 이름을 입력하면 전술 인원에 포함됩니다.</p>
+          <button className="primary" onClick={() => setSetting(null)}>설정 완료</button>
+        </div>
+      </RenewalDialog>}
 
       {tab === "simulator" && <Suspense fallback={<div className="card" role="status">공식 확률표를 불러오는 중…</div>}><Simulator key={simulatorVisit} tables={tables} players={players} /></Suspense>}
 
@@ -455,9 +425,11 @@ export default function App() {
 
       {tab === "skills" && (
         <>
-          <SkillCompare tables={tables} />
-          <SkillPanel tables={tables} setTables={setTables} />
-          <TableEditor tables={tables} setTables={setTables} />
+          <SkillLab tables={tables} />
+          <details className="card skill-advanced"><summary>나만의 스킬 점수 설정 · 신규 스킬 추가</summary>
+            <SkillPanel tables={tables} setTables={setTables} />
+            <TableEditor tables={tables} setTables={setTables} />
+          </details>
         </>
       )}
 
@@ -465,8 +437,8 @@ export default function App() {
         <>
           <SharePanel
             decks={decks} tables={tables} activeId={deck.id}
-            links={links} setLinks={setLinks} code={code} onRestoreDeck={(d, id, credential) => { restoreDeck(d, id, credential); setTab("lineup"); }} onSaveDeck={() => setSaveOpen(true)}
-            onImportDeck={(d) => { addDeckData(d, "공유받은 덱"); setTab("lineup"); }}
+            links={links} setLinks={setLinks} code={code} onRestoreDeck={(d, id, credential) => { restoreDeck(d, id, credential); navigate("lineup"); }} onSaveDeck={() => setSaveOpen(true)}
+            onImportDeck={(d) => { addDeckData(d, "공유받은 덱"); navigate("lineup"); }}
             onPreviewDeck={(d) => setPreview(d)}
           />
         </>
@@ -480,22 +452,11 @@ export default function App() {
         needsPassword={!!supabase && !Object.values(links).some((l) => l.deckId === deck.id && l.password)}
         save={saveDeck} close={() => setSaveOpen(false)} />}
 
-      {selPlayer && selRes && (
-        <div className="modal-overlay" onClick={() => setSelected(null)}>
-          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-            <PlayerEditor
-              p={selPlayer}
-              res={selRes}
-              update={(patch) => update(selPlayer.excelRow, patch)}
-              close={() => setSelected(null)}
-              tables={tables}
-              bullpenCounts={bullpenCounts(players)}
-            />
-          </div>
-        </div>
-      )}
-
-      <p className="muted">카드 일러스트: 자체 제작 · 점수는 랭대 공격 기준</p>
-    </div>
+      {selPlayer && selRes && <RenewalDialog title="선수 편집" player close={() => setSelected(null)}>
+        <RenewalPlayerEditor player={selPlayer} result={selRes}
+          update={patch => update(selPlayer.excelRow, patch)} close={() => setSelected(null)}
+          tables={tables} counts={bullpenCounts(players)} />
+      </RenewalDialog>}
+    </RenewalShell>
   );
 }

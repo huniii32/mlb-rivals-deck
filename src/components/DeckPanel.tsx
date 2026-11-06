@@ -1,7 +1,9 @@
 import { useState } from "react";
 import type { Chem } from "../lib/engine";
-import { LOOKUP, allThresholds, referencedFlags } from "../lib/engine";
-import { LINEUP, YEAR_ANCHOR } from "../lib/deck";
+import { LOOKUP } from "../lib/engine";
+import { LINEUP } from "../lib/deck";
+import { decadeTarget, decadeStatus, type DeckScoreRegion, type DeckScoreSide } from "../lib/deckScoreTargets";
+import { DECK_SCORE_OPTIONS } from "../lib/deckScoreOptions";
 
 const CHEM_LABELS: [keyof Chem, string][] = [
   ["commander", "커맨더"],
@@ -47,41 +49,12 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
 }: {
   flags: Record<string, boolean>;
   toggleFlag: (key: string) => void;
-  setRowSide: (region: string, row: number, side: "L" | "R") => void;
+  setRowSide: (region: DeckScoreRegion, row: number, side: DeckScoreSide) => void;
   yearInputs: Record<number, number | "">;
   setYearInput: (row: number, v: number | "") => void;
 }) {
   const [scoreTab, setScoreTab] = useState<"team" | "spec">("team");
-  const all = referencedFlags();
-  // (region, row)별 L/R 묶기. 게임 화면처럼 행마다 좌·우 둘 중 하나만 선택.
-  const rows = new Map<string, { region: string; row: number; threshold: number | null; sides: ("L" | "R")[] }>();
-  for (const f of all) {
-    const k = `${f.region}-${f.row}`;
-    const g = rows.get(k) ?? { region: f.region, row: f.row, threshold: f.threshold, sides: [] };
-    if (!g.sides.includes(f.side as "L" | "R")) g.sides.push(f.side as "L" | "R");
-    if (g.threshold === null) g.threshold = f.threshold;
-    rows.set(k, g);
-  }
-  const list = [...rows.values()]
-    .filter((g) => g.region === scoreTab)
-    .sort((a, b) => (a.threshold ?? 9999) - (b.threshold ?? 9999) || a.row - b.row);
-  // 규칙 미참조 팀덱코행(330/345): 엑셀에도 O표시만 있고 점수에 안 들어감. 표시·토글은 되게 추가.
-  if (scoreTab === "team") {
-    const have = new Set(list.map((g) => g.row));
-    for (const { row, threshold } of allThresholds("team")) {
-      if (!have.has(row)) list.push({ region: "team", row, threshold, sides: ["L", "R"] });
-    }
-    list.sort((a, b) => (a.threshold ?? 9999) - (b.threshold ?? 9999) || a.row - b.row);
-  }
-  // 연도 입력행(615/645/680): 스코어 규칙에서 참조하지 않아 목록에 없으므로 표시 전용 행으로 추가
-  if (scoreTab === "spec") {
-    const have = new Set(list.map((g) => g.threshold));
-    for (const [th, yrow] of Object.entries(YEAR_ANCHOR)) {
-      const t = Number(th);
-      if (!have.has(t)) list.push({ region: "spec", row: yrow, threshold: t, sides: [] });
-    }
-    list.sort((a, b) => (a.threshold ?? 9999) - (b.threshold ?? 9999) || a.row - b.row);
-  }
+  const list = DECK_SCORE_OPTIONS[scoreTab];
 
   return (
     <div>
@@ -97,7 +70,8 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
         </div>
         <ul className="tight-list muted">
           <li>행마다 좌·우 중 하나만 선택 (다시 누르면 해제)</li>
-          <li>연도행: 선수 연도가 입력 연도 기준 0~9년 이내면 +1</li>
+          <li>615·645: 타자 또는 투수와 기준 연도를 함께 선택해야 적용됩니다.</li>
+          <li>연도 조건: 입력 연도부터 9년 뒤까지 (2020 → 2020~2029)</li>
           <li>팀 덱 스코어: 선택 효과 적용 (일부 카드·타순 조건 필요)</li>
           <li>포지션별 값 차이는 타순·카드·강화Lv·연도 조건 때문</li>
         </ul>
@@ -105,9 +79,10 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
           {list.map((g) => {
             const onL = !!flags[`${g.row}-${g.region}-L`];
             const onR = !!flags[`${g.row}-${g.region}-R`];
-            const yearRow = g.threshold !== null ? YEAR_ANCHOR[g.threshold] : undefined;
+            const { yearRow, targetRow } = g;
+            const target = targetRow === undefined ? null : decadeTarget(flags, targetRow);
             return (
-              <div key={`${g.region}-${g.row}`} className="deckscore-row">
+              <div key={`${g.region}-${g.row}`} className={`deckscore-row${targetRow !== undefined ? " deckscore-target-row" : ""}`}>
                 <span className="dia dia-th" title={rowLabel(g.row)}>
                   <span>{g.threshold ?? rowLabel(g.row)}</span>
                 </span>
@@ -127,7 +102,7 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
                             if (g.sides.length < 2) toggleFlag(key);
                             else setRowSide(g.region, g.row, s);
                           }}>
-                          <span>{g.sides.length < 2 ? "선택" : s === "L" ? "좌" : "우"}</span>
+                          <span>{targetRow !== undefined ? s === "L" ? "타자" : "투수" : g.sides.length < 2 ? "선택" : s === "L" ? "좌" : "우"}</span>
                           {on && <b className="dia-check">✓</b>}
                         </button>
                       );
@@ -144,6 +119,11 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
                       onChange={(e) => setYearInput(yearRow, e.target.value === "" ? "" : Number(e.target.value))}
                     />
                   </label>
+                )}
+                {targetRow !== undefined && (
+                  <p className="deckscore-target-status" role="status">
+                    {decadeStatus(g.threshold!, target, yearInputs[targetRow])}
+                  </p>
                 )}
                 {g.region === "team" && (g.threshold === 330 || g.threshold === 345) && <span className="muted deckscore-no-points">평가 능력치 가산 없음</span>}
               </div>
