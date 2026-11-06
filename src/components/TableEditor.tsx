@@ -1,3 +1,4 @@
+import { cardDisplayName } from "../lib/cardNames";
 import { useState } from "react";
 import type { SkillTables, TableKind } from "../lib/engine";
 import { TABLE_LABEL, TABLE_LEVELS, getTable } from "../lib/engine";
@@ -14,7 +15,7 @@ export function TableEditor({
   const [q, setQ] = useState("");
   const [sel, setSel] = useState("");
   const merged = getTable(kind, tables);
-  const keys = Object.keys(merged).sort().filter((k) => !q || k.includes(q));
+  const keys = Object.keys(merged).sort().filter((k) => !q || k.includes(q) || cardDisplayName(k).replace(/\s/g, "").includes(q.replace(/\s/g, "")));
   const levels = TABLE_LEVELS[kind];
   const from = kind === "transcend" ? 0 : 1; // 레벨 표기 시작값
   const cur: number[] = sel
@@ -51,14 +52,14 @@ export function TableEditor({
       <div className="row" style={{ marginTop: 8 }}>
         <select value={sel} onChange={(e) => setSel(e.target.value)} style={{ flex: 1 }}>
           <option value="">키 선택 ({keys.length})</option>
-          {keys.map((k) => <option key={k} value={k}>{k}{tables.tables?.[kind]?.[k] ? " (수정됨)" : ""}</option>)}
+          {keys.map((k) => <option key={k} value={k}>{cardDisplayName(k)}{tables.tables?.[kind]?.[k] ? " (수정됨)" : ""}</option>)}
         </select>
         {sel && edited && <button onClick={resetKey}>원복</button>}
       </div>
       {sel && (
         <div style={{ marginTop: 8 }}>
           <div className="muted" style={{ marginBottom: 4 }}>
-            {sel} — 레벨별 보너스 ({`${from}~${from + levels - 1}`})
+            {cardDisplayName(sel)} — 레벨별 보너스 ({`${from}~${from + levels - 1}`})
           </div>
           <div className="row">
             {cur.slice(0, levels).map((v, i) => (

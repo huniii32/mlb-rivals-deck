@@ -1,3 +1,4 @@
+import { cardDisplayName } from "../lib/cardNames";
 import { useMemo, useState } from "react";
 import type { Chem, PlayerResult, SkillTables } from "../lib/engine";
 import { allThresholds, deckPlayerResults, flagDefaults, fmtScore, referencedFlags, skillScore } from "../lib/engine";
@@ -55,7 +56,7 @@ export function PlayerSummary({ p, res, tables }: {
   const num = (v: number | "") => (v === "" ? "-" : v);
   return (
     <div className="card">
-      <h3>{p.name} <span className="muted">{p.pos} · {p.card} {p.year && `· ${p.year}`}</span></h3>
+      <h3>{p.name} <span className="muted">{p.pos} · {cardDisplayName(p.card)} {p.year && `· ${p.year}`}</span></h3>
       <table className="ed-stats">
         <thead><tr><th>스탯</th><th>기본</th><th>훈련</th><th>특훈</th><th>포지션</th><th>시너지</th><th>라커룸</th><th>초월</th><th>강화</th><th>포훈</th><th>덱코</th><th>전술</th><th>자동</th><th>최종</th></tr></thead>
         <tbody>

@@ -1,3 +1,4 @@
+import { cardDisplayName } from "../lib/cardNames";
 import type { Kind, PlayerInput, PlayerResult, SkillTables } from "../lib/engine";
 import { BATTER_STATS, LOOKUP, PITCHER_STATS, isSigBlackCard } from "../lib/engine";
 import { PlayerArt, gradeColor } from "./CardArt";
@@ -45,7 +46,7 @@ export function PlayerEditor({
         </div>
         <div className="ed-title">
           <div className="ed-name">{p.name || "신규 선수"}</div>
-          <div className="muted">{p.pos} · {kind === "batter" ? "타자" : "투수"} {p.card && `· ${p.card}`}</div>
+          <div className="muted">{p.pos} · {kind === "batter" ? "타자" : "투수"} {p.card && `· ${cardDisplayName(p.card)}`}</div>
         </div>
         <div className="ed-total">
           <span className="muted">최종점</span>
@@ -65,7 +66,7 @@ export function PlayerEditor({
         <label>카드
           <select aria-label="카드" value={p.card} onChange={(e) => update({ card: e.target.value })}>
             <option value="">— 선택 —</option>
-            {LOOKUP.cards.map((c) => <option key={c} value={c}>{c}</option>)}
+            {LOOKUP.cards.map((c) => <option key={c} value={c}>{cardDisplayName(c)}</option>)}
           </select>
         </label>
         <label>선수명<input value={p.name} onChange={(e) => update({ name: e.target.value })} /></label>
@@ -87,8 +88,8 @@ export function PlayerEditor({
       <table className="ed-stats">
         <thead>
           <tr><th>스탯</th><th>기본</th><th>훈련</th><th>특훈(리셋포함)</th><th title="포훈Lv로 자동 계산되는 포훈표 수치와 별개. 여기엔 게임 화면의 포지션훈련 '보너스' 수치만 입력(전체 포훈 수치 아님)">포지션훈련</th><th>시너지</th><th>라커룸</th>
-            {isBlack && <th title="시그니처 블랙 전용 — 조견표가 없어 게임 화면 수치를 직접 입력">블랙포지션</th>}
-            {isBlack && <th title="시그니처 블랙 전용 — 조견표가 없어 게임 화면 수치를 직접 입력">블랙부스트</th>}
+            {isBlack && <th title="블랙 시그니처 전용 — 조견표가 없어 게임 화면 수치를 직접 입력">블랙포지션</th>}
+            {isBlack && <th title="블랙 시그니처 전용 — 조견표가 없어 게임 화면 수치를 직접 입력">블랙부스트</th>}
             <th>리더 영향력</th><th>스킬 기본</th><th>초월</th><th>강화</th><th>포훈</th><th>덱코</th><th>전술</th><th>자동합</th><th>{kind === "pitcher" ? "최종(전술 전)" : "최종"}</th></tr>
         </thead>
         <tbody>

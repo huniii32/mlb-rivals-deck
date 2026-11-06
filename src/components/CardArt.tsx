@@ -1,3 +1,4 @@
+import { shortCardName } from "../lib/cardNames";
 import type { CSSProperties } from "react";
 import type { Kind } from "../lib/engine";
 import { gradeTheme, type GradeTheme } from "./card/theme";
@@ -20,19 +21,6 @@ const GRADE_COLOR: [string, string][] = [
 export function gradeColor(card: string): string {
   for (const [k, c] of GRADE_COLOR) if (card.includes(k)) return c;
   return "#64748b";
-}
-
-function shortCard(card: string): string {
-  return card
-    .replace("WBC 시그니처 블랙", "WBC시블")
-    .replace("FA 시그니처 블랙", "FA시블")
-    .replace("시그니처 블랙", "시블")
-    .replace("FA 시그니처", "FA시그")
-    .replace("WBC 시그니처", "WBC시그")
-    .replace("슈프림 모먼트", "슈모")
-    .replace("명예의 전당", "HOF")
-    .replace("FA 프라임", "FA프")
-    .replace("WBC 프라임", "WBC프");
 }
 
 // ── 선수 일러스트 ─────────────────────────────────────────────
@@ -117,7 +105,7 @@ export function GameCard({
           : <PlayerArt kind={kind} pos={pos} team={team} card={card} />}
       </span>
       <span className="gc-name">{name}</span>
-      <span className="dc-grade">{shortCard(card)}</span>
+      <span className="dc-grade">{shortCardName(card)}</span>
     </button>
   );
 }

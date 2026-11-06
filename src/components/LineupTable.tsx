@@ -1,3 +1,4 @@
+import { cardDisplayName, shortCardName } from "../lib/cardNames";
 import type { Deck } from "../lib/deck";
 import { YEAR_ANCHOR } from "../lib/deck";
 import { allThresholds, deckTotals, fmtScore, type PlayerResult } from "../lib/engine";
@@ -24,10 +25,10 @@ export function LineupTable({ deck, results, onSelect }: {
       const position = batter ? `${p.order || "—"}번 ${p.pos}` : role ? `${({ winning: "승리", chasing: "추격", long: "롱릴", closer: "마무리" })[role]}${ordinal}` : p.pos;
       const filled = !!p.name.trim();
       const grade = p.card.includes("블랙") ? "black" : p.card.includes("시그니처") ? "sig" : p.card.includes("프라임") ? "prime" : "other";
-      const gradeName = ({ black: "블랙", sig: "시그", prime: "프라", other: p.card })[grade];
+      const gradeName = ({ black: shortCardName(p.card), sig: "시그", prime: "프라", other: p.card })[grade];
       return <tr key={p.excelRow} className={role && ordinal === 1 ? "sheet-role-start" : ""}>
         <td title={role ? ROLE_LABELS[role] : p.pos} className="sheet-pos">{position}</td>
-        <td><button className="sheet-player" title={`${p.name || p.pos} · ${p.card || "카드 미선택"}`} aria-label={`${p.name || p.pos} 선수 편집`} onClick={() => onSelect(p.excelRow)}>
+        <td><button className="sheet-player" title={`${p.name || p.pos} · ${cardDisplayName(p.card) || "카드 미선택"}`} aria-label={`${p.name || p.pos} 선수 편집`} onClick={() => onSelect(p.excelRow)}>
           {filled && p.enhLv !== "" && <span className="sheet-enh">+{p.enhLv}</span>}
           <span className="sheet-name">{filled ? p.name : "+ 등록"}</span>
           {filled && <span className={`sheet-grade ${grade}`}>{gradeName}</span>}
