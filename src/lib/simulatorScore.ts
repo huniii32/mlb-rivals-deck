@@ -62,13 +62,15 @@ export function createScoreEvaluator(settings: SimSettings, tables: SkillTables,
   }
   function board(board: Board): BoardEvaluation {
     const skills = board.map(evaluate);
-    return { skills, total: board.length !== slotCount(settings.card) || skills.some(s => s.score === null) ? null : skills.reduce((sum,s) => sum+s.score!,0) };
+    const changing = locked ? skills.slice(1) : skills;
+    return { skills, total: board.length !== slotCount(settings.card) || changing.some(s => s.score === null) ? null : changing.reduce((sum,s) => sum+s.score!,0) };
   }
   // A permissive upper bound: ignores slot restrictions, but never rejects a reachable score.
-  const held = locked ? evaluate(locked).score : 0;
-  const rest = pool.filter(s => skillId(s) !== locked?.id).map(s => selected.get(skillId(s))?.score).filter((s): s is number => s !== undefined).sort((a,b)=>b-a).slice(0,slotCount(settings.card)-(locked ? 1 : 0));
-  const upperBound = held === null || rest.length < slotCount(settings.card)-(locked ? 1 : 0) ? 0 : held+rest.reduce((a,b)=>a+b,0);
-  return { options, selected, evaluate, board, upperBound: Math.round(upperBound*100)/100, missing: pool.filter(s => !selected.has(skillId(s))) };
+  const scoredSlots = slotCount(settings.card)-(locked ? 1 : 0);
+  const changingPool = pool.filter(s => skillId(s) !== locked?.id);
+  const rest = changingPool.map(s => selected.get(skillId(s))?.score).filter((s): s is number => s !== undefined).sort((a,b)=>b-a).slice(0,scoredSlots);
+  const upperBound = rest.length < scoredSlots ? 0 : rest.reduce((a,b)=>a+b,0);
+  return { options, selected, evaluate, board, scoredSlots, upperBound: Math.round(upperBound*100)/100, missing: changingPool.filter(s => !selected.has(skillId(s))) };
 }
 
 export function meetsScoreGoal(score: number | null, target: number): boolean {

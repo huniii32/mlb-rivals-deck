@@ -4,8 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { availableSkills, browserRandom, CARD_TYPES, createSimulator, canLockFirst, newlyDrawnSkills, hasNewDedicatedSkill, dedicatedTiers, runTrialChunk, TICKETS, goalPossible, LEVELS, matchesGoal, momentSkills, POSITIONS, PROBABILITY_DATA, ruleSummary, skillId, slotCount, TIERS, type Board, type DrawSkill, type Level, type SimSettings, type Tier } from "../lib/skillSimulator";
 
 interface Trial { number: number; board: Board; hit: boolean; score: number | null }
-interface Stats { total: number; hits: number; firstHit: Trial | null; recent: Trial[]; tiers: Partial<Record<Tier, number>>; best: number | null; unscored: number }
-const blankStats = (): Stats => ({ total: 0, hits: 0, firstHit: null, recent: [], tiers: {}, best: null, unscored: 0 });
+interface Stats { total: number; samples: number; hits: number; firstHit: Trial | null; recent: Trial[]; tiers: Partial<Record<Tier, number>>; best: number | null; unscored: number }
+const blankStats = (): Stats => ({ total: 0, samples: 0, hits: 0, firstHit: null, recent: [], tiers: {}, best: null, unscored: 0 });
 const initial: SimSettings = { ticket: "superior", card: "normal", position: "SP", protectS: true, momentSkill: "" };
 const nf = new Intl.NumberFormat("ko-KR");
 const tick = () => new Promise<void>(resolve => setTimeout(resolve, 0));
@@ -53,8 +53,10 @@ export default function SkillSimulator({ tables }: { tables: SkillTables }) {
   }
   function toggleLock() {
     if (busy) return;
-    if (lockedFirst) { setLockedFirst(null); setMessage("첫 번째 스킬 잠금을 해제했습니다. 다음 변경부터 전체 슬롯이 바뀝니다."); }
-    else if (canLockFirst(settings, currentBoard[0])) { setLockedFirst({ ...currentBoard[0] }); setMessage("첫 번째 스킬을 잠갔습니다. 나머지 슬롯만 변경하며 누적 사용량은 유지됩니다."); }
+    if (!lockedFirst && !canLockFirst(settings, currentBoard[0])) return;
+    setLockedFirst(lockedFirst ? null : { ...currentBoard[0] });
+    setStats(previous => ({ ...blankStats(), total: previous.total, tiers: previous.tiers }));
+    setMessage(`${lockedFirst ? "잠금 해제 · 3개 합계" : "첫 줄 잠금 · 2·3번째 합계"}로 점수를 판정합니다. 변경권 사용량은 유지하고 점수·목표 기록은 초기화했습니다.`);
   }
   function target(slot: number, value: string) {
     setTargets(previous => Array.from({ length: count }, (_, i) => i === slot ? value : previous[i] ?? "")); reset();
@@ -82,6 +84,7 @@ export default function SkillSimulator({ tables }: { tables: SkillTables }) {
           if (score === null) next.unscored++;
           else next.best = next.best === null ? score : Math.max(next.best, score);
           next.total++;
+          next.samples++;
           const record = { number: next.total, board, hit, score };
           if (hit) { next.hits++; next.firstHit ??= record; }
           for (const s of newlyDrawnSkills(board, lockedFirst)) next.tiers[s.tier] = (next.tiers[s.tier] ?? 0) + 1;
@@ -117,8 +120,8 @@ export default function SkillSimulator({ tables }: { tables: SkillTables }) {
 
     <div className="sim-stats" aria-label="시뮬레이션 통계">
       <div><span>사용한 변경권</span><strong>{nf.format(stats.total)}<small>장</small></strong></div>
-      <div><span>현재 스킬 점수</span><strong>{evaluation.total === null ? "—" : fmtScore(evaluation.total)}<small>점</small></strong></div>
-      <div><span>최고 점수</span><strong>{stats.best === null ? "—" : fmtScore(stats.best)}<small>점</small></strong></div>
+      <div><span>현재 {scorer.scoredSlots}개 합계{lockedFirst ? " · 잠금 제외" : ""}</span><strong>{evaluation.total === null ? "—" : fmtScore(evaluation.total)}<small>점</small></strong></div>
+      <div><span>최고 {scorer.scoredSlots}개 합계</span><strong>{stats.best === null ? "—" : fmtScore(stats.best)}<small>점</small></strong></div>
       <div><span>목표 달성</span><strong>{hasGoal ? nf.format(stats.hits) : "—"}<small>회</small></strong></div>
     </div>
 
@@ -130,7 +133,7 @@ export default function SkillSimulator({ tables }: { tables: SkillTables }) {
           return <article key={i} className={`sim-skill ${skill ? `tier-${skill.tier}` : ""}`}>
             <div className="sim-skill-top"><span>{i + 1}번째 · {skill ? TIERS[skill.tier] : "대기"}</span><span className="sim-level">{skill?.level ?? "—"}</span></div>
             <strong>{skill?.name ?? "변경 전"}</strong>
-            <div className="sim-skill-footer"><span title={score?.basis}>{score ? score.score === null ? "평가 불가" : `${fmtScore(score.score)}점` : "—"}</span>
+            <div className="sim-skill-footer"><span title={score?.basis}>{score ? score.score === null ? "평가 불가" : `${fmtScore(score.score)}점` : "—"}{i === 0 && lockedFirst ? " · 합계 제외" : ""}</span>
               {i === 0 && <button type="button" aria-label="첫 번째 스킬 잠금" aria-pressed={!!lockedFirst} title={settings.card === "hof" || settings.card === "black" || settings.card === "wbcBlack" ? "이 카드는 잠금 불가" : settings.card === "moment" || settings.card === "supreme" ? "모먼트 전용 스킬 획득 후 잠금 가능" : "첫 번째 스킬과 레벨 유지"} disabled={busy || (!lockedFirst && !canLockFirst(settings, skill))} onClick={toggleLock}>{lockedFirst ? "🔒 해제" : "잠금"}</button>}
             </div>
           </article>;
@@ -139,7 +142,7 @@ export default function SkillSimulator({ tables }: { tables: SkillTables }) {
       <div className="sim-actions">
         <div className="sim-target-row">
           <label>진행 방식 <select aria-label="시뮬레이션 목표 방식" disabled={busy} value={mode} onChange={e => { setMode(e.target.value as typeof mode); reset(); }}><option value="free">자유 변경</option><option value="skills">목표 스킬 조합</option><option value="score">스킬 점수 목표</option></select></label>
-          {mode === "score" && <label>합계 <input aria-label="목표 스킬 점수" type="number" min="0.01" step="0.01" value={scoreTarget} disabled={busy} onChange={e => { setScoreTarget(e.target.value); reset(); }} /> 점 이상</label>}
+          {mode === "score" && <label>변경 스킬 {scorer.scoredSlots}개 합계 <input aria-label="목표 스킬 점수" type="number" min="0.01" step="0.01" value={scoreTarget} disabled={busy} onChange={e => { setScoreTarget(e.target.value); reset(); }} /> 점 이상</label>}
           <button className="sim-reset" disabled={busy || !stats.total} onClick={reset}>기록 초기화</button>
         </div>
         {mode === "skills" && <div className="sim-target-fields">
@@ -165,13 +168,13 @@ export default function SkillSimulator({ tables }: { tables: SkillTables }) {
     </div>
 
     <details className="card sim-score-settings"><summary>점수 기준 · 조건 설정 <small className="muted">랭킹대전 S0 · 조건 미선택 시 최저값</small></summary>
-      <p className="muted">현재 덱관리 점수표와 수정값을 합산하며, 목표는 표시된 소수 둘째 자리 점수로 판정합니다. 잠근 스킬도 점수에 포함됩니다. S 미만·점수 미등록이 포함된 결과는 평가 불가이며 점수 목표에서 제외합니다. S1~S4 성장 보너스는 적용하지 않습니다.</p>
+      <p className="muted">변경되는 스킬의 점수를 합산합니다. 3슬롯 카드는 잠금 없이 3개 합계, 첫 줄 잠금 시 2·3번째 2개 합계로 목표를 판정합니다. 블랙 계열은 잠금 없이 4개 합계입니다. 현재 덱관리 점수표와 수정값을 사용하며, 소수 둘째 자리 점수로 비교합니다. 변경되는 스킬 중 S 미만·점수 미등록이 있으면 평가 불가입니다. 잠근 스킬의 점수·레벨은 합계에 영향을 주지 않습니다. S1~S4 성장 보너스는 적용하지 않습니다.</p>
       <div className="sim-options"><label><input type="checkbox" checked={settings.protectS} disabled={busy || ["moment", "supreme", "wbc", "wbcBlack"].includes(settings.card)} onChange={e => change({ protectS: e.target.checked })} /> S 레벨 보호 상태</label></div>
       {scorer.missing.length > 0 && <p className="muted">점수 미등록: {scorer.missing.map(s=>s.name).join(", ")}</p>}
       <div className="sim-goal-inputs">{candidates.filter(s => (scorer.options.get(skillId(s))?.length ?? 0) > 1).map(s => <label key={skillId(s)}>{s.name}<select aria-label={`${s.name} 점수 조건`} disabled={busy} value={scoreChoices[skillId(s)] ?? ""} onChange={e => { setScoreChoices(previous => ({ ...previous, [skillId(s)]: e.target.value })); reset(); }}><option value="">최저 조건값 · {fmtScore(scorer.options.get(skillId(s))![0].score)}점</option>{scorer.options.get(skillId(s))!.map(o => <option key={o.name} value={o.name}>{o.name.replace(/^\[S0\]\s*/, "")} · {fmtScore(o.score)}점</option>)}</select></label>)}</div>
     </details>
     <details className="card"><summary>실험 기록 · 상세 통계</summary>
-      <p className="muted">첫 목표 달성 {stats.firstHit ? `${nf.format(stats.firstHit.number)}회째` : "—"} · 관측 비율 {stats.total && hasGoal ? `${(stats.hits / stats.total * 100).toFixed(2)}%` : "—"} · 평가 불가 {nf.format(stats.unscored)}회</p>
+      <p className="muted">현재 {scorer.scoredSlots}개 합계 기준 {nf.format(stats.samples)}회 · 첫 목표 달성 {stats.firstHit ? `${nf.format(stats.firstHit.number)}회째` : "—"} · 관측 비율 {stats.samples && hasGoal ? `${(stats.hits / stats.samples * 100).toFixed(2)}%` : "—"} · 평가 불가 {nf.format(stats.unscored)}회</p>
       {stats.firstHit && <><b>첫 목표 달성 조합</b><SkillChips board={stats.firstHit.board} /></>}
       <div className="sim-tier-counts">{Object.entries(stats.tiers).map(([tier,n]) => <span key={tier}>{TIERS[tier as Tier]} {nf.format(n!)}개</span>)}</div>
       {stats.recent.map(trial => <div className="sim-history" key={trial.number}><b>{nf.format(trial.number)}회 {trial.hit && "✓"} · {trial.score === null ? "평가 불가" : `${fmtScore(trial.score)}점`}</b><SkillChips board={trial.board} /></div>)}
