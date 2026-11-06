@@ -715,3 +715,7 @@ button.dia-opt.on { border-color: #facc15; box-shadow: 0 0 14px rgba(250, 204, 2
 .sim-sources { font-size:13px; }.sim-sources li { margin:8px 0; color:var(--muted); }.sim-sources a { overflow-wrap:anywhere; }
 @media(max-width:800px) { .sim-board.four { grid-template-columns:repeat(2,minmax(0,1fr)); }.sim-stats { grid-template-columns:repeat(2,minmax(0,1fr)); }.sim-ticket { display:none; } }
 @media(max-width:520px) { .sim-board { grid-template-columns:1fr; gap:10px; }.sim-board.four { grid-template-columns:1fr; }.sim-skill { min-height:125px; padding:12px 16px; gap:6px; }.sim-skill strong { font-size:20px; }.sim-intro h2 { font-size:26px; }.sim-stats > div { padding:12px; }.sim-stats strong { font-size:23px; }.sim-settings,.sim-goal-inputs { grid-template-columns:1fr; }.sim-bulk { align-items:stretch; }.sim-history { flex-direction:column; gap:6px; } }
+.sim-lock-control { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+.sim-lock-control button { font-size:12px; padding:6px 10px; }
+.sim-lock-control button[aria-pressed="true"] { border-color:var(--tier-color); }
+.sim-lock-control small { font-size:11px; }

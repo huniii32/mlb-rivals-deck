@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { availableSkills, CARD_TYPES, createSimulator, dedicatedTiers, runTrialChunk, slotRules, TICKETS, goalPossible, LEVELS, matchesGoal, momentSkills, POSITIONS, PROBABILITY_DATA, skillId, slotCount, type Board, type SimSettings, type Ticket, type Tier } from "../src/lib/skillSimulator";
+import { availableSkills, CARD_TYPES, createSimulator, canLockFirst, hasNewDedicatedSkill, newlyDrawnSkills, dedicatedTiers, runTrialChunk, slotRules, TICKETS, goalPossible, LEVELS, matchesGoal, momentSkills, POSITIONS, PROBABILITY_DATA, skillId, slotCount, type Board, type DrawSkill, type SimSettings, type Ticket, type Tier } from "../src/lib/skillSimulator";
 let assertions = 0;
 function check(value: unknown, message: string) { assertions++; assert.ok(value, message); }
 function rng(seed: number) { return () => { seed += 0x6D2B79F5; let t = seed; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -117,4 +117,47 @@ check(dedicatedTiers({...base,card:'wbcBlack',ticket:'advanced'}).includes('Blac
 let goalDraws=0;
 const goalResult=runTrialChunk(()=>{goalDraws++;return [{...board[0],id:goalDraws===5?'target':'other',tier:'Moment'}];},10,()=>{},b=>matchesGoal(b,['target'],'S'));
 check(goalResult.completed===5 && goalResult.stopped,'goal mode continues through other dedicated skills');
-console.log(`Skill simulator: ${assertions} checks passed (three tickets, all card/position pools, official probabilities, exact stop counts).`);
+// First-slot locks preserve both name and level, without sampling the held slot.
+const heldGold:DrawSkill={...board[0],level:'A'};
+check(canLockFirst(base,heldGold),'normal first slot can lock');
+let lockCalls=0;
+const normalLocked=createSimulator(base,()=>{lockCalls++;return .99;},heldGold)();
+assert.deepEqual(normalLocked[0],heldGold);
+check(lockCalls===4,'only two unlocked slots sampled (tier/name), held A does not become S');
+check(new Set(normalLocked.map(s=>s.name)).size===3,'held name excluded from all rerolled slots');
+check(!goalPossible(base,[heldGold.id],heldGold,'S'),'held A cannot satisfy S goal or reappear as S');
+check(goalPossible(base,[heldGold.id],heldGold,'A'),'held A satisfies A goal');
+const normalAfterLock=createSimulator(base,rng(183),heldGold);let afterGold=0;
+for(let i=0;i<10000;i++)if(normalAfterLock()[1].tier==='Gold')afterGold++;
+check(Math.abs(afterGold/10000-.25)<.02,'second slot stays 25% Gold, not first-slot 100% guarantee');
+for(const card of ['hof','black','wbcBlack'] as const){
+  const settings={...base,card};const first=createSimulator(settings,rng(33))()[0];
+  check(!canLockFirst(settings,first),`${card} locking disabled`);
+  assert.throws(()=>createSimulator(settings,rng(1),first),/잠글 수 없는/);
+}
+for(const card of ['moment','supreme'] as const){
+  const settings={...base,card,momentSkill:momentSkills('SP')[0].name};
+  const special=createSimulator(settings,()=>.999)()[0];
+  check(canLockFirst(settings,special),'Moment tier enables lock');
+  check(!canLockFirst(settings,createSimulator(settings,()=>0)()[0]),'Gold does not unlock Moment lock');
+  for(const ticket of Object.keys(TICKETS) as Ticket[]){
+    const changed={...settings,ticket};const draw=createSimulator(changed,rng(12),special);
+    let draws=0;
+    const result=runTrialChunk(draw,100,b=>{draws++;assert.deepEqual(b[0],special);check(newlyDrawnSkills(b,special).length===2,'two slots count toward tier statistics');},b=>hasNewDedicatedSkill(changed,b,special));
+    check(!result.stopped && draws===100,'held Moment never triggers fresh dedicated stop on any ticket');
+    check(goalPossible(changed,[special.id],special,'S'),'held Moment can remain in target even with basic ticket');
+    check(availableSkills(changed,special).filter(s=>s.tier==='Moment').length===1,'only held Moment available to goals');
+  }
+  const other=momentSkills('SP').find(s=>s.name!==special.name)!;
+  check(!goalPossible(settings,[skillId(other)],special),'cannot target another Moment in remaining slots');
+}
+const wbcSettings={...base,card:'wbc' as const};const wbcHeld=createSimulator(wbcSettings,()=>.999)()[0];
+check(canLockFirst(wbcSettings,wbcHeld),'WBC first skill can lock');
+const noNewSpecial=createSimulator(wbcSettings,()=>0,wbcHeld)();
+check(!hasNewDedicatedSkill(wbcSettings,noNewSpecial,wbcHeld),'held WBC alone does not stop');
+check(hasNewDedicatedSkill(wbcSettings,createSimulator(wbcSettings,()=>.999,wbcHeld)(),wbcHeld),'new WBC in remaining slots does stop');
+const wbcBasicLocked=createSimulator({...wbcSettings,ticket:'basic'},rng(4),wbcHeld)();
+assert.deepEqual(wbcBasicLocked[0],wbcHeld);
+check(wbcBasicLocked.slice(1).every(s=>s.tier==='Gold'),'basic ticket preserves held WBC while rolling Gold');
+check(!canLockFirst(base,{...heldGold,name:'unknown',id:'Gold:unknown'}),'invalid held skill rejected');
+console.log(`Skill simulator: ${assertions} checks passed (three tickets, all card/position pools, official probabilities, exact stop counts, first-slot locks).`);

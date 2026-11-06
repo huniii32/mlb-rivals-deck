@@ -80,32 +80,51 @@ function candidates(settings: SimSettings, rule: Rule, tier: Tier) {
 export function momentSkills(position: SimPosition) {
   return PROBABILITY_DATA.tables.supreme[position].filter(skill => skill.tier === "Moment");
 }
-export function availableSkills(settings: SimSettings): RateSkill[] {
+function blackSlots(settings: SimSettings): number[] {
+  if ((settings.ticket ?? "superior") !== "superior" || slotCount(settings.card) !== 4) return [0];
+  return [0, 1, 2, 3];
+}
+export function canLockFirst(settings: SimSettings, skill: DrawSkill | undefined): boolean {
+  if (!skill || ["hof", "black", "wbcBlack"].includes(settings.card) || !LEVELS.includes(skill.level) || skill.id !== skillId(skill)) return false;
+  if ((settings.card === "moment" || settings.card === "supreme") && skill.tier !== "Moment") return false;
+  // A skill acquired with another ticket can stay locked when the ticket changes.
+  return (Object.keys(TICKETS) as Ticket[]).some(ticket => {
+    const previous = { ...settings, ticket };
+    return blackSlots(previous).some(slot => {
+      const rule = slotRules(previous, slot)[0];
+      return !!rule.tiers[skill.tier] && candidates(previous, rule, skill.tier).some(s => skillId(s) === skill.id);
+    });
+  });
+}
+export function availableSkills(settings: SimSettings, lockedFirst: DrawSkill | null = null): RateSkill[] {
   const result = new Map<string, RateSkill>();
-  // Enumerate every possible black slot so that all candidate tiers are represented.
-  for (let blackSlot = 0; blackSlot < slotCount(settings.card); blackSlot++) {
-    for (const rule of slotRules(settings, blackSlot)) for (const tier of Object.keys(rule.tiers) as Tier[]) {
-      for (const skill of candidates(settings, rule, tier)) result.set(skillId(skill), skill);
+  for (const blackSlot of blackSlots(settings)) {
+    for (const rule of slotRules(settings, blackSlot).slice(lockedFirst ? 1 : 0)) for (const tier of Object.keys(rule.tiers) as Tier[]) {
+      for (const skill of candidates(settings, rule, tier)) if (skill.name !== lockedFirst?.name) result.set(skillId(skill), skill);
     }
   }
+  if (lockedFirst) result.set(lockedFirst.id, { ...lockedFirst, rates: LEVELS.map(l => l === lockedFirst.level ? 100 : 0) });
   return [...result.values()].sort((a, b) => a.name.localeCompare(b.name, "ko"));
 }
-export function createSimulator(settings: SimSettings, random: Random = browserRandom()): () => Board {
+export function createSimulator(settings: SimSettings, random: Random = browserRandom(), lockedFirst: DrawSkill | null = null): () => Board {
   if (!(settings.card in CARD_TYPES) || !(settings.position in POSITIONS)) throw new Error("카드 종류와 포지션을 확인하세요.");
   const ticket = settings.ticket ?? "superior";
   if (!(ticket in TICKETS)) throw new Error("변경권 종류를 확인하세요.");
+  if (lockedFirst && !canLockFirst(settings, lockedFirst)) throw new Error("이 카드에서 잠글 수 없는 첫 번째 스킬입니다.");
+  const locked = lockedFirst ? { ...lockedFirst } : null;
   if (settings.card === "moment" && ticket === "superior" && !momentSkills(settings.position).some(s => s.name === settings.momentSkill)) throw new Error("카드의 전용 모먼트 스킬을 선택하세요.");
   const prepare = (rule: Rule) => ({
     tiers: Object.keys(rule.tiers) as Tier[], weights: Object.values(rule.tiers) as number[],
     pools: Object.fromEntries((Object.keys(rule.tiers) as Tier[]).map(tier => [tier, candidates(settings, rule, tier)])) as Partial<Record<Tier, RateSkill[]>>,
   });
-  const variants = Array.from({ length: slotCount(settings.card) }, (_, blackSlot) => slotRules(settings, blackSlot).map(prepare));
+  const variants = blackSlots(settings).map(blackSlot => slotRules(settings, blackSlot).map(prepare));
   const afterBlack = prepare(settings.card === "wbcBlack" ? wbcAdvanced : basic);
   return () => {
-    const rules = variants[ticket === "superior" && slotCount(settings.card) === 4 ? Math.floor(unit(random) * 4) : 0];
-    const used = new Set<string>();
+    const rules = variants[variants.length > 1 ? Math.floor(unit(random) * variants.length) : 0];
+    const used = new Set<string>(locked ? [locked.name] : []);
     let blackDrawn = false;
-    return rules.map(initialRule => {
+    return rules.map((initialRule, slot) => {
+      if (slot === 0 && locked) return { ...locked };
       // Advanced tickets allow at most one Black. Subsequent slots use the
       // official normal advanced distribution, not a renormalized 95% pool.
       const rule = ticket === "advanced" && blackDrawn ? afterBlack : initialRule;
@@ -125,25 +144,33 @@ export function matchesGoal(board: Board, ids: string[], minimum: Level) {
   return ids.length > 0 && ids.every(id => board.some(s => s.id === id && LEVELS.indexOf(s.level) >= LEVELS.indexOf(minimum)));
 }
 /** Reject impossible combinations (e.g. two Black skills, or three Bronze skills on a normal card). */
-export function goalPossible(settings: SimSettings, ids: string[]) {
+export function goalPossible(settings: SimSettings, ids: string[], lockedFirst: DrawSkill | null = null, minimum: Level = "D") {
   if (!ids.length || ids.length > slotCount(settings.card) || new Set(ids).size !== ids.length) return false;
-  const skills = availableSkills(settings);
-  const targets = ids.map(id => skills.find(s => skillId(s) === id));
+  if (lockedFirst && ids.includes(lockedFirst.id) && LEVELS.indexOf(lockedFirst.level) < LEVELS.indexOf(minimum)) return false;
+  const skills = availableSkills(settings, lockedFirst);
+  const remainingIds = ids.filter(id => id !== lockedFirst?.id);
+  const targets = remainingIds.map(id => skills.find(s => skillId(s) === id));
   if (targets.some(t => !t)) return false;
   if (targets.filter(t => t!.tier === "Black").length > 1) return false;
-  for (let blackSlot = 0; blackSlot < slotCount(settings.card); blackSlot++) {
+  for (const blackSlot of blackSlots(settings)) {
     const rules = slotRules(settings, blackSlot);
     function assign(index: number, used: number): boolean {
       if (index === targets.length) return true;
       const target = targets[index]!;
       return rules.some((rule, slot) => !(used & (1 << slot)) && rule.tiers[target.tier] &&
-        candidates(settings, rule, target.tier).some(s => skillId(s) === ids[index]) && assign(index + 1, used | (1 << slot)));
+        candidates(settings, rule, target.tier).some(s => skillId(s) === remainingIds[index]) && assign(index + 1, used | (1 << slot)));
     }
-    if (assign(0, 0)) return true;
+    if (assign(0, lockedFirst ? 1 : 0)) return true;
   }
   return false;
 }
-export function ruleSummary(card: SimCard, ticket: Ticket = "superior") {
+export function ruleSummary(card: SimCard, ticket: Ticket = "superior", lockedFirst: DrawSkill | null = null) {
+  if (lockedFirst) {
+    if (card === "normal" || card === "moment" || card === "supreme") return ticket === "superior"
+      ? "첫 줄 유지 · 2·3번째 슬롯 브론즈 35% / 실버 40% / 골드 25%"
+      : "첫 줄 유지 · 2·3번째 슬롯 아이언 35% / 브론즈 30% / 실버 20% / 골드 15%";
+    if (card === "wbc") return `첫 줄 유지 · 2·3번째 슬롯 ${ticket === "basic" ? "골드 100%" : ticket === "advanced" ? "골드 99.5% / WBC 0.5%" : "골드 90% / WBC 10%"} · 모두 S`;
+  }
   if (ticket !== "superior") {
     if (card === "hof") return `모든 슬롯 HOF ${ticket === "basic" ? "0.1" : "1.5"}% · 나머지는 아이언/브론즈/실버/골드 35:30:20:15`;
     if (card === "wbc" || card === "wbcBlack") return ticket === "basic" ? "모든 슬롯 골드 100% · S 레벨 확정 · 전용 스킬 등장 없음" : card === "wbcBlack" ? "골드 94.5% / WBC 0.5% / 블랙 5% · 블랙 등장 후 골드 99.5% / WBC 0.5% · 모두 S" : "모든 슬롯 골드 99.5% / WBC 0.5% · S 레벨 확정";
@@ -162,12 +189,20 @@ export function ruleSummary(card: SimCard, ticket: Ticket = "superior") {
 }
 
 /** Guaranteed Black on superior tickets must not cause every batch to stop at 1. */
-export function dedicatedTiers(settings: SimSettings): Tier[] {
+export function dedicatedTiers(settings: SimSettings, lockedFirst: DrawSkill | null = null): Tier[] {
   const ticket = settings.ticket ?? "superior";
   if (settings.card === "hof") return ["HOF"];
-  if (settings.card === "moment" || settings.card === "supreme") return ticket === "superior" ? ["Moment"] : [];
+  if (settings.card === "moment" || settings.card === "supreme") return ticket === "superior" && !lockedFirst ? ["Moment"] : [];
   if (settings.card === "wbc" || settings.card === "wbcBlack") return ticket === "basic" ? [] : settings.card === "wbcBlack" && ticket === "advanced" ? ["WBC", "Black"] : ["WBC"];
   return settings.card === "black" && ticket === "advanced" ? ["Black"] : [];
+}
+
+export function newlyDrawnSkills(board: Board, lockedFirst: DrawSkill | null = null): Board {
+  return lockedFirst ? board.slice(1) : board;
+}
+
+export function hasNewDedicatedSkill(settings: SimSettings, board: Board, lockedFirst: DrawSkill | null = null): boolean {
+  return newlyDrawnSkills(board, lockedFirst).some(s => dedicatedTiers(settings, lockedFirst).includes(s.tier));
 }
 
 /** Record the winning draw before stopping; never consume a ticket after it. */
