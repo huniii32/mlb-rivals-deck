@@ -1,0 +1,208 @@
+{
+  "asOf": "2026-11-05",
+  "checkedAt": "2026-11-06",
+  "overview": "https://hive-fn.qpyou.cn/markup/img/tf/mlbrv/mlb9irivals_ko.html",
+  "guide": "https://community.withhive.com/MLB9IRIVALS/ko/board/9/10742",
+  "source": {
+    "url": "https://futuremlb-fn.qpyou.cn/futuremlb/push/IndividualRates/261105/RV1105LD.files/sheet188.htm",
+    "sha256": "d3dd9c6b98ca5a40deefe41236947994e08ebcdd6b03cbd1b986464febd00343"
+  },
+  "players": [
+    {
+      "id": "bert-blyleven",
+      "name": "B. 블라일레븐",
+      "enName": "Bert Blyleven",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "jack-morris",
+      "name": "J. 모리스",
+      "enName": "Jack Morris",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "don-sutton",
+      "name": "D. 서튼",
+      "enName": "Don Sutton",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "catfish-hunter",
+      "name": "C. 헌터",
+      "enName": "Catfish Hunter",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "gaylord-perry",
+      "name": "G. 페리",
+      "enName": "Gaylord Perry",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "mike-mussina",
+      "name": "M. 무시나",
+      "enName": "Mike Mussina",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "hal-newhouser",
+      "name": "H. 뉴하우저",
+      "enName": "Hal Newhouser",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "robin-roberts",
+      "name": "R. 로버츠",
+      "enName": "Robin Roberts",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "early-wynn",
+      "name": "E. 윈",
+      "enName": "Early Wynn",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "juan-marichal",
+      "name": "J. 마리샬",
+      "enName": "Juan Marichal",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "tony-p-rez",
+      "name": "T. 페레즈",
+      "enName": "Tony Pérez",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "fred-mcgriff",
+      "name": "F. 맥그리프",
+      "enName": "Fred McGriff",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "barry-larkin",
+      "name": "B. 라킨",
+      "enName": "Barry Larkin",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "luis-aparicio",
+      "name": "L. 아파리시오",
+      "enName": "Luis Aparicio",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "jim-rice",
+      "name": "J. 라이스",
+      "enName": "Jim Rice",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "tim-raines",
+      "name": "T. 레인스",
+      "enName": "Tim Raines",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "larry-walker",
+      "name": "L. 워커",
+      "enName": "Larry Walker",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "tony-oliva",
+      "name": "T. 올리바",
+      "enName": "Tony Oliva",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "ralph-kiner",
+      "name": "R. 카이너",
+      "enName": "Ralph Kiner",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "willie-mccovey",
+      "name": "W. 맥코비",
+      "enName": "Willie McCovey",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "scott-rolen",
+      "name": "S. 롤렌",
+      "enName": "Scott Rolen",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "harold-baines",
+      "name": "H. 베인스",
+      "enName": "Harold Baines",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "phil-rizzuto",
+      "name": "P. 리주토",
+      "enName": "Phil Rizzuto",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "alan-trammell",
+      "name": "A. 트라멜",
+      "enName": "Alan Trammell",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "lou-gehrig",
+      "name": "L. 게릭",
+      "enName": "Lou Gehrig",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "chipper-jones",
+      "name": "C. 존스",
+      "enName": "Chipper Jones",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "dave-parker",
+      "name": "D. 파커",
+      "enName": "Dave Parker",
+      "rate": "3.571428",
+      "weight": 3571428
+    },
+    {
+      "id": "roberto-clemente",
+      "name": "R. 클레멘테",
+      "enName": "Roberto Clemente",
+      "rate": "3.571444",
+      "weight": 3571444
+    }
+  ]
+}

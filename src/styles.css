@@ -721,7 +721,7 @@ button.dia-opt.on { border-color: #facc15; box-shadow: 0 0 14px rgba(250, 204, 2
 .sim-lock-control small { font-size:11px; }
 /* Simulator selection and compact play screens */
 .sim-hub-heading { margin:24px 0; }.sim-hub-heading h2 { margin:0 0 6px; font-size:28px; }
-.sim-hub-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
+.sim-hub-options { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr)); gap:18px; }
 .sim-hub-option { display:flex; flex-direction:column; align-items:flex-start; gap:16px; padding:28px; text-align:left; white-space:normal; min-height:240px; background:linear-gradient(135deg,var(--panel),var(--accent-soft)); }
 .sim-hub-option strong { font-size:24px; }.sim-hub-option .muted { font-weight:400; line-height:1.6; }
 .sim-hub-option:hover { border-color:var(--accent); }.sim-hub-icon { font-size:28px; font-weight:900; border:1px solid var(--accent); border-radius:12px; padding:8px 17px; color:var(--accent); }
@@ -745,3 +745,17 @@ button.dia-opt.on { border-color: #facc15; box-shadow: 0 0 14px rgba(250, 204, 2
 @media(max-width:600px){ .combo-candidates { grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }.combo-card { min-height:165px; padding:10px 7px; }.combo-card strong { font-size:14px; }.combo-card .combo-player-theme { font-size:11px; }.combo-roster-list { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 
 .sim-starting .row { margin:12px 0; }.sim-starting label { min-width:0; max-width:100%; }.sim-starting select { display:block; max-width:100%; margin-top:6px; }.sim-analysis-controls input { width:100px; }.sim-analysis-controls { margin:16px 0; }
+
+/* Normal Hall of Fame recruitment */
+.hof-option .sim-hub-icon {color:#b88a28;border-color:#b88a28;}
+.hof-badge {font-size:12px;color:#b88a28;border:1px solid currentColor;border-radius:20px;padding:8px 12px;white-space:nowrap;}
+.hof-goal-info {display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;}.hof-goal-info span {font-size:13px;color:var(--muted);}
+.hof-wishes {display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;}.hof-wishes button {font-size:12px;}
+.hof-stats {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;}.hof-stats>div {display:flex;flex-direction:column;gap:8px;}.hof-stats span {font-size:12px;color:var(--muted);}.hof-stats strong {font-size:25px;}.hof-stats small {font-size:12px;color:var(--muted);margin-left:4px;}
+.hof-play {display:grid;grid-template-columns:minmax(230px,.8fr) minmax(0,1.2fr);gap:24px;align-items:center;}
+.hof-result {display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px;min-height:250px;padding:24px 16px;border:1px solid #b88a28;border-radius:14px;background:linear-gradient(145deg,var(--panel2),var(--panel));}.hof-result strong {font-size:25px;}.hof-result>span:not(.hof-result-seal),.hof-result small {font-size:13px;}.hof-result-seal {border:1px solid #b88a28;color:#b88a28;font-size:28px;font-weight:900;padding:8px 14px;border-radius:8px;}.hof-result.is-goal {border:2px solid var(--good);}.hof-result.is-goal small {color:var(--good);font-weight:700;}
+.hof-actions {min-width:0;}.hof-actions .row {flex-wrap:wrap;}.hof-actions input {width:110px;}
+.hof-roster-grid {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
+.hof-roster-player {display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:8px;white-space:normal;background:var(--panel2);padding:15px;min-width:0;}.hof-roster-player span,.hof-roster-player small {font-size:12px;color:var(--muted);overflow-wrap:anywhere;}.hof-roster-player b {font-size:12px;color:var(--accent);}.hof-roster-player.selected {border-color:var(--accent);background:var(--accent-soft);}.hof-roster-player:disabled {opacity:.75;}
+@media(max-width:800px){.hof-roster-grid {grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:600px){.hof-play {grid-template-columns:1fr;gap:16px;}.hof-result {min-height:210px;}.hof-roster-grid {grid-template-columns:repeat(2,minmax(0,1fr));}.hof-stats {grid-template-columns:repeat(2,minmax(0,1fr));}.hof-roster .sim-heading {align-items:stretch;flex-direction:column;}.hof-roster input {min-width:0;width:100%;box-sizing:border-box;}}

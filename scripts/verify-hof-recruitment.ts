@@ -1,0 +1,43 @@
+import assert from 'node:assert/strict';
+import {HOF_DATA,HOF_PLAYERS,drawHof,emptyHofStats,runHofChunk,hofGoalProbability,hofGoalStats,validHofSession} from '../src/lib/hofRecruitment';
+assert.equal(HOF_PLAYERS.length,28);
+assert.equal(new Set(HOF_PLAYERS.map(p=>p.id)).size,28);
+assert.equal(HOF_PLAYERS.reduce((n,p)=>n+p.weight,0),100_000_000);
+assert(HOF_PLAYERS.every(p=>p.name&&p.enName&&Math.round(Number(p.rate)*1_000_000)===p.weight));
+assert.equal(HOF_PLAYERS.at(-1)?.id,'roberto-clemente');
+assert.equal(HOF_PLAYERS.at(-1)?.rate,'3.571444');
+assert(!HOF_PLAYERS.some(p=>['greg-maddux','derek-jeter'].includes(p.id)),'special recruitment players must not enter the normal pool');
+let start=0;
+for(const p of HOF_PLAYERS){
+  assert.equal(drawHof(()=>(start+.5)/100_000_000).id,p.id);
+  assert.equal(drawHof(()=>(start+p.weight-.5)/100_000_000).id,p.id);
+  start+=p.weight;
+}
+assert.equal(drawHof(()=>0).id,HOF_PLAYERS[0].id);
+assert.equal(drawHof(()=>1-Number.EPSILON).id,HOF_PLAYERS.at(-1)?.id);
+for(const bad of [-1,1,NaN,Infinity])assert.throws(()=>drawHof(()=>bad));
+const target=HOF_PLAYERS.at(-1)!.id,first=HOF_PLAYERS[0].id;
+const stats=emptyHofStats();let n=0;
+assert.deepEqual(runHofChunk(stats,100,[target],()=>++n===97?.999:0),{done:97,hit:true});
+assert.equal(stats.total,97);assert.equal(stats.first[target],97);assert.equal(stats.counts[first],96);
+assert.deepEqual(hofGoalStats(stats,[target,target]),{hits:1,first:97});
+assert.deepEqual(runHofChunk(stats,100,[],()=>.999),{done:100,hit:false});
+assert.equal(stats.total,197);assert.equal(stats.counts[target],101);assert.equal(stats.first[target],97);
+assert.deepEqual(hofGoalStats(stats,[target,first]),{hits:197,first:1});
+assert.equal(hofGoalProbability([target,target]),.03571444);
+assert.equal(hofGoalProbability(HOF_PLAYERS.map(p=>p.id)),1);
+assert.equal(hofGoalProbability([]),0);
+assert.equal(stats.recent.length,12);assert.equal(stats.recent[11].number,186);
+const session={source:HOF_DATA.source.sha256,targets:[target],limit:'1000',stats};
+assert(validHofSession(JSON.parse(JSON.stringify(session))));
+assert(validHofSession({...session,stats:emptyHofStats()}));
+for(const bad of [null,{}, {...session,source:'outdated'}, {...session,targets:['unknown']}, {...session,targets:[target,target]}, {...session,stats:{...stats,total:198}}, {...session,stats:{...stats,counts:{...stats.counts,unknown:1}}}, {...session,stats:{...stats,first:{...stats.first,[target]:999}}}, {...session,stats:{...stats,recent:[]}}])assert(!validHofSession(bad));
+for(const max of [0,-1,.5,100001,NaN])assert.throws(()=>runHofChunk(emptyHofStats(),max,[]));
+assert.throws(()=>runHofChunk(emptyHofStats(),1,['unknown']));
+// All targets must stop on the very first draw, including when previous history exists.
+assert.deepEqual(runHofChunk(stats,100,HOF_PLAYERS.map(p=>p.id),()=>.5),{done:1,hit:true});
+let seed=32;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+const sample=emptyHofStats();runHofChunk(sample,100000,[],random);
+assert.equal(Object.keys(sample.counts).length,28);
+for(const p of HOF_PLAYERS)assert(Math.abs(sample.counts[p.id]/sample.total-p.weight/100_000_000)<.003);
+console.log('HOF recruitment: official 28-player pool, rate boundaries, 97th-draw stop, repeat draws, goals, session validation and distribution passed.');
