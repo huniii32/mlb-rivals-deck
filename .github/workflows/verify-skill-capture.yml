@@ -1,0 +1,45 @@
+name: Verify Windows skill capture
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/skill-capture/**'
+      - 'scripts/package_skill_capture.py'
+      - 'public/downloads/steam-skill-capture-windows.zip'
+      - '.github/workflows/verify-skill-capture.yml'
+  pull_request:
+    paths:
+      - 'tools/skill-capture/**'
+      - 'scripts/package_skill_capture.py'
+      - 'public/downloads/steam-skill-capture-windows.zip'
+      - '.github/workflows/verify-skill-capture.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r tools/skill-capture/requirements.txt
+      - run: python -m unittest discover -s tools/skill-capture -p "test_*.py" -v
+      - name: Open and close the capture UI without game input
+        working-directory: tools/skill-capture
+        run: python -c "import tkinter as tk; from app import App; from windows_backend import enable_dpi_awareness; enable_dpi_awareness(); root = tk.Tk(); app = App(root); root.update(); root.destroy()"
+      - name: Verify the downloadable ZIP matches source
+        shell: python
+        run: |
+          import hashlib
+          from pathlib import Path
+          import subprocess
+          target = Path('public/downloads/steam-skill-capture-windows.zip')
+          before = hashlib.sha256(target.read_bytes()).hexdigest()
+          subprocess.run(['python', 'scripts/package_skill_capture.py'], check=True)
+          assert hashlib.sha256(target.read_bytes()).hexdigest() == before, 'Regenerate the Windows download ZIP'
