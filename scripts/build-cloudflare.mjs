@@ -4,14 +4,15 @@ import {fileURLToPath} from 'node:url';
 import {resolve,relative} from 'node:path';
 import {loadEnv} from 'vite';
 import {buildEventPreviewGuard} from './build-event-preview-guard.mjs';
+import {OWNER_KEY_HASH} from '../deployment/cloudflare/owner-preview-key.mjs';
 
 const root=fileURLToPath(new URL('../',import.meta.url));
 process.chdir(root);
 const env={...loadEnv('production',root,'VITE_'),...process.env};
 const privatePreview=!!env.CF_PAGES_BRANCH && env.CF_PAGES_BRANCH !== 'main';
-// Before Access is configured, upload only a locked notice: not even static
-// fallback (for example a Pages Functions quota failure) can expose the demo.
-if(privatePreview && !(env.EVENT_ACCESS_TEAM_DOMAIN && env.EVENT_ACCESS_AUD && env.EVENT_ACCESS_EMAIL)){
+// Without any owner authentication configured, upload only a locked notice.
+// Configured previews encrypt all assets before upload as a second protection.
+if(privatePreview && !(env.EVENT_ACCESS_TEAM_DOMAIN && env.EVENT_ACCESS_AUD && env.EVENT_ACCESS_EMAIL) && !/^[a-f0-9]{64}$/.test(OWNER_KEY_HASH)){
   rmSync(resolve(root,'dist'),{recursive:true,force:true});
   await buildEventPreviewGuard(root);
   const locked='<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>운영자 전용 미리보기</title><h1>운영자 전용 미리보기</h1><p>접근 보호 설정을 준비하고 있습니다.</p></html>';
@@ -45,7 +46,6 @@ if(privatePreview){
   const demo=spawnSync(process.execPath,['scripts/build-event-web-demo.mjs'],{cwd:root,stdio:'inherit',env});
   if(demo.error)throw demo.error;
   if(demo.status!==0)process.exit(demo.status??1);
-  await buildEventPreviewGuard(root);
 }
 
 const dist=resolve(root,'dist');
@@ -61,4 +61,5 @@ function checkFiles(dir){
 checkFiles(dist);
 if(existsSync(resolve(dist,'downloads')))throw new Error('개인용 프로그램 다운로드 폴더를 배포할 수 없습니다.');
 copyFileSync(resolve(root,'deployment/cloudflare/_headers'),resolve(dist,'_headers'));
+if(privatePreview) await buildEventPreviewGuard(root);
 console.log('Cloudflare Pages 준비 완료: dist/ · 루트 주소 · 공개 Supabase 키 · 개인용 프로그램 제외');

@@ -20,7 +20,11 @@ const ROLE_LABELS: Record<DemoRole, string> = {
 function Demo() {
   const [db, setDb] = useState<PGlite>(),
     [error, setError] = useState(""),
-    [role, setRole] = useState<DemoRole>("alice"),
+    [role, setRole] = useState<DemoRole>(() =>
+      new URLSearchParams(location.search).get("view") === "admin"
+        ? "admin"
+        : "alice",
+    ),
     [version, setVersion] = useState(0),
     [resetting, setResetting] = useState(false);
   const [night, setNight] = useState(false);
@@ -94,6 +98,11 @@ function Demo() {
           <button onClick={() => setNight((x) => !x)}>
             {night ? "라이트 모드" : "다크 모드"}
           </button>
+          {location.hostname.endsWith(".pages.dev") && (
+            <form method="post" action="/__preview/logout">
+              <button>접속 종료</button>
+            </form>
+          )}
         </div>
       </header>
       {error && (

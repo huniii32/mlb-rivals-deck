@@ -1,4 +1,12 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
+import { OWNER_KEY_HASH } from "./owner-preview-key.mjs";
+import { ownerAccess, privateAsset } from "./owner-preview.mjs";
+
+// Generated for each private build; only the server-side Worker receives these.
+const SESSION_KEY =
+  typeof __PREVIEW_SESSION_KEY__ === "undefined" ? "" : __PREVIEW_SESSION_KEY__;
+const ASSET_KEY =
+  typeof __PREVIEW_ASSET_KEY__ === "undefined" ? "" : __PREVIEW_ASSET_KEY__;
 
 const keySets = new Map();
 function remoteKeys(issuer) {
@@ -17,7 +25,8 @@ function privateResponse(response) {
   const result = new Response(response.body, response);
   result.headers.set("Cache-Control", "private, no-store");
   result.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
-  result.headers.set("Referrer-Policy", "no-referrer");
+  // Same-origin form POSTs need an Origin header for the login/logout CSRF check.
+  result.headers.set("Referrer-Policy", "same-origin");
   result.headers.set("X-Content-Type-Options", "nosniff");
   return result;
 }
@@ -43,12 +52,32 @@ function denied(status) {
 }
 
 // The factory permits a local signing key in tests, never a deployed bypass.
-export function createPreviewWorker(keySetFor = remoteKeys) {
+export function createPreviewWorker(
+  keySetFor = remoteKeys,
+  {
+    ownerKeyHash = OWNER_KEY_HASH,
+    sessionKey = SESSION_KEY,
+    assetKey = ASSET_KEY,
+  } = {},
+) {
   return {
     async fetch(request, env) {
       const team = env.EVENT_ACCESS_TEAM_DOMAIN?.trim();
       const audience = env.EVENT_ACCESS_AUD?.trim();
       const owner = env.EVENT_ACCESS_EMAIL?.trim().toLowerCase();
+      // Access remains authoritative once configured. A broken Access configuration
+      // cannot silently fall back to a different authentication method.
+      const usingAccess = !!(team || audience || owner);
+      if (!usingAccess) {
+        if (
+          !/^[a-f0-9]{64}$/.test(ownerKeyHash) ||
+          !/^[a-f0-9]{64}$/.test(sessionKey)
+        )
+          return denied(503);
+        const response = await ownerAccess(request, ownerKeyHash, sessionKey);
+        if (response) return privateResponse(response);
+        return serveAsset(request, env, assetKey);
+      }
       // No owner addresses or signing settings are embedded in public JS.
       if (
         !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.cloudflareaccess\.com$/.test(
@@ -86,9 +115,48 @@ export function createPreviewWorker(keySetFor = remoteKeys) {
         // Expired, forged, other-app tokens and JWKS outages all fail closed.
         return denied(403);
       }
-      return privateResponse(await env.ASSETS.fetch(request));
+      if (
+        new URL(request.url).pathname === "/__preview/logout" &&
+        request.method === "POST"
+      ) {
+        if (request.headers.get("Origin") !== new URL(request.url).origin)
+          return denied(403);
+        return privateResponse(
+          new Response(null, {
+            status: 303,
+            headers: { Location: `https://${team}/cdn-cgi/access/logout` },
+          }),
+        );
+      }
+      return serveAsset(request, env, assetKey);
     },
   };
+}
+
+async function serveAsset(request, env, assetKey) {
+  let path;
+  try { path = decodeURIComponent(new URL(request.url).pathname); }
+  catch { return privateResponse(new Response("Bad request", { status: 400 })); }
+  if (["/_worker.js", "/_routes.json", "/_headers", "/_redirects"].includes(path))
+    return privateResponse(new Response("Not found", { status: 404 }));
+  if (!["GET", "HEAD"].includes(request.method))
+    return privateResponse(new Response("Method not allowed", { status: 405 }));
+  const headers = new Headers(request.headers);
+  for (const name of [
+    "Range",
+    "If-Range",
+    "If-None-Match",
+    "If-Modified-Since",
+  ])
+    headers.delete(name);
+  // Fetch complete ciphertext even for HEAD; only return the decoded headers then.
+  const response = await env.ASSETS.fetch(
+    new Request(request, { method: "GET", headers }),
+  );
+  const result = assetKey ? await privateAsset(response, assetKey) : response;
+  return privateResponse(
+    request.method === "HEAD" ? new Response(null, result) : result,
+  );
 }
 
 export default createPreviewWorker();
