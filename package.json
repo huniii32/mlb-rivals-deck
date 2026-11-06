@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:cloudflare": "node scripts/build-cloudflare.mjs",
     "preview": "vite preview",
     "test": "node scripts/verify-all.cjs",
     "test:db": "node scripts/verify-passwords.cjs && node scripts/verify-ranking-db.mjs && node scripts/verify-name-passwords.cjs"
