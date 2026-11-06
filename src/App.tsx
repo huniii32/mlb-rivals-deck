@@ -29,7 +29,7 @@ import { deckSig, rankArgs, useRankSync } from "./lib/rankSync";
 import { buildBundle, parseDeckFile, withRank } from "./lib/deckFile";
 import "./styles.css";
 
-const SkillSimulator = lazy(() => import("./components/SkillSimulator"));
+const Simulator = lazy(() => import("./components/Simulator"));
 
 const DECKS_KEY = "rivals-decks-v1";
 const RECOVERY_KEY = "rivals-decks-recovery-v1";
@@ -106,6 +106,7 @@ export default function App() {
   const [tables, setTables] = useState<SkillTables>(loadTables);
   const [selected, setSelected] = useState<number | null>(null);
   const [lineupMode, setLineupMode] = useState<"illustration" | "table">("illustration");
+  const [simulatorVisit, setSimulatorVisit] = useState(0);
   const [tab, setTab] = useState<"lineup" | "skills" | "simulator" | "ranking" | "news">(() => window.location.hash === "#simulator" ? "simulator" : /#d=([A-Za-z0-9\-_]+)/.test(window.location.hash) ? "ranking" : "lineup");
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "dark");
   const [modal, setModal] = useState<"inquiry" | "patch" | "guide" | null>(null);
@@ -411,8 +412,8 @@ export default function App() {
       }
       <div className="tabs">
         {(["lineup", "skills", "simulator", "ranking", "news"] as const).map((t) => (
-          <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>
-            {{ lineup: "라인업", skills: "스킬비교", simulator: "스킬 시뮬레이터", ranking: "덱랭킹", news: "정보글" }[t]}
+          <button key={t} className={tab === t ? "on" : ""} onClick={() => { setTab(t); if (t === "simulator") setSimulatorVisit(v => v + 1); }}>
+            {{ lineup: "라인업", skills: "스킬비교", simulator: "시뮬레이터", ranking: "덱랭킹", news: "정보글" }[t]}
           </button>
         ))}
       </div>
@@ -445,7 +446,7 @@ export default function App() {
         <details className="card"><summary>선수별 점수와 덱코 상세 보기</summary><ResultPanel players={players} results={results} /></details>
       </>}
 
-      {tab === "simulator" && <Suspense fallback={<div className="card" role="status">공식 확률표를 불러오는 중…</div>}><SkillSimulator /></Suspense>}
+      {tab === "simulator" && <Suspense fallback={<div className="card" role="status">공식 확률표를 불러오는 중…</div>}><Simulator key={simulatorVisit} tables={tables} /></Suspense>}
 
       {tab === "news" && <NewsTab />}
 

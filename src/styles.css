@@ -719,3 +719,21 @@ button.dia-opt.on { border-color: #facc15; box-shadow: 0 0 14px rgba(250, 204, 2
 .sim-lock-control button { font-size:12px; padding:6px 10px; }
 .sim-lock-control button[aria-pressed="true"] { border-color:var(--tier-color); }
 .sim-lock-control small { font-size:11px; }
+/* Simulator selection and compact play screens */
+.sim-hub-heading { margin:24px 0; }.sim-hub-heading h2 { margin:0 0 6px; font-size:28px; }
+.sim-hub-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
+.sim-hub-option { display:flex; flex-direction:column; align-items:flex-start; gap:16px; padding:28px; text-align:left; white-space:normal; min-height:240px; background:linear-gradient(135deg,var(--panel),var(--accent-soft)); }
+.sim-hub-option strong { font-size:24px; }.sim-hub-option .muted { font-weight:400; line-height:1.6; }
+.sim-hub-option:hover { border-color:var(--accent); }.sim-hub-icon { font-size:28px; font-weight:900; border:1px solid var(--accent); border-radius:12px; padding:8px 17px; color:var(--accent); }
+.combo-option .sim-hub-icon { color:#b18cff; border-color:#b18cff; }.sim-hub-enter { margin-top:auto; color:var(--accent); }.sim-back { margin:0 0 12px; }
+.sim-heading { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:16px; }.sim-heading h2 { margin:0; font-size:23px; }
+.sim-play .sim-skill { min-height:148px; padding:12px 14px; gap:7px; }.sim-play .sim-skill strong { font-size:19px; }.sim-play .sim-level { font-size:20px; }
+.sim-skill-footer { margin-top:auto; width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:13px; color:var(--tier-color); }
+.sim-skill-footer button { padding:4px 9px; font-size:12px; }.sim-skill-footer button[aria-pressed="true"] { border-color:var(--tier-color); }
+.sim-target-row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:16px 0 12px; }.sim-target-row label { display:flex; align-items:center; gap:8px; font-size:13px; }.sim-target-row input { width:100px; }.sim-target-row .sim-reset { margin-left:auto; min-height:32px; font-size:12px; }
+.sim-target-fields { padding:12px 0 16px; }.sim-bulk { margin-top:10px; }.sim-message { font-size:13px; margin-top:10px; }.sim-play .sim-small { margin:10px 0 0; }
+.sim-score-settings > p { font-size:13px; line-height:1.7; }.sim-score-settings .sim-options { margin:14px 0; }.sim-score-settings summary small { display:inline-block; margin-left:8px; font-size:11px; }
+.combo-rates { display:flex; gap:8px 18px; flex-wrap:wrap; margin-top:14px; font-size:13px; color:var(--muted); }.combo-rates b { color:var(--text); }
+.combo-candidates { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px; margin-bottom:18px; }.combo-card { display:flex; flex-direction:column; align-items:center; justify-content:space-between; gap:12px; padding:14px 10px; min-height:175px; white-space:normal; border:1px solid var(--border2); border-radius:12px; background:var(--panel2); }
+.combo-card:disabled { opacity:1; cursor:default; }.combo-card span,.combo-card small { color:var(--muted); font-size:12px; }.combo-card strong { font-size:19px; }.combo-card.is-supreme { border-color:#b18cff; color:#b18cff; }.combo-card.is-hidden { background:linear-gradient(135deg,var(--panel2),var(--accent-soft)); cursor:pointer; }.combo-card.is-hidden strong { font-size:36px; }.combo-card.is-hidden:hover { border-color:var(--accent); }.combo-card.is-selected { border:2px solid var(--good); }.combo-card.is-selected small { color:var(--good); font-weight:700; }
+@media(max-width:600px){ .sim-hub-options { grid-template-columns:1fr; }.sim-hub-option { min-height:190px; padding:22px; }.sim-hub-option strong { font-size:21px; }.sim-setup .sim-settings { gap:10px; }.sim-heading small { font-size:11px; }.sim-play { padding:12px; }.sim-play .sim-board { gap:8px; }.sim-play .sim-skill { min-height:95px; padding:9px 12px; }.sim-play .sim-skill strong { font-size:17px; }.sim-target-row .sim-reset { margin-left:0; }.sim-score-settings summary small { display:block; margin:5px 0 0; }.combo-candidates { grid-template-columns:repeat(5,minmax(0,1fr)); gap:5px; }.combo-card { min-height:125px; padding:10px 3px; gap:6px; }.combo-card strong { font-size:12px; overflow-wrap:anywhere; }.combo-card small { font-size:10px; } }

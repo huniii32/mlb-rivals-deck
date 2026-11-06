@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import {LOOKUP,skillScore,type SkillTables} from '../src/lib/engine';
+import {createScoreEvaluator,meetsScoreGoal} from '../src/lib/simulatorScore';
+import {availableSkills,skillId,type SimSettings,type DrawSkill} from '../src/lib/skillSimulator';
+const tables:SkillTables={overrides:{},customs:[]};
+const base:SimSettings={card:'normal',position:'DH',ticket:'superior',protectS:true,momentSkill:''};
+const make=(name:string,tier:DrawSkill['tier']='Gold',level:DrawSkill['level']='S'):DrawSkill=>({name,tier,level,id:skillId({name,tier})});
+const evaluator=createScoreEvaluator(base,tables);
+for(const entries of evaluator.options.values())for(const row of entries)assert.equal(row.score,skillScore('batter',row.name,tables),'same deck-management score');
+const cleanup=availableSkills(base).find(s=>s.name.replace(/\s/g,'')==='클린업트리오')!;
+const cleanupDraw=make(cleanup.name);assert.equal(evaluator.evaluate(cleanupDraw).score,0,'condition defaults to lowest X');
+const chosen=LOOKUP.batter.find(s=>s.name==='[S0] 클린업 트리오 (O)')!;
+const activated=createScoreEvaluator(base,tables,{[skillId(cleanup)]:chosen.name});assert.equal(activated.evaluate(cleanupDraw).score,10,'explicit O uses engine row');
+const custom=createScoreEvaluator(base,{overrides:{['batter:'+chosen.name]:123},customs:[]},{[skillId(cleanup)]:chosen.name});assert.equal(custom.evaluate(cleanupDraw).score,123,'user override honored');
+const skills=['배팅 머신','타점기계','클린업 트리오'].map(n=>{const s=availableSkills(base).find(s=>s.name.replace(/\s/g,'')===n.replace(/\s/g,''))!;return make(s.name,s.tier);});
+const total=activated.board(skills).total!;assert.equal(total,skills.reduce((sum,s)=>sum+activated.evaluate(s).score!,0));assert(meetsScoreGoal(total,total));assert(!meetsScoreGoal(total,total+.01));assert(!meetsScoreGoal(null,1));assert(!meetsScoreGoal(NaN,1));assert(!meetsScoreGoal(5,0));assert(meetsScoreGoal(24.599999999,24.6),'target compares the displayed two-decimal total');
+assert.equal(evaluator.board([make('배팅 머신','Gold','A'),...skills.slice(1)]).total,null,'do not invent A scores');assert.equal(evaluator.board(skills.slice(1)).total,null,'partial locked preview is not a complete score');
+const wbcSettings={...base,card:'wbc' as const};const wbc=createScoreEvaluator(wbcSettings,tables);const official=availableSkills(wbcSettings).find(s=>s.name==='WORLD BASEBALL CLASSIC 플레이어')!;assert.equal(wbc.evaluate(make(official.name,'WBC')).score,21.6,'official WBC abbreviation maps exactly');
+for(const position of ['SP','RP','CP'] as const){const e=createScoreEvaluator({...base,position},tables);const expected=skillScore('pitcher',`[S0] 기선제압 (${position==='SP'?'선발':position==='RP'?'중계':'마무리'})`,tables);assert.equal(e.evaluate(make('기선제압','Bronze')).score,expected,'position-specific ranked condition');}
+const supreme={...base,card:'supreme' as const};const missing=createScoreEvaluator(supreme,tables);assert.equal(missing.evaluate(make('FLASHBACK','Moment')).score,null,'unknown Moment not silently zero');
+const held=make(official.name,'WBC');const locked=createScoreEvaluator({...wbcSettings,ticket:'basic'},tables,{},held);assert.equal(locked.evaluate(held).score,21.6,'held special remains scored after ticket switch');assert(locked.upperBound>=21.6);
+console.log('Simulator score: shared S0 engine values, explicit conditions, overrides, WBC aliases, position roles, missing/lower-level exclusion, locked score and inclusive target passed.');
