@@ -20,12 +20,12 @@ const USERS = {
   },
 };
 const RPC_ARGS = {
-  event_get: ["p_event"],
+  event_get: ["p_event", "p_ranking_id", "p_token"],
   event_join: ["p_event", "p_ranking_id", "p_token"],
-  event_attempt: ["p_event", "p_request_id"],
-  event_experience: ["p_event", "p_mission"],
-  event_pick_moment: ["p_event", "p_slot"],
-  event_claim: ["p_event", "p_mission"],
+  event_attempt: ["p_event", "p_request_id", "p_ranking_id", "p_token"],
+  event_experience: ["p_event", "p_mission", "p_ranking_id", "p_token"],
+  event_pick_moment: ["p_event", "p_slot", "p_ranking_id", "p_token"],
+  event_claim: ["p_event", "p_mission", "p_ranking_id", "p_token"],
   event_admin: ["p_event", "p_action"],
 };
 async function createEventTestDb(dataDir) {
@@ -75,11 +75,17 @@ async function createEventTestDb(dataDir) {
       "insert into sim_events(id,title,rules_id,opens_at,published) values('local-pilot','서버 저장 검증 · 테스트 이벤트','coffee-sp-s-v1',now()-interval '1 day',true)",
     );
   }
+  // Reapply additive event updates to an existing local pilot without losing records.
+  if (initialized) await db.exec(sql("supabase_mig_events.sql"));
   const users = {};
   for (const [key, u] of Object.entries(USERS)) {
     const rank = (
       await db.query("select id from rankings where deck_name=$1", [u.name])
     ).rows[0].id;
+    await db.query(
+      "insert into ranking_passwords(ranking_id,password_hash,creation_hash) values($1,public._ranking_password_digest('1234'),$2) on conflict do nothing",
+      [rank, `test-creation-${key}`],
+    );
     users[key] = { ...u, rank, token: `test-token-${key}` };
   }
   // PGlite shares one connection. Queue each transaction to keep test identities isolated.
@@ -87,6 +93,8 @@ async function createEventTestDb(dataDir) {
   function rpc(name, args, user = null) {
     const run = async () => {
       const names = RPC_ARGS[name];
+      if (name === "event_get")
+        args = { p_ranking_id: null, p_token: null, ...args };
       if (
         !names ||
         Object.keys(args).some((k) => !names.includes(k)) ||

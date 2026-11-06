@@ -100,7 +100,20 @@ async function stop() {
       p.on("pageerror", (e) => errors.push(e.message));
       await p.goto(origin + "/demo/event-pilot.html");
       await p.getByRole("button", { name: `테스트 ${name}로 시작` }).click();
-      await p.locator(".event-account").waitFor();
+      await p.getByText("참여 접수 중", { exact: true }).waitFor();
+      if (name !== "운영자") {
+        assert.equal(
+          await p.evaluate(() =>
+            Object.keys(localStorage).some((k) => k.endsWith("-auth-token")),
+          ),
+          false,
+          "participant has no email Auth session",
+        );
+        assert.equal(
+          await p.locator(".event-registration input[type=email]").count(),
+          0,
+        );
+      }
       return p;
     }
     async function attempt(p, n) {
@@ -137,11 +150,9 @@ async function stop() {
         "슈프림 모먼트 조합",
         "일반 HOF 영입",
       ]) {
-        const card = p
-          .locator(".event-missions article")
-          .filter({
-            has: p.getByRole("heading", { name: mission, exact: true }),
-          });
+        const card = p.locator(".event-missions article").filter({
+          has: p.getByRole("heading", { name: mission, exact: true }),
+        });
         await card
           .getByRole("button", { name: "이벤트 참여하기 · 응모권 받기" })
           .click();
@@ -178,6 +189,16 @@ async function stop() {
       true,
     );
     await earn(alice);
+    const restored = await login("다저스");
+    await restored.getByText("5 / 5회", { exact: true }).waitFor();
+    assert.equal(
+      await restored
+        .getByRole("button", { name: "5회 도전 완료" })
+        .isDisabled(),
+      true,
+      "fresh browser with the same deck retains attempts",
+    );
+    await restored.context().close();
     const bob = await login("양키스");
     await bob
       .getByRole("button", { name: "현재 등록 덱으로 이벤트 참여" })
@@ -204,6 +225,51 @@ async function stop() {
       await admin.getByRole("button", { name: "② 당첨자 추첨" }).isDisabled(),
       true,
     );
+    assert.equal(
+      await admin
+        .locator(".event-winners .event-prize-status")
+        .filter({ hasText: "게임 덱 인증 대기" })
+        .count(),
+      2,
+    );
+    for (const title of ["점수 1위", "추첨 당첨자"]) {
+      const delivery = admin.getByRole("button", {
+        name: `${title} · 지급 완료 기록`,
+        exact: true,
+      });
+      assert.equal(
+        await delivery.isDisabled(),
+        true,
+        "cannot mark delivery before verification",
+      );
+      await admin
+        .getByRole("button", {
+          name: `${title} · 게임 덱 인증 완료`,
+          exact: true,
+        })
+        .click();
+      await admin.waitForFunction(
+        (label) =>
+          Array.from(document.querySelectorAll("button")).some(
+            (b) => b.textContent === label && !b.disabled,
+          ),
+        `${title} · 지급 완료 기록`,
+      );
+      await delivery.click();
+      await admin.waitForFunction(
+        (label) =>
+          Array.from(document.querySelectorAll("button")).some(
+            (b) => b.textContent === label && b.disabled,
+          ) && !document.querySelector(".event-status-bar button").disabled,
+        `${title} · 지급 완료 기록`,
+      );
+    }
+    assert.deepEqual(
+      await admin
+        .locator(".event-winners .event-prize-status")
+        .allTextContents(),
+      ["지급 완료", "지급 완료"],
+    );
     await alice.reload();
     await alice.getByText("추첨 완료", { exact: true }).waitFor();
     assert.equal(
@@ -218,15 +284,33 @@ async function stop() {
       !(await guest.locator(".event-page").innerText()).includes("@event.test"),
     );
     // Exercise the actual URL-token callback path used by an email login link.
-    const authResponse=await fetch(`http://localhost:${apiPort}/auth/v1/token?grant_type=password`,{
-      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'alice@event.test',password:'test-only'}),
+    const authResponse = await fetch(
+      `http://localhost:${apiPort}/auth/v1/token?grant_type=password`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: "admin@event.test",
+          password: "test-only",
+        }),
+      },
+    );
+    const auth = await authResponse.json();
+    const callback = await (await context()).newPage();
+    const hash = new URLSearchParams({
+      access_token: auth.access_token,
+      refresh_token: auth.refresh_token,
+      token_type: "bearer",
+      expires_in: "3600",
+      type: "magiclink",
     });
-    const auth=await authResponse.json();
-    const callback=await(await context()).newPage();
-    const hash=new URLSearchParams({access_token:auth.access_token,refresh_token:auth.refresh_token,token_type:'bearer',expires_in:'3600',type:'magiclink'});
-    await callback.goto(origin+'/?event=1#'+hash.toString());
-    await callback.getByText('5 / 5회',{exact:true}).waitFor();
-    assert.equal(await callback.locator('.event-account').count(),1,'email callback lands back on event page');
+    await callback.goto(origin + "/?event=1#" + hash.toString());
+    await callback.locator(".event-admin").waitFor();
+    assert.equal(
+      await callback.locator(".event-account").count(),
+      1,
+      "operator email callback lands on event management",
+    );
     for (const width of [320, 390, 768, 1366, 1920]) {
       await alice.setViewportSize({ width, height: 900 });
       assert.equal(
@@ -242,27 +326,48 @@ async function stop() {
       path: "/workspace/artifacts/event-pilot-complete.png",
       fullPage: true,
     });
-    await alice.getByRole('button',{name:'다크 모드로 전환',exact:true}).click();
-    await alice.setViewportSize({width:390,height:844});
-    assert.equal(await alice.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-    await alice.screenshot({path:'/workspace/artifacts/event-pilot-dark-mobile.png',fullPage:true});
+    await alice
+      .getByRole("button", { name: "다크 모드로 전환", exact: true })
+      .click();
+    await alice.setViewportSize({ width: 390, height: 844 });
+    assert.equal(
+      await alice.evaluate(
+        () => document.documentElement.scrollWidth > innerWidth,
+      ),
+      false,
+    );
+    await alice.screenshot({
+      path: "/workspace/artifacts/event-pilot-dark-mobile.png",
+      fullPage: true,
+    });
     // Stop and restart the HTTP/DB process; records must survive independently of the browser.
+    const savedBrowser = alice.context();
+    await alice.close();
     await stop();
     await start();
-    await alice.reload();
-    await alice.getByText("추첨 완료", { exact: true }).waitFor();
+    const resumed = await savedBrowser.newPage();
+    resumed.on("pageerror", (e) => errors.push(e.message));
+    await resumed.goto(origin + "/?event=1#simulator");
+    await resumed.getByText("추첨 완료", { exact: true }).waitFor();
     assert.deepEqual(
-      await alice.locator(".event-winners strong").allTextContents(),
+      await resumed.locator(".event-winners strong").allTextContents(),
       winners,
     );
     assert.equal(
-      await alice.getByRole("button", { name: "5회 도전 완료" }).isDisabled(),
+      await resumed.getByRole("button", { name: "5회 도전 완료" }).isDisabled(),
       true,
+    );
+    assert.deepEqual(
+      await resumed
+        .locator(".event-winners .event-prize-status")
+        .allTextContents(),
+      ["지급 완료", "지급 완료"],
+      "delivery records survive a server restart",
     );
     assert.deepEqual(errors, []);
     assert.deepEqual(unexpected, []);
     console.log(
-      "Event browser: server-backed registration, five attempts, lost-response recovery, four tickets each, hidden-card persistence, two distinct winners, admin isolation, 320–1920px layout, DB process restart passed. No live calls.",
+      "Event browser: anonymous deck-password registration, cross-device restoration, five attempts, lost-response recovery, four tickets each, hidden-card persistence, two distinct winners, winner verification and delivery, admin isolation, 320–1920px layout, DB process restart passed. No live calls.",
     );
   } finally {
     await browser?.close();

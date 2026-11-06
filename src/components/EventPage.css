@@ -75,7 +75,7 @@
   color: var(--text);
   margin-bottom: 12px;
 }
-.event-page .event-registration form,
+.event-page .event-admin-login form,
 .event-page .event-account,
 .event-page .event-register-actions,
 .event-page .event-admin-actions {
@@ -84,12 +84,12 @@
   gap: 12px;
   align-items: center;
 }
-.event-page .event-registration label {
+.event-page .event-admin-login label {
   display: grid;
   gap: 6px;
   font-size: 12px;
 }
-.event-page .event-registration input {
+.event-page .event-admin-login input {
   width: 280px;
   max-width: 100%;
 }
@@ -329,11 +329,11 @@
   .event-page .event-panel {
     padding: 16px;
   }
-  .event-page .event-registration form {
+  .event-page .event-admin-login form {
     align-items: stretch;
     flex-direction: column;
   }
-  .event-page .event-registration input {
+  .event-page .event-admin-login input {
     width: 100%;
   }
   .event-page .event-section-heading {
@@ -368,4 +368,32 @@
   .event-page .event-winners {
     grid-template-columns: 1fr;
   }
+}
+
+.event-page .event-entry-note {
+  margin-top: 14px;
+  font-size: 12px;
+}
+.event-page .event-prize-status {
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 700;
+}
+.event-page .event-admin-login summary {
+  cursor: pointer;
+  font-size: 13px;
+}
+.event-page .event-admin-login > p {
+  margin-top: 12px;
+}
+.event-page .event-prize-management {
+  margin-top: 24px;
+}
+.event-page .event-prize-review {
+  border-top: 1px solid var(--line);
+  padding: 16px 0;
+}
+.event-page .event-prize-review li {
+  font-size: 13px;
+  line-height: 1.8;
 }

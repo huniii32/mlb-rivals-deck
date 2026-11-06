@@ -25,6 +25,21 @@ const time = (value: string) =>
     hour12: false,
   });
 const score = (value: number) => value.toFixed(2);
+const prizeStatus = (verified: string | null, delivered: string | null) =>
+  delivered
+    ? "지급 완료"
+    : verified
+      ? "게임 덱 인증 완료 · 지급 대기"
+      : "게임 덱 인증 대기";
+const auditLabels: Record<string, string> = {
+  publish: "참여 접수 예약",
+  close: "마감 · 점수 1위 및 추첨 대상 확정",
+  draw: "추첨 완료 · 결과 고정",
+  verify_champion: "점수 1위 · 게임 덱 인증 완료",
+  verify_winner: "추첨 당첨자 · 게임 덱 인증 완료",
+  deliver_champion: "점수 1위 · 경품 지급 완료",
+  deliver_winner: "추첨 당첨자 · 경품 지급 완료",
+};
 function PlayerResult({ player }: { player: EventPlayer }) {
   return (
     <div className="event-player-result">
@@ -61,12 +76,16 @@ export default function EventPage({
   const busyRef = useRef(false),
     version = useRef(0),
     mounted = useRef(true);
-  const pendingKey = `rivals-event-request:${EVENT_ID}:${session?.user.id || "guest"}`;
+  const pendingKey = `rivals-event-request:${EVENT_ID}:${deck?.id || "guest"}`;
   const refresh = useCallback(async () => {
     if (busyRef.current) return;
     const request = ++version.current;
     try {
-      const next = await eventRequest("get");
+      const next = await eventRequest(
+        "get",
+        {},
+        deck?.password ? deck : undefined,
+      );
       if (mounted.current && request === version.current) {
         setState(next);
         setError("");
@@ -77,9 +96,13 @@ export default function EventPage({
     } finally {
       if (mounted.current && request === version.current) setLoading(false);
     }
-  }, []);
+  }, [deck?.id, deck?.token, deck?.password]);
+  const refreshRef = useRef(refresh);
+  refreshRef.current = refresh;
   useEffect(() => {
     mounted.current = true;
+    setState(null);
+    setLoading(true);
     void refresh();
     void supabase?.auth.getSession().then(({ data }) => {
       if (mounted.current) setSession(data.session);
@@ -127,7 +150,7 @@ export default function EventPage({
     setMessage("");
     const request = ++version.current;
     try {
-      const next = await eventRequest(action, args);
+      const next = await eventRequest(action, args, deck);
       if (mounted.current && request === version.current) {
         setState(next);
         setMessage(success);
@@ -139,7 +162,7 @@ export default function EventPage({
       busyRef.current = false;
       if (mounted.current) {
         setBusy(false);
-        if (request !== version.current) void refresh();
+        if (request !== version.current) void refreshRef.current();
       }
     }
   }
@@ -177,7 +200,7 @@ export default function EventPage({
       });
       if (error) throw error;
       setMessage(
-        "로그인 링크를 이메일로 보냈습니다. 메일의 링크를 누른 뒤 이 페이지에서 이어서 참여해주세요.",
+        "운영자 로그인 링크를 이메일로 보냈습니다. 메일의 링크를 누르면 이벤트 관리 화면으로 돌아옵니다.",
       );
     } catch {
       setError(
@@ -200,7 +223,9 @@ export default function EventPage({
     "해당 없음";
   const phase = state?.event.phase,
     moment = me?.experiences.moment;
-  const ended = !!state?.event.ends_at && Date.parse(state.server_now) >= Date.parse(state.event.ends_at);
+  const ended =
+    !!state?.event.ends_at &&
+    Date.parse(state.server_now) >= Date.parse(state.event.ends_at);
   return (
     <div className="event-page">
       {import.meta.env.DEV && import.meta.env.VITE_EVENT_PILOT === "1" && (
@@ -224,7 +249,7 @@ export default function EventPage({
         <div className="event-prizes">
           <strong>☕ × 2</strong>
           <span>점수 1위 1명 + 응모권 추첨 1명</span>
-          <small>한 참가자에게 경품 중복 지급 없음</small>
+          <small>점수 1위는 응모권 추첨에서 제외</small>
         </div>
       </section>
       <div className="event-status-bar">
@@ -267,86 +292,57 @@ export default function EventPage({
           {ended
             ? "참여 기간이 끝났습니다. 운영자가 최종 순위와 추첨 결과를 확정하면 여기에서 확인할 수 있습니다."
             : state.event.published
-            ? "시작 시간이 되면 참여할 수 있습니다."
-            : "이벤트를 준비하고 있습니다. 아직 참여 횟수는 사용되지 않습니다."}
+              ? "시작 시간이 되면 참여할 수 있습니다."
+              : "이벤트를 준비하고 있습니다. 아직 참여 횟수는 사용되지 않습니다."}
         </p>
       )}
       <section className="event-panel event-registration">
         <div>
           <h3>내 참여 정보</h3>
           <p>
-            이메일 계정당 1회 · 등록 덱당 1회 참여합니다. 참가 덱명과 기록,
-            응모권 및 당첨 결과가 공개됩니다.
+            등록한 덱과 기존 비밀번호로 바로 참여합니다. 이메일 인증이나 참가
+            승인은 필요하지 않습니다. 덱당 5회이며, 같은 덱을 다시 가져와도 남은
+            횟수는 유지됩니다.
           </p>
         </div>
-        {!session ? (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void login();
-            }}
+        {me ? (
+          <p className="event-joined">
+            <strong>{me.deck_name}</strong> 덱으로 참여 중 · 남은 도전{" "}
+            {5 - attempts.length}회
+          </p>
+        ) : deck?.password ? (
+          <button
+            className="primary"
+            disabled={busy || loading || !accepting}
+            onClick={() =>
+              void act(
+                "join",
+                {},
+                "등록한 덱을 확인했습니다. 5회 도전을 시작하세요.",
+              )
+            }
           >
-            <label>
-              이메일
-              <input
-                type="email"
-                required
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="이메일 주소"
-              />
-            </label>
-            <button className="primary" disabled={busy || !state}>
-              이메일로 로그인 링크 받기
-            </button>
-          </form>
+            현재 등록 덱으로 이벤트 참여
+          </button>
         ) : (
-          <>
-            <div className="event-account">
-              <span>{session.user.email}</span>
-              <button
-                disabled={busy}
-                onClick={() => void supabase?.auth.signOut()}
-              >
-                로그아웃
-              </button>
-            </div>
-            {me ? (
-              <p className="event-joined">
-                <strong>{me.deck_name}</strong> 덱으로 참여 중 · 남은 도전{" "}
-                {5 - attempts.length}회
-              </p>
-            ) : deck ? (
-              <button
-                className="primary"
-                disabled={busy || !accepting}
-                onClick={() =>
-                  void act(
-                    "join",
-                    { p_ranking_id: deck.id, p_token: deck.token },
-                    "등록한 덱을 확인했습니다. 5회 도전을 시작하세요.",
-                  )
-                }
-              >
-                현재 등록 덱으로 이벤트 참여
-              </button>
-            ) : (
-              <div className="event-register-actions">
-                <p>
-                  내 덱을 먼저 등록하거나, 덱랭킹에서 내 덱을 비밀번호로
-                  가져와주세요.
-                </p>
-                <button disabled={!onRegisterDeck} onClick={onRegisterDeck}>
-                  내 덱 등록
-                </button>
-                <button disabled={!onViewRankings} onClick={onViewRankings}>
-                  덱랭킹에서 가져오기
-                </button>
-              </div>
-            )}
-          </>
+          <div className="event-register-actions">
+            <p>
+              {deck
+                ? "이전 방식으로 등록한 덱입니다. 덱 저장에서 비밀번호를 설정한 뒤 참여해주세요."
+                : "내 덱을 먼저 등록하거나, 덱랭킹에서 내 덱을 비밀번호로 가져와주세요."}
+            </p>
+            <button disabled={!onRegisterDeck} onClick={onRegisterDeck}>
+              내 덱 등록
+            </button>
+            <button disabled={!onViewRankings} onClick={onViewRankings}>
+              덱랭킹에서 가져오기
+            </button>
+          </div>
         )}
+        <p className="event-entry-note">
+          참가 덱명·기록·응모권·당첨 결과는 공개됩니다. 당첨자만 실제 게임 덱
+          인증 후 경품을 받습니다.
+        </p>
       </section>
       <div className="event-competition">
         <section className="event-panel event-challenge">
@@ -586,6 +582,11 @@ export default function EventPage({
       <section className="event-panel event-results">
         <div className="eyebrow">WINNERS</div>
         <h3>당첨 결과</h3>
+        <p>
+          당첨자는 커뮤니티 쪽지로 운영자에게 실제 게임 속 덱과 참가 덱명을
+          보내주세요. 참가 당시 등록한 덱과 대조한 뒤 경품을 지급합니다. 인증
+          자료를 공개 댓글에 올릴 필요는 없습니다.
+        </p>
         <div className="event-winners">
           <div>
             <span>🏆 스킬 점수 1위</span>
@@ -597,6 +598,14 @@ export default function EventPage({
                   : "도전 참가자 없음"}
             </strong>
             <small>커피 기프티콘 1개</small>
+            {state?.event.champion_id && (
+              <span className="event-prize-status">
+                {prizeStatus(
+                  state.event.champion_verified_at,
+                  state.event.champion_delivered_at,
+                )}
+              </span>
+            )}
           </div>
           <div>
             <span>🎟 응모권 추첨 당첨자</span>
@@ -608,6 +617,14 @@ export default function EventPage({
                   : "추첨 후 공개"}
             </strong>
             <small>커피 기프티콘 1개 · 점수 1위 제외</small>
+            {state?.event.winner_id && (
+              <span className="event-prize-status">
+                {prizeStatus(
+                  state.event.winner_verified_at,
+                  state.event.winner_delivered_at,
+                )}
+              </span>
+            )}
           </div>
         </div>
         {state?.event.winning_ticket && (
@@ -639,17 +656,53 @@ export default function EventPage({
             <summary>이벤트 진행 기록</summary>
             {state.audit.map((a, i) => (
               <p key={i}>
-                {time(a.at)} ·{" "}
-                {a.action === "publish"
-                  ? "참여 접수 예약"
-                  : a.action === "close"
-                    ? "마감 · 점수 1위 및 추첨 대상 확정"
-                    : "추첨 완료 · 결과 고정"}
+                {time(a.at)} · {auditLabels[a.action] || a.action}
               </p>
             ))}
           </details>
         ) : null}
       </section>
+      <details className="event-panel event-admin-login">
+        <summary>운영자 로그인</summary>
+        <p>
+          이메일 로그인은 이벤트 운영자만 사용합니다. 참가자는 위에서 등록
+          덱으로 참여해주세요.
+        </p>
+        {session ? (
+          <div className="event-account">
+            <span>
+              {session.user.email}
+              {state?.is_admin ? " · 운영자" : " · 운영 권한 없음"}
+            </span>
+            <button
+              disabled={busy}
+              onClick={() => void supabase?.auth.signOut()}
+            >
+              로그아웃
+            </button>
+          </div>
+        ) : (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void login();
+            }}
+          >
+            <label>
+              운영자 이메일
+              <input
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="운영자 이메일 주소"
+              />
+            </label>
+            <button disabled={busy || !state}>운영자 로그인 링크 받기</button>
+          </form>
+        )}
+      </details>
       {state?.is_admin && (
         <section className="event-panel event-admin">
           <h3>운영자 관리</h3>
@@ -701,6 +754,84 @@ export default function EventPage({
             >
               ② 당첨자 추첨
             </button>
+          </div>
+          <div className="event-prize-management">
+            <h4>당첨자 인증 · 지급 기록</h4>
+            <p>
+              커뮤니티 쪽지로 받은 게임 덱을 아래 참가 당시 덱과 대조하세요.
+              확인 후 인증 완료를 기록하고, 기프티콘을 실제로 보낸 뒤 지급
+              완료를 눌러주세요. 이 버튼은 기프티콘을 자동 발송하지 않습니다.
+            </p>
+            {(["champion", "winner"] as const).map((prize) => {
+              const id = state.event[`${prize}_id`];
+              if (!id) return null;
+              const verified = state.event[`${prize}_verified_at`],
+                delivered = state.event[`${prize}_delivered_at`];
+              const registered = state.verification_decks.find(
+                (d) => d.id === id,
+              );
+              const title = prize === "champion" ? "점수 1위" : "추첨 당첨자";
+              return (
+                <article className="event-prize-review" key={prize}>
+                  <h4>
+                    {title} · {nameOf(id)}
+                  </h4>
+                  <p>{prizeStatus(verified, delivered)}</p>
+                  <details className="event-details">
+                    <summary>참가 당시 덱 확인</summary>
+                    {Array.isArray(registered?.deck?.players) ? (
+                      <>
+                        <p>{time(registered.joined_at)} 등록</p>
+                        <ul>
+                          {registered.deck.players
+                            .filter((p) => p?.name)
+                            .map((p, i) => (
+                              <li key={i}>
+                                {[p.pos, p.name, p.card]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </li>
+                            ))}
+                        </ul>
+                      </>
+                    ) : (
+                      <p>
+                        이전 검증판 참가 기록에는 덱 사본이 없습니다. 등록 덱을
+                        별도로 확인해주세요.
+                      </p>
+                    )}
+                  </details>
+                  <div className="event-admin-actions">
+                    <button
+                      disabled={busy || !!verified}
+                      onClick={() => {
+                        if (
+                          confirm(
+                            `${nameOf(id)} 님의 실제 게임 덱을 확인했나요?`,
+                          )
+                        )
+                          void act("admin", { p_action: `verify_${prize}` });
+                      }}
+                    >
+                      {title} · 게임 덱 인증 완료
+                    </button>
+                    <button
+                      disabled={busy || !verified || !!delivered}
+                      onClick={() => {
+                        if (
+                          confirm(
+                            `${nameOf(id)} 님에게 기프티콘을 실제로 보냈나요? 지급 완료를 기록합니다.`,
+                          )
+                        )
+                          void act("admin", { p_action: `deliver_${prize}` });
+                      }}
+                    >
+                      {title} · 지급 완료 기록
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </section>
       )}

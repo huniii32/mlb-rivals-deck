@@ -26,10 +26,26 @@ create table if not exists public.sim_events (
 create table if not exists public.sim_event_admins (user_id uuid primary key);
 create table if not exists public.sim_event_participants (
   id uuid primary key default gen_random_uuid(), event_id text not null references public.sim_events(id),
-  user_id uuid not null, ranking_id uuid not null, deck_name text not null,
+  ranking_id uuid not null, deck_name text not null, deck_snapshot jsonb,
   joined_at timestamptz not null default clock_timestamp(),
-  unique(event_id,user_id), unique(event_id,ranking_id)
+  unique(event_id,ranking_id)
 );
+-- Upgrade the earlier email pilot without resetting any participation or attempts.
+alter table public.sim_event_participants drop column if exists user_id;
+alter table public.sim_event_participants add column if not exists deck_snapshot jsonb;
+alter table public.sim_events add column if not exists champion_verified_at timestamptz;
+alter table public.sim_events add column if not exists champion_delivered_at timestamptz;
+alter table public.sim_events add column if not exists winner_verified_at timestamptz;
+alter table public.sim_events add column if not exists winner_delivered_at timestamptz;
+
+-- Remove the old Auth-only overloads so no API path bypasses deck ownership checks.
+drop function if exists public.event_get(text);
+drop function if exists public.event_attempt(text,uuid);
+drop function if exists public.event_experience(text,text);
+drop function if exists public.event_pick_moment(text,integer);
+drop function if exists public.event_claim(text,text);
+drop function if exists public._event_member(text);
+
 create table if not exists public.sim_event_attempts (
   id bigint generated always as identity primary key,
   participant_id uuid not null references public.sim_event_participants(id),
@@ -93,23 +109,37 @@ begin
   if e.phase<>'open' or (e.ends_at is not null and clock_timestamp()>=e.ends_at) then raise exception 'event_closed'; end if;
   return e;
 end $$;
-create or replace function public._event_member(p_event text) returns uuid
+-- A session token is issued by the existing deck-password verification RPC.
+-- Every private read and participant mutation verifies it, regardless of Auth login.
+create or replace function public._event_deck(p_ranking_id uuid,p_token text) returns void
 language plpgsql security definer set search_path=pg_catalog,public as $$
-declare p uuid; u uuid := public._event_user();
 begin
-  select id into p from public.sim_event_participants where event_id=p_event and user_id=u for update;
+  if p_ranking_id is null or nullif(p_token,'') is null or not exists(
+    select 1 from public.ranking_password_sessions
+    where ranking_id=p_ranking_id and token_hash=public._ranking_hash(p_token))
+  then raise exception 'event_deck_ownership_required'; end if;
+end $$;
+create or replace function public._event_member(p_event text,p_ranking_id uuid,p_token text) returns uuid
+language plpgsql security definer set search_path=pg_catalog,public as $$
+declare p uuid;
+begin
+  perform public._event_deck(p_ranking_id,p_token);
+  select id into p from public.sim_event_participants where event_id=p_event and ranking_id=p_ranking_id for update;
   if p is null then raise exception 'event_join_required'; end if;
   return p;
 end $$;
 
 -- Public view intentionally excludes email, auth IDs, ownership tokens and hidden cards.
-create or replace function public.event_get(p_event text) returns jsonb
+create or replace function public.event_get(p_event text,p_ranking_id uuid default null,p_token text default null) returns jsonb
 language plpgsql security definer set search_path=pg_catalog,public as $$
 declare e public.sim_events; me public.sim_event_participants; rankings jsonb; tickets jsonb; mine jsonb;
 begin
   select * into e from public.sim_events where id=p_event;
   if not found then raise exception 'event_not_found'; end if;
-  select * into me from public.sim_event_participants where event_id=p_event and user_id=auth.uid();
+  if p_ranking_id is not null or p_token is not null then
+    perform public._event_deck(p_ranking_id,p_token);
+    select * into me from public.sim_event_participants where event_id=p_event and ranking_id=p_ranking_id;
+  end if;
   select coalesce(jsonb_agg(to_jsonb(r) order by r.rank),'[]') into rankings from (
     select row_number() over(order by a.score desc,a.achieved_at,a.id) as rank,
       p.id,p.deck_name,a.score,a.achieved_at,a.board
@@ -128,45 +158,42 @@ begin
   end if;
   return jsonb_build_object('event',to_jsonb(e),'server_now',clock_timestamp(),'me',mine,
     'is_admin',exists(select 1 from public.sim_event_admins where user_id=auth.uid()),
+    'verification_decks',case when exists(select 1 from public.sim_event_admins where user_id=auth.uid()) then
+      (select coalesce(jsonb_agg(jsonb_build_object('id',p.id,'deck_name',p.deck_name,'joined_at',p.joined_at,'deck',p.deck_snapshot)),'[]')
+       from public.sim_event_participants p where p.event_id=p_event and p.id in (e.champion_id,e.winner_id)) else '[]'::jsonb end,
     'rankings',rankings,'tickets',tickets,
     'audit',(select coalesce(jsonb_agg(jsonb_build_object('action',action,'at',at,'details',details) order by id),'[]') from public.sim_event_audit where event_id=p_event));
 end $$;
 
 create or replace function public.event_join(p_event text,p_ranking_id uuid,p_token text) returns jsonb
 language plpgsql security definer set search_path=pg_catalog,public as $$
-declare u uuid := public._event_user(); p public.sim_event_participants; r public.rankings;
+declare p public.sim_event_participants; r public.rankings;
 begin
   -- Event lock serializes registration, attempts, claims and closing in the same order.
   perform 1 from public.sim_events where id=p_event for update;
-  select * into p from public.sim_event_participants where event_id=p_event and user_id=u;
-  if found then
-    if p.ranking_id<>p_ranking_id then raise exception 'event_deck_already_bound'; end if;
-    return public.event_get(p_event);
-  end if;
+  perform public._event_deck(p_ranking_id,p_token);
+  select * into p from public.sim_event_participants where event_id=p_event and ranking_id=p_ranking_id;
+  if found then return public.event_get(p_event,p_ranking_id,p_token); end if;
   perform public._event_open(p_event);
-  if not exists(select 1 from public.ranking_password_sessions where ranking_id=p_ranking_id and token_hash=public._ranking_hash(p_token))
-  then raise exception 'event_deck_ownership_required'; end if;
   select * into r from public.rankings where id=p_ranking_id;
   if not found or r.named<1 then raise exception 'event_registered_deck_required'; end if;
-  if exists(select 1 from public.sim_event_participants where event_id=p_event and ranking_id=p_ranking_id)
-  then raise exception 'event_deck_already_used'; end if;
-  insert into public.sim_event_participants(event_id,user_id,ranking_id,deck_name)
-  values(p_event,u,r.id,r.deck_name) returning * into p;
+  insert into public.sim_event_participants(event_id,ranking_id,deck_name,deck_snapshot)
+  values(p_event,r.id,r.deck_name,r.deck_json) returning * into p;
   insert into public.sim_event_evidence(participant_id,mission) values(p.id,'deck');
-  return public.event_get(p_event);
+  return public.event_get(p_event,p_ranking_id,p_token);
 end $$;
 
-create or replace function public.event_attempt(p_event text,p_request_id uuid) returns jsonb
+create or replace function public.event_attempt(p_event text,p_request_id uuid,p_ranking_id uuid,p_token text) returns jsonb
 language plpgsql security definer set search_path=pg_catalog,public as $$
 declare e public.sim_events; p uuid; n integer; rules jsonb; tier text; pool jsonb;
   chosen jsonb; board jsonb := '[]'; used text[] := '{}'; score numeric := 0; total numeric; roll numeric; i integer;
 begin
   perform 1 from public.sim_events where id=p_event for update;
-  p:=public._event_member(p_event);
+  p:=public._event_member(p_event,p_ranking_id,p_token);
   if p_request_id is null then raise exception 'event_request_required'; end if;
   -- A timed-out request can be retried even after the fifth attempt or closing.
   if exists(select 1 from public.sim_event_attempts where participant_id=p and request_id=p_request_id)
-  then return public.event_get(p_event); end if;
+  then return public.event_get(p_event,p_ranking_id,p_token); end if;
   e:=public._event_open(p_event);
   select count(*)+1 into n from public.sim_event_attempts where participant_id=p;
   if n>5 then raise exception 'event_attempt_limit'; end if;
@@ -190,19 +217,19 @@ begin
   insert into public.sim_event_attempts(participant_id,request_id,number,board,score)
     values(p,p_request_id,n,board,round(score,2));
   insert into public.sim_event_evidence(participant_id,mission) values(p,'skills') on conflict do nothing;
-  return public.event_get(p_event);
+  return public.event_get(p_event,p_ranking_id,p_token);
 end $$;
 
-create or replace function public.event_experience(p_event text,p_mission text) returns jsonb
+create or replace function public.event_experience(p_event text,p_mission text,p_ranking_id uuid,p_token text) returns jsonb
 language plpgsql security definer set search_path=pg_catalog,public as $$
 declare e public.sim_events; p uuid; rules jsonb; pool jsonb; preview jsonb := '[]'; hidden jsonb;
   chosen jsonb; grade text; roll numeric; total numeric; i integer;
 begin
   perform 1 from public.sim_events where id=p_event for update;
-  p:=public._event_member(p_event);
+  p:=public._event_member(p_event,p_ranking_id,p_token);
   if p_mission is null or p_mission not in ('moment','hof') then raise exception 'event_invalid_mission'; end if;
   if exists(select 1 from public.sim_event_experiences where participant_id=p and mission=p_mission)
-  then return public.event_get(p_event); end if;
+  then return public.event_get(p_event,p_ranking_id,p_token); end if;
   e:=public._event_open(p_event);
   select data into rules from public.sim_event_rules where id=e.rules_id;
   if rules is null then raise exception 'event_rules_missing'; end if;
@@ -227,44 +254,44 @@ begin
     select jsonb_agg(value order by gen_random_uuid()) into hidden from jsonb_array_elements(preview);
     insert into public.sim_event_experiences(participant_id,mission,preview,shuffled) values(p,'moment',preview,hidden);
   end if;
-  return public.event_get(p_event);
+  return public.event_get(p_event,p_ranking_id,p_token);
 end $$;
 
-create or replace function public.event_pick_moment(p_event text,p_slot integer) returns jsonb
+create or replace function public.event_pick_moment(p_event text,p_slot integer,p_ranking_id uuid,p_token text) returns jsonb
 language plpgsql security definer set search_path=pg_catalog,public as $$
 declare p uuid; x public.sim_event_experiences;
 begin
   perform 1 from public.sim_events where id=p_event for update;
-  p:=public._event_member(p_event);
+  p:=public._event_member(p_event,p_ranking_id,p_token);
   if p_slot is null or p_slot not between 0 and 4 then raise exception 'event_invalid_slot'; end if;
   select * into x from public.sim_event_experiences where participant_id=p and mission='moment';
   if not found then raise exception 'event_experience_required'; end if;
-  if x.result is not null then return public.event_get(p_event); end if;
+  if x.result is not null then return public.event_get(p_event,p_ranking_id,p_token); end if;
   perform public._event_open(p_event);
   update public.sim_event_experiences set result=shuffled->p_slot,chosen_slot=p_slot where participant_id=p and mission='moment';
   insert into public.sim_event_evidence(participant_id,mission) values(p,'moment') on conflict do nothing;
-  return public.event_get(p_event);
+  return public.event_get(p_event,p_ranking_id,p_token);
 end $$;
 
-create or replace function public.event_claim(p_event text,p_mission text) returns jsonb
+create or replace function public.event_claim(p_event text,p_mission text,p_ranking_id uuid,p_token text) returns jsonb
 language plpgsql security definer set search_path=pg_catalog,public as $$
 declare p uuid;
 begin
   perform 1 from public.sim_events where id=p_event for update;
-  p:=public._event_member(p_event);
+  p:=public._event_member(p_event,p_ranking_id,p_token);
   if p_mission is null or p_mission not in ('deck','skills','moment','hof') then raise exception 'event_invalid_mission'; end if;
   if exists(select 1 from public.sim_event_tickets where participant_id=p and mission=p_mission)
-  then return public.event_get(p_event); end if;
+  then return public.event_get(p_event,p_ranking_id,p_token); end if;
   perform public._event_open(p_event);
   if not exists(select 1 from public.sim_event_evidence where participant_id=p and mission=p_mission)
   then raise exception 'event_evidence_required'; end if;
   insert into public.sim_event_tickets(participant_id,mission) values(p,p_mission);
-  return public.event_get(p_event);
+  return public.event_get(p_event,p_ranking_id,p_token);
 end $$;
 
 create or replace function public.event_admin(p_event text,p_action text) returns jsonb
 language plpgsql security definer set search_path=pg_catalog,public as $$
-declare u uuid := public._event_user(); e public.sim_events; champ uuid; ticket uuid; winner uuid; n integer; removed integer;
+declare u uuid := public._event_user(); e public.sim_events; champ uuid; ticket uuid; winner uuid; n integer; removed integer; prize text; winner_id uuid; verified timestamptz; delivered timestamptz; recorded timestamptz;
 begin
   if not exists(select 1 from public.sim_event_admins where user_id=u) then raise exception 'event_admin_required'; end if;
   select * into e from public.sim_events where id=p_event for update;
@@ -300,18 +327,38 @@ begin
     update public.sim_events set phase='drawn',drawn_at=clock_timestamp(),winner_id=winner,winning_ticket=ticket where id=p_event;
     insert into public.sim_event_audit(event_id,action,actor,details)
       values(p_event,'draw',u,jsonb_build_object('eligible_tickets',n,'winner_id',winner,'winning_ticket',ticket));
+  elsif p_action in ('verify_champion','verify_winner','deliver_champion','deliver_winner') then
+    prize:=split_part(p_action,'_',2);
+    winner_id:=case when prize='champion' then e.champion_id else e.winner_id end;
+    verified:=case when prize='champion' then e.champion_verified_at else e.winner_verified_at end;
+    delivered:=case when prize='champion' then e.champion_delivered_at else e.winner_delivered_at end;
+    if winner_id is null or e.phase='open' then raise exception 'event_winner_required'; end if;
+    if p_action like 'verify_%' then
+      if verified is not null then return public.event_get(p_event); end if;
+      recorded:=clock_timestamp();
+      if prize='champion' then update public.sim_events set champion_verified_at=recorded where id=p_event;
+      else update public.sim_events set winner_verified_at=recorded where id=p_event; end if;
+    else
+      if verified is null then raise exception 'event_verification_required'; end if;
+      if delivered is not null then return public.event_get(p_event); end if;
+      recorded:=clock_timestamp();
+      if prize='champion' then update public.sim_events set champion_delivered_at=recorded where id=p_event;
+      else update public.sim_events set winner_delivered_at=recorded where id=p_event; end if;
+    end if;
+    insert into public.sim_event_audit(event_id,action,actor,details)
+      values(p_event,p_action,u,jsonb_build_object('participant_id',winner_id));
   else raise exception 'event_invalid_action'; end if;
   return public.event_get(p_event);
 end $$;
 
--- Helpers are never callable by API roles. Read is public; mutations require Auth.
+-- Helpers are private. Participant RPCs authenticate deck sessions; only admin actions require Auth.
 do $$ declare f record; begin
   for f in select p.oid::regprocedure signature,p.proname from pg_proc p join pg_namespace n on n.oid=p.pronamespace
     where n.nspname='public' and (p.proname like '\_event\_%' escape '\' or p.proname in
       ('event_get','event_join','event_attempt','event_experience','event_pick_moment','event_claim','event_admin')) loop
     execute format('revoke all on function %s from public,anon,authenticated',f.signature);
-    if f.proname='event_get' then execute format('grant execute on function %s to anon,authenticated',f.signature);
-    elsif f.proname not like '\_event\_%' escape '\' then execute format('grant execute on function %s to authenticated',f.signature); end if;
+    if f.proname='event_admin' then execute format('grant execute on function %s to authenticated',f.signature);
+    elsif f.proname not like '\_event\_%' escape '\' then execute format('grant execute on function %s to anon,authenticated',f.signature); end if;
   end loop;
 end $$;
 insert into public.sim_events(id,title,rules_id,opens_at)
