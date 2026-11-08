@@ -205,7 +205,15 @@ async function stop() {
       .click();
     await attempt(bob, 1);
     await earn(bob);
-    const admin = await login("운영자");
+    const admin = await (await context()).newPage();
+    admin.on("pageerror", (e) => errors.push(e.message));
+    await admin.goto(origin + "/event-control/");
+    await admin.getByLabel("관리자 비밀번호").fill("wrong-password");
+    await admin.getByRole("button", { name: "로그인", exact: true }).click();
+    await admin.getByText("비밀번호가 올바르지 않습니다.", { exact: true }).waitFor();
+    assert.equal(await admin.locator(".event-admin").count(), 0);
+    await admin.getByLabel("관리자 비밀번호").fill("a".repeat(64));
+    await admin.getByRole("button", { name: "로그인", exact: true }).click();
     await admin.locator(".event-admin").waitFor();
     admin.on("dialog", (d) => d.accept());
     // Hiding immediately revokes reads, including a participant's already-rendered state.
@@ -225,12 +233,7 @@ async function stop() {
         .count(),
       0,
     );
-    assert.equal(
-      await alice
-        .getByRole("button", { name: "운영자 로그인 링크 받기" })
-        .isEnabled(),
-      true,
-    );
+    assert.equal(await alice.locator(".event-admin-login, a[href*='event-control'], a[href*='event-demo']").count(), 0);
     const privateGuest = await (await context()).newPage();
     await privateGuest.goto(origin + "/?event=1#simulator");
     await privateGuest.locator(".event-private .event-error").waitFor();
@@ -240,23 +243,7 @@ async function stop() {
         .count(),
       0,
     );
-    let loginPayload;
-    await privateGuest.route("**/auth/v1/otp*", (r) => {
-      loginPayload = r.request().postDataJSON();
-      return r.fulfill({ contentType: "application/json", body: "{}" });
-    });
-    await privateGuest
-      .getByLabel("운영자 이메일", { exact: true })
-      .fill("admin@event.test");
-    await privateGuest
-      .getByRole("button", { name: "운영자 로그인 링크 받기" })
-      .click();
-    await privateGuest.locator(".event-message").waitFor();
-    assert.equal(
-      loginPayload.create_user,
-      false,
-      "operator login never creates arbitrary participant accounts",
-    );
+    assert.equal(await privateGuest.locator(".event-admin-login, input[type=email], a[href*='event-control'], a[href*='event-demo']").count(), 0);
     await privateGuest.context().close();
     await admin.reload();
     await admin.locator(".event-admin").waitFor();
@@ -343,34 +330,25 @@ async function stop() {
     assert.ok(
       !(await guest.locator(".event-page").innerText()).includes("@event.test"),
     );
-    // Exercise the actual URL-token callback path used by an email login link.
-    const authResponse = await fetch(
-      `http://localhost:${apiPort}/auth/v1/token?grant_type=password`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: "admin@event.test",
-          password: "test-only",
-        }),
-      },
-    );
-    const auth = await authResponse.json();
-    const callback = await (await context()).newPage();
-    const hash = new URLSearchParams({
-      access_token: auth.access_token,
-      refresh_token: auth.refresh_token,
-      token_type: "bearer",
-      expires_in: "3600",
-      type: "magiclink",
-    });
-    await callback.goto(origin + "/?event=1#" + hash.toString());
-    await callback.locator(".event-admin").waitFor();
-    assert.equal(
-      await callback.locator(".event-admin").count(),
-      1,
-      "operator email callback lands on event management",
-    );
+    // The public page has no management entry, even in the operator's browser.
+    const publicAdminTab = await admin.context().newPage();
+    await publicAdminTab.goto(origin + "/?event=1#simulator");
+    await publicAdminTab.getByText("추첨 완료", { exact: true }).waitFor();
+    assert.equal(await publicAdminTab.locator(".event-admin, .event-admin-login, a[href*='event-control'], a[href*='event-demo']").count(), 0);
+    await publicAdminTab.close();
+    for (const width of [320, 390, 1366]) {
+      await admin.setViewportSize({ width, height: 900 });
+      assert.equal(await admin.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `admin overflow at ${width}`);
+    }
+    await admin.setViewportSize({ width: 1366, height: 900 });
+    await admin.screenshot({ path: "/workspace/artifacts/event-admin-live-test.png", fullPage: true });
+    const oldSession = await admin.evaluate(() => JSON.parse(sessionStorage.getItem("rivals-event-operator-session")));
+    await admin.getByRole("button", { name: "로그아웃", exact: true }).click();
+    await admin.getByLabel("관리자 비밀번호").waitFor();
+    await admin.evaluate((session) => sessionStorage.setItem("rivals-event-operator-session", JSON.stringify(session)), oldSession);
+    await admin.reload();
+    await admin.getByText("로그인이 만료되었습니다. 다시 로그인해주세요.", { exact: true }).waitFor();
+    assert.equal(await admin.locator(".event-admin").count(), 0, "revoked session clears private data");
     for (const width of [320, 390, 768, 1366, 1920]) {
       await alice.setViewportSize({ width, height: 900 });
       assert.equal(

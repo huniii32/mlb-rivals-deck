@@ -15,6 +15,9 @@ const allowedHosts = [
 export default defineConfig({
   plugins: [react()],
   base: process.env.VITE_BASE || "/",
+  build: {
+    rollupOptions: { input: { main: "index.html", eventControl: "event-control/index.html" } },
+  },
   server: {
     host: process.env.WEB_HOST || "127.0.0.1",
     port: Number(process.env.WEB_PORT || 5176),
