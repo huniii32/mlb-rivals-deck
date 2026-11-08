@@ -26,17 +26,14 @@ function Pilot() {
     return <p>로컬 이벤트 검증 서버에서만 사용할 수 있습니다.</p>;
   async function enter(key: string, u: PilotUser) {
     if (!supabase) return;
-    const result =
-      key === "admin"
-        ? await supabase.auth.signInWithPassword({
-            email: u.email,
-            password: "test-only",
-          })
-        : await supabase.auth.signOut();
-    if (result.error) {
-      setError(result.error.message);
+    if (key === "admin") {
+      const result = await supabase.rpc("event_operator_login", { p_password: "a".repeat(64) });
+      if (result.error) { setError(result.error.message); return; }
+      sessionStorage.setItem("rivals-event-operator-session", JSON.stringify(result.data));
+      location.href = "/event-control/";
       return;
     }
+    await supabase.auth.signOut();
     const deck = normalizeDeck({
       id: `event-test-${key}`,
       updatedAt: Date.now(),

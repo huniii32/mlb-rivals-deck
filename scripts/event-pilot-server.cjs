@@ -15,6 +15,8 @@ const sign = (v) =>
   const { db, users, rpc } = await createEventTestDb(
     process.env.EVENT_PILOT_DIR || path.resolve(".event-pilot"),
   );
+  // Test-only generated-format credential; never bundled into production.
+  await db.query("insert into sim_event_operator_credentials values($1,public._ranking_hash($2)) on conflict(user_id) do nothing", [users.admin.id, "a".repeat(64)]);
   const authUser = (u) => ({
     id: u.id,
     email: u.email,

@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
 import type { RankRef } from "../lib/deckFile";
-import { supabase } from "../lib/supabase";
 import {
   EVENT_ID,
   EVENT_MISSIONS,
@@ -44,12 +42,10 @@ export default function EventPage({
   preview?: { request: typeof eventRequest; storageKey: string };
 }) {
   const [state, setState] = useState<EventState | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [email, setEmail] = useState("");
   const [flipped, setFlipped] = useState(false);
   const busyRef = useRef(false),
     version = useRef(0),
@@ -85,29 +81,12 @@ export default function EventPage({
     setState(null);
     setLoading(true);
     void refresh();
-    if (!preview)
-      void supabase?.auth.getSession().then(({ data }) => {
-        if (mounted.current) setSession(data.session);
-      });
-    const subscription = preview
-      ? undefined
-      : supabase?.auth.onAuthStateChange((_event, next) => {
-          if (!mounted.current) return;
-          ++version.current;
-          setSession(next);
-          setState(null);
-          // Avoid calling another SDK request while Supabase's auth lock is held.
-          setTimeout(() => {
-            if (mounted.current) void refresh();
-          }, 0);
-        });
     const timer = setInterval(() => void refresh(), 15000);
     const focus = () => void refresh();
     window.addEventListener("focus", focus);
     return () => {
       mounted.current = false;
       ++version.current;
-      subscription?.data.subscription.unsubscribe();
       clearInterval(timer);
       window.removeEventListener("focus", focus);
     };
@@ -173,32 +152,6 @@ export default function EventPage({
       );
     }
   }
-  async function login() {
-    if (!supabase || busyRef.current) return;
-    busyRef.current = true;
-    setBusy(true);
-    setError("");
-    try {
-      const target = new URL(import.meta.env.BASE_URL, location.origin);
-      target.searchParams.set("event", "1");
-      target.hash = "simulator";
-      const { error } = await supabase.auth.signInWithOtp({
-        email: email.trim(),
-        options: { emailRedirectTo: target.href, shouldCreateUser: false },
-      });
-      if (error) throw error;
-      setMessage(
-        "운영자 로그인 링크를 이메일로 보냈습니다. 메일의 링크를 누르면 이벤트 관리 화면으로 돌아옵니다.",
-      );
-    } catch {
-      setError(
-        "인증 메일을 보내지 못했습니다. 이메일 주소를 확인하고 잠시 후 다시 시도해주세요.",
-      );
-    } finally {
-      busyRef.current = false;
-      setBusy(false);
-    }
-  }
   const me = state?.me,
     accepting = state ? eventAccepting(state) : false;
   const attempts = me?.attempts || [],
@@ -214,7 +167,7 @@ export default function EventPage({
   const ended =
     !!state?.event.ends_at &&
     Date.parse(state.server_now) >= Date.parse(state.event.ends_at);
-  if (state?.is_admin) {
+  if (preview && state?.is_admin) {
     return (
       <EventAdmin
         state={state}
@@ -223,56 +176,16 @@ export default function EventPage({
         message={message}
         onAction={act}
         onRefresh={() => void refresh()}
-        onLogout={preview ? undefined : () => void supabase?.auth.signOut()}
       />
     );
   }
-  const operatorLogin = !preview && (
-    <div className="event-admin-login">
-      {session ? (
-        <div className="event-account">
-          <span>{session.user.email} · 운영자 권한을 확인해주세요.</span>
-          <button disabled={busy} onClick={() => void supabase?.auth.signOut()}>
-            로그아웃
-          </button>
-        </div>
-      ) : (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void login();
-          }}
-        >
-          <label>
-            운영자 이메일
-            <input
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="운영자 이메일 주소"
-            />
-          </label>
-          <button disabled={busy || !supabase}>운영자 로그인 링크 받기</button>
-        </form>
-      )}
-    </div>
-  );
   if (!state) {
     return (
       <div className="event-page">
         <section className="event-panel event-private" aria-busy={loading}>
-          <div className="eyebrow">PRIVATE EVENT</div>
-          <h2>{loading ? "접근 권한 확인 중…" : "이벤트 준비 중"}</h2>
-          <p>공개 전에는 운영자만 페이지를 확인할 수 있습니다.</p>
-          {!preview && (
-            <p>
-              <a href="https://feat-server-event-pilot.mlb-rivals-deck.pages.dev/event-demo/?view=admin">
-                운영자 미리보기 열기 →
-              </a>
-            </p>
-          )}
+          <div className="eyebrow">RIVALS EVENT</div>
+          <h2>{loading ? "이벤트 불러오는 중…" : "이벤트 준비 중"}</h2>
+          <p>스킬 점수 대회와 시뮬레이터 참여 이벤트를 준비하고 있어요.</p>
           {error && (
             <p className="event-error" role="alert">
               {error}
@@ -283,7 +196,6 @@ export default function EventPage({
               {message}
             </p>
           )}
-          {!loading && operatorLogin}
           <button disabled={busy || loading} onClick={() => void refresh()}>
             다시 확인
           </button>
@@ -722,16 +634,6 @@ export default function EventPage({
           </details>
         ) : null}
       </section>
-      {!preview && (
-        <details className="event-panel event-admin-login">
-          <summary>운영자 로그인</summary>
-          <p>
-            이메일 로그인은 이벤트 운영자만 사용합니다. 참가자는 위에서 등록
-            덱으로 참여해주세요.
-          </p>
-          {operatorLogin}
-        </details>
-      )}
     </div>
   );
 }

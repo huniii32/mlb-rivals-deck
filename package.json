@@ -10,7 +10,7 @@
     "build:cloudflare": "node scripts/build-cloudflare.mjs",
     "preview": "vite preview",
     "test": "node scripts/verify-all.cjs && node scripts/verify-event-preview-guard.mjs",
-    "test:db": "node scripts/verify-passwords.cjs && node scripts/verify-ranking-db.mjs && node scripts/verify-name-passwords.cjs && node scripts/verify-events-db.cjs"
+    "test:db": "node scripts/verify-passwords.cjs && node scripts/verify-ranking-db.mjs && node scripts/verify-name-passwords.cjs && node scripts/verify-events-db.cjs && node scripts/verify-event-operator.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

@@ -2,8 +2,6 @@ import { lazy, Suspense, useState } from "react";
 import type { SkillTables, PlayerInput } from "../lib/engine";
 import type { RankRef } from "../lib/deckFile";
 import { SimulatorArt } from "./renewal/SimulatorArt";
-import { EVENT_OPEN_LABEL } from "../demo/eventAvailability";
-import { useEventOpen } from "../demo/useEventOpen";
 const SkillSimulator = lazy(() => import("./SkillSimulator"));
 const MomentCombination = lazy(() => import("./MomentCombination"));
 const HofRecruitment = lazy(() => import("./HofRecruitment"));
@@ -28,7 +26,6 @@ export default function Simulator({
       ? "event"
       : "home",
   );
-  const eventOpen = useEventOpen();
   return (
     <div className="simulator-hub">
       {screen === "home" ? (
@@ -84,20 +81,15 @@ export default function Simulator({
             </button>
             <button
               className="card sim-hub-option event-option"
-              disabled={!eventOpen}
-              onClick={() => {
-                if (eventOpen) setScreen("event");
-              }}
+              onClick={() => setScreen("event")}
             >
               <SimulatorArt type="event" />
               <strong>이벤트</strong>
               <span className="muted">
-                {eventOpen
-                  ? "5회 스킬 점수 대회 · 참여 응모권 · 행운 추첨"
-                  : `${EVENT_OPEN_LABEL} 공개 예정`}
+                5회 스킬 점수 대회 · 참여 응모권 · 행운 추첨
               </span>
               <span className="sim-hub-enter">
-                {eventOpen ? "이벤트 페이지 →" : "오픈 준비 중"}
+                이벤트 페이지 →
               </span>
             </button>
           </div>
