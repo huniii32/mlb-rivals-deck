@@ -4,6 +4,7 @@ import { calcDeckTotal, type SkillTables } from "./engine";
 import { loadOwnerCode, saveOwnerCode } from "./ownerCode";
 import { supabase } from "./supabase";
 import { validDeckName } from "./deckPassword";
+import { rankingEligibility } from "./rankingEligibility";
 
 const KEY = "rivals-my-ranks-v1";
 
@@ -61,12 +62,13 @@ type Rpc = (fn: "update_ranking" | "update_ranking_owned" | "update_ranking_pass
 /** 바뀐 연동 덱만 서버에 반영. 성공=sig 갱신, 행이 사라짐(false)=연동 해제, 오류=그대로 두고 다음 기회에 재시도 */
 export async function syncLinks(opts: {
   links: RankLinks; decks: Deck[]; tables: SkillTables; rpc: Rpc; code?: string;
-}): Promise<{ links: RankLinks; pushed: number; failed: number }> {
+}): Promise<{ links: RankLinks; pushed: number; failed: number; blocked: number }> {
   const links = { ...opts.links };
-  let pushed = 0, failed = 0;
+  let pushed = 0, failed = 0, blocked = 0;
   for (const [id, link] of Object.entries(opts.links)) {
     const deck = opts.decks.find((d) => d.id === link.deckId);
     if (!deck || !validDeckName(deck.name)) continue;
+    if (!rankingEligibility(deck.players).eligible) { blocked++; continue; }
     if (link.owned && !opts.code) continue; // 코드 없으면 소유 글은 반영 불가 — 건너뜀
     const { args } = rankArgs(deck, opts.tables);
     const sig = deckSig(args);
@@ -84,10 +86,10 @@ export async function syncLinks(opts: {
       failed++;
     }
   }
-  return { links, pushed, failed };
+  return { links, pushed, failed, blocked };
 }
 
-export type RankSyncStatus = "idle" | "syncing" | "ok" | "error";
+export type RankSyncStatus = "idle" | "syncing" | "ok" | "error" | "blocked";
 /** 연동 덱을 즉시 반영하며 요청 중 변경은 완료 직후 최신 상태로 다시 보낸다. */
 export function useRankSync(decks: Deck[], tables: SkillTables) {
   const [links, setLinksState] = useState(loadLinks);
@@ -147,8 +149,10 @@ export function useRankSync(decks: Deck[], tables: SkillTables) {
           setLinks(next);
         }
         if (res.failed) setStatus("error");
-        else if (res.pushed) { setStatus("ok"); window.dispatchEvent(new Event("rivals:ranking-updated")); }
-        else setStatus(before === "syncing" ? "idle" : before);
+        else if (res.blocked) setStatus("blocked");
+        else if (res.pushed) setStatus("ok");
+        else setStatus(before === "syncing" || before === "blocked" ? "idle" : before);
+        if (res.pushed) window.dispatchEvent(new Event("rivals:ranking-updated"));
       } while (again.current);
     } finally {
       busy.current = false;

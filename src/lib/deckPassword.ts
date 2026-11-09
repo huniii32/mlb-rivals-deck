@@ -12,6 +12,8 @@ export function passwordResult(data: unknown): { id: string; token: string; deck
 }
 export function passwordError(e: unknown): string {
   const message = typeof e === "object" && e !== null && "message" in e ? String(e.message) : String(e);
+  if (message.includes("ranking_roster_incomplete")) return "공개 등록·업데이트에는 타자 9명, 선발투수 5명, 중계투수 3명, 마무리 1명 이상이 필요합니다. 선수 이름을 입력해주세요.";
+  if (message.includes("ranking_roster_invalid")) return "선수 슬롯 구성이 올바르지 않습니다. 라인업과 불펜 구성을 확인해주세요.";
   if (message.includes("rate_limited")) return "시도 횟수가 많습니다. 잠시 후 다시 시도하세요.";
   if (message.includes("duplicate_name") || message.includes("rankings_name_unique")) return "이미 사용 중인 덱 이름입니다. 다른 이름을 사용하거나 해당 덱의 비밀번호로 연결하세요.";
   if (message.includes("invalid_password")) return "해당 덱의 비밀번호가 일치하지 않거나 접근할 수 없는 덱입니다.";

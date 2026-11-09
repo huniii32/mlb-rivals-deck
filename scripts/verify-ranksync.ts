@@ -12,7 +12,7 @@ const check = (label: string, cond: boolean) => {
 const TABLES = { overrides: {}, customs: [] };
 const mkDeck = (id: string): Deck => ({
   id, name: "덱", updatedAt: 1,
-  players: LINEUP.map((l) => blankPlayer(l.row, l.kind, l.pos, l.order)),
+  players: LINEUP.map((l) => ({ ...blankPlayer(l.row, l.kind, l.pos, l.order), name: `선수 ${l.row}` })),
   chem: { ...DEFAULT_CHEM }, flags: flagDefaults(),
   yearInputs: Object.fromEntries(Object.values(YEAR_ANCHOR).map((r) => [r, ""])) as Deck["yearInputs"],
 });

@@ -144,6 +144,7 @@ async function stop() {
         .waitFor();
       await p.getByRole("button", { name: "HOF 1회 영입 체험" }).click();
       await p.getByText("일반 HOF 영입 체험 결과", { exact: true }).waitFor();
+      assert.match(await p.locator(".event-unclaimed").innerText(), /4장/);
       for (const mission of [
         "덱 등록",
         "스킬 시뮬레이터",
@@ -154,7 +155,7 @@ async function stop() {
           has: p.getByRole("heading", { name: mission, exact: true }),
         });
         await card
-          .getByRole("button", { name: "이벤트 참여하기 · 응모권 받기" })
+          .getByRole("button", { name: "응모권 1장 받기" })
           .click();
         await card.getByRole("button", { name: "✓ 응모권 받음" }).waitFor();
         await p.waitForFunction(
@@ -167,6 +168,7 @@ async function stop() {
     await alice
       .getByRole("button", { name: "현재 등록 덱으로 이벤트 참여" })
       .click();
+    await alice.getByRole("region", { name: "이벤트 참여 방법" }).waitFor();
     await attempt(alice, 1);
     // Commit on server, then lose the response in transit. Reload must show one committed result.
     await alice.route(

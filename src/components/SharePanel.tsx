@@ -160,13 +160,13 @@ export function SharePanel({ decks, tables, activeId, links, setLinks, code, onR
           </Fragment>)}{!visible.length && <tr><td colSpan={4} className="ranking-empty">검색 결과가 없습니다.</td></tr>}</tbody>
         </table>}
       </>}
-      <p className="ranking-footnote">같은 이름·같은 비밀번호로 저장하면 기존 랭킹이 갱신됩니다.</p>
+      <p className="ranking-footnote">공개 등록·업데이트는 타자 9명, 선발투수 5명, 중계투수 3명, 마무리 1명 이상이 필요합니다. 같은 이름·같은 비밀번호로 저장하면 기존 랭킹이 갱신됩니다.</p>
     </div>
     {sharing && <DeckShareModal deck={active} onImport={onImportDeck} onSave={onSaveDeck} close={closeSharing} />}
     {compare && <DeckCompareModal myName={active.name || "저장 전 덱"} myDeck={active} otherName={compare.name} otherDeck={compare.deck} tables={tables} close={() => setCompare(null)} />}
     {restoreRow && <div className="modal-overlay" onClick={closeRestore}><form role="dialog" aria-label="랭킹 덱 가져오기" className="card modal-box deck-save-form" onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); void restore(); }}>
       <h3>{restoreRow.deck_name} 가져오기</h3>
-      <p>저장할 때 정한 비밀번호를 입력하세요. 가져온 뒤 수정하면 같은 랭킹 글에 반영됩니다.</p>
+      <p>저장할 때 정한 비밀번호를 입력하세요. 가져온 뒤 필수 인원 조건을 충족하면 같은 랭킹 글에 수정 내용이 반영됩니다.</p>
       <label>비밀번호 <input aria-label="가져올 덱 비밀번호" type="password" inputMode="numeric" placeholder="숫자 4자리" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} autoFocus maxLength={128} /></label>
       <p className="muted">새 비밀번호는 숫자 4자리입니다. 이전에 긴 비밀번호로 저장한 덱은 기존 비밀번호를 입력하세요.</p>
       {restoreError && <p role="alert" className="bad">{restoreError}</p>}

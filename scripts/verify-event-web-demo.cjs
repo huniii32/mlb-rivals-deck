@@ -54,7 +54,7 @@ const target =
         has: page.getByRole("heading", { name: "덱 등록", exact: true }),
       });
       await card
-        .getByRole("button", { name: "이벤트 참여하기 · 응모권 받기" })
+        .getByRole("button", { name: "응모권 1장 받기" })
         .click();
       await card.getByRole("button", { name: "✓ 응모권 받음" }).waitFor();
       await ready();

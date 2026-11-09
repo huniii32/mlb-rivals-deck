@@ -158,6 +158,9 @@ export default function EventPage({
     latest = attempts[attempts.length - 1];
   const myTickets =
     state?.tickets.filter((t) => t.participant_id === me?.id) || [];
+  const unclaimed = (Object.keys(EVENT_MISSIONS) as EventMission[]).filter(
+    m => me?.evidence[m] && !myTickets.some(t => t.mission === m),
+  );
   const nameOf = (id: string | null) =>
     state?.rankings.find((r) => r.id === id)?.deck_name ||
     state?.tickets.find((t) => t.participant_id === id)?.deck_name ||
@@ -299,6 +302,16 @@ export default function EventPage({
               : "이벤트를 준비하고 있습니다. 아직 참여 횟수는 사용되지 않습니다."}
         </p>
       )}
+      <section className="event-panel event-howto" aria-label="이벤트 참여 방법">
+        <h3>이 순서로 참여해주세요</h3>
+        <ol>
+          <li><b>덱 등록·가져오기</b><span>공개 덱을 등록하거나 덱랭킹에서 기존 비밀번호로 내 덱을 가져오세요.</span></li>
+          <li><b>이벤트 참가 등록</b><span>아래 ‘현재 등록 덱으로 이벤트 참여’를 눌러 참가를 완료하세요.</span></li>
+          <li><b>이 페이지에서 도전·체험</b><span>스킬 챌린지, 모먼트 조합, HOF 영입을 진행하세요. 일반 시뮬레이터 기록은 이벤트에 합산되지 않습니다.</span></li>
+          <li><b>항목마다 응모권 받기</b><span>참여를 완료한 항목에서 ‘응모권 1장 받기’를 눌러야 추첨 응모가 완료됩니다.</span></li>
+        </ol>
+        <p><strong>점수 대회</strong>는 스킬 도전 시 자동으로 순위에 반영됩니다. <strong>응모권 추첨</strong>은 발급받은 응모권이 1장 이상 있어야 참여됩니다. 덱 등록·스킬·모먼트·HOF 각 1장, 최대 4장이며 모든 체험을 완료할 필요는 없습니다.</p>
+      </section>
       <section className="event-panel event-registration">
         <div>
           <h3>내 참여 정보</h3>
@@ -434,9 +447,12 @@ export default function EventPage({
           </div>
           <strong>내 응모권 {myTickets.length} / 4장</strong>
         </div>
+        {unclaimed.length > 0 && <p className="event-unclaimed" role="status">
+          {accepting ? `아직 받지 않은 응모권이 ${unclaimed.length}장 있어요. 아래에서 ‘응모권 1장 받기’를 눌러주세요.` : `미수령 응모권 ${unclaimed.length}장 · 참여 기간이 종료되어 추가 발급할 수 없습니다.`}
+        </p>}
         <p>
-          각 항목의 참여 완료 후 응모권을 받아주세요. 아래 이벤트 전용 체험의
-          기록을 확인하며, 평소 시뮬레이터 기록과 사용량은 별도로 유지됩니다.
+          체험 완료와 응모권 발급은 별도입니다. 버튼을 눌러 ‘응모권 받음’으로 바뀌었는지 확인하세요.
+          발급받은 응모권만 추첨에 포함됩니다.
         </p>
         <div className="event-missions">
           {(Object.keys(EVENT_MISSIONS) as EventMission[]).map((m) => {
@@ -449,7 +465,7 @@ export default function EventPage({
                   {earned
                     ? "응모권 발급 완료"
                     : ready
-                      ? "참여 이력 확인 완료"
+                      ? "참여 완료 · 응모권 미수령"
                       : m === "deck"
                         ? "등록 덱으로 이벤트에 참여하세요"
                         : m === "skills"
@@ -477,7 +493,7 @@ export default function EventPage({
                     )
                   }
                 >
-                  {earned ? "✓ 응모권 받음" : "이벤트 참여하기 · 응모권 받기"}
+                  {earned ? "✓ 응모권 받음" : "응모권 1장 받기"}
                 </button>
               </article>
             );
