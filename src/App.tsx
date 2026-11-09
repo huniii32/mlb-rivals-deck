@@ -1,3 +1,4 @@
+import { rankingEligibility } from "./lib/rankingEligibility";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import type { Kind, PlayerInput, SkillTables } from "./lib/engine";
 import { deckPlayerResults, flagDefaults, migrateSkillName } from "./lib/engine";
@@ -205,6 +206,8 @@ export default function App() {
     const named = { ...deck, name: name.trim(), updatedAt: Date.now() };
     setDecks((prev) => prev.map((d) => d.id === named.id ? named : d));
     if (!supabase || !publish) return;
+    const roster = rankingEligibility(named.players);
+    if (!roster.eligible) throw new Error(roster.message);
     const existing = Object.entries(links).find(([, l]) => l.deckId === named.id);
     try {
       const { args } = rankArgs(named, tables);
@@ -364,6 +367,7 @@ export default function App() {
           try { localStorage.removeItem(RECOVERY_KEY); setRecovery(null); } catch { setStorageError("백업을 삭제하지 못했습니다."); }
         }}>백업 삭제</button></div>
       </div>}
+      {activeLink && !rankingEligibility(players).eligible && <p className="card ranking-update-held" role="status">{rankingEligibility(players).message} 공개 랭킹은 마지막 등록 상태로 유지되며, 현재 수정 내용은 이 기기에 저장됩니다.</p>}
       {storageError && <p className="bad" role="alert">{storageError}</p>}
       {tab !== "simulator" && <div className="card toolbar">
         <div className="row toolbar-main">
@@ -376,7 +380,7 @@ export default function App() {
           {tab !== "ranking" && <button className="primary" title="덱 이름·랭킹 연결 설정" onClick={() => setSaveOpen(true)}>덱 저장</button>}
           <button aria-expanded={toolsOpen} aria-controls="deck-tools" onClick={() => setToolsOpen(!toolsOpen)}>덱 도구 <span aria-hidden="true">{toolsOpen ? "⌃" : "⌄"}</span></button>
           {activeLink && <span className={`pill ${status === "error" ? "bad-pill" : status === "ok" ? "" : "pill-idle"}`}>
-            🏆 랭킹 연동{status === "syncing" ? " · 반영 중…" : status === "ok" ? " · 방금 반영됨" : status === "error" ? " · 반영 실패(다음 수정 때 재시도)" : ""}
+            🏆 랭킹 연동{!rankingEligibility(players).eligible ? " · 선수 입력 필요" : status === "blocked" ? " · 다른 덱 업데이트 보류" : status === "syncing" ? " · 반영 중…" : status === "ok" ? " · 방금 반영됨" : status === "error" ? " · 반영 실패(다음 수정 때 재시도)" : ""}
           </span>}
         </div>
         <p className="muted toolbar-status">{validDeckName(deck.name) ? "변경사항은 자동 저장됩니다." : "이름을 정해 저장하세요. 이름 없는 덱은 새로고침하면 사라집니다."}</p>
@@ -450,7 +454,7 @@ export default function App() {
       {modal === "guide" && <ScoreGuideModal close={() => setModal(null)} />}
       {modal === "patch" && <PatchNotesModal close={() => setModal(null)} />}
       {preview && <DeckPreviewModal deck={preview} tables={tables} close={() => setPreview(null)} />}
-      {saveOpen && <DeckSaveModal key={deck.id} initialName={deck.name} remote={!!supabase} linked={activeLink}
+      {saveOpen && <DeckSaveModal key={deck.id} initialName={deck.name} players={players} remote={!!supabase} linked={activeLink}
         needsPassword={!!supabase && !Object.values(links).some((l) => l.deckId === deck.id && l.password)}
         save={saveDeck} close={() => setSaveOpen(false)} />}
 

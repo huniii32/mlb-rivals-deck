@@ -6,7 +6,7 @@ export function ResultPanel({ players, results }: { players: PlayerInput[]; resu
   const { sp: dSP, rp: dRP, bt: dBT, total } = deckTotals(players, results);
 
   const ranking = players
-    .map((p, i) => ({ name: p.name.trim(), pos: p.pos, score: results[i].total }))
+    .map((p, i) => ({ name: p.name.trim(), pos: p.pos, kind: p.kind, row: p.excelRow, score: results[i].total }))
     .filter((r) => r.name).sort((a, b) => b.score - a.score);
 
   // 엑셀 BB/BD 덱코 합계 대응: 좌/우 선택에 따라 바뀌는 스탯별 합계
@@ -27,14 +27,20 @@ export function ResultPanel({ players, results }: { players: PlayerInput[]; resu
       </div>
       <div className="card">
         <h3>선수 랭킹 (내 덱)</h3>
+        <div className="player-ranking-groups">
+        {(["batter", "pitcher"] as const).map(kind => <section key={kind} aria-label={`${kind === "batter" ? "타자" : "투수"} 선수 랭킹`}>
+        <h4>{kind === "batter" ? "타자" : "투수"} 랭킹</h4>
         <table>
           <thead><tr><th>#</th><th>포지션</th><th>선수</th><th>최종점수</th></tr></thead>
           <tbody>
-            {ranking.map((r, i) => (
-              <tr key={i}><td>{i + 1}</td><td>{r.pos}</td><td>{r.name}</td><td><b>{r.score.toFixed(1)}</b></td></tr>
+            {ranking.filter(r => r.kind === kind).map((r, i) => (
+              <tr key={r.row}><td>{i + 1}</td><td>{r.pos}</td><td>{r.name}</td><td><b>{r.score.toFixed(1)}</b></td></tr>
             ))}
+            {!ranking.some(r => r.kind === kind) && <tr><td colSpan={4} className="muted">등록된 {kind === "batter" ? "타자" : "투수"}가 없습니다.</td></tr>}
           </tbody>
         </table>
+        </section>)}
+        </div>
       </div>
       <div className="card">
         <h3>덱코 합계 (좌/우 선택 연동)</h3>

@@ -59,11 +59,12 @@ check("name required",!validDeckName("")&&!validDeckName("   ")&&validDeckName("
 for (const pin of ["0000", "0123", "1234", "9999"]) check("four digit PIN accepted: " + pin, validDeckPassword(pin));
 for (const pin of ["", "123", "12345", "12a4", " 123", "1234 ", "１２３４", "١٢٣٤", "1234\n", "valid-password"]) check("invalid PIN rejected: " + JSON.stringify(pin), !validDeckPassword(pin));
 (async()=>{
+ const publishingDeck={...deck,players:deck.players.map((p,i)=>({...p,name:p.name || `선수 ${i}`}))};
  const links={r:{deckId:deck.id,token:"session",password:true as const,sig:"old"}};
  const calls:{fn:string,args:Record<string,unknown>}[]=[];
- const synced=await syncLinks({decks:[deck],tables,links,rpc:async(fn,args)=>{calls.push({fn,args});return{data:true,error:null};}});
+ const synced=await syncLinks({decks:[publishingDeck],tables,links,rpc:async(fn,args)=>{calls.push({fn,args});return{data:true,error:null};}});
  check("password edit uses authenticated session RPC",calls[0].fn==="update_ranking_password"&&calls[0].args.p_token==="session"&&!("p_password" in calls[0].args)&&synced.pushed===1);
- check("sig represents latest payload",synced.links.r.sig===deckSig(rankArgs(deck,tables).args));
+ check("sig represents latest payload",synced.links.r.sig===deckSig(rankArgs(publishingDeck,tables).args));
  calls.length=0;await syncLinks({decks:[{...deck,name:" "}],tables,links,rpc:async(fn,args)=>{calls.push({fn,args});return{data:true,error:null};}});
  check("unnamed deck never syncs",calls.length===0);
  const restored=parseDeckFile(withRank(deck,links))[0];check("file roundtrip preserves password-session kind",restored.rank?.password===true&&restored.rank?.token==="session"&&!JSON.stringify(restored.deck).includes("session"));

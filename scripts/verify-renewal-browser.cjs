@@ -220,6 +220,17 @@ const baseURL = process.env.RENEWAL_URL || "http://localhost:5176";
       "restore does not write back an unedited deck",
       calls.every((c) => c.endpoint === "restore_ranking_password"),
     );
+    await p.getByText("선수별 점수와 덱코 상세 보기", { exact: true }).click();
+    const batterRanking = p.getByRole("region", { name: "타자 선수 랭킹" });
+    const pitcherRanking = p.getByRole("region", { name: "투수 선수 랭킹" });
+    check("batter ranking has nine entries", await batterRanking.locator("tbody tr").count() === 9);
+    check("pitcher ranking has twelve entries", await pitcherRanking.locator("tbody tr").count() === 12);
+    for (const group of [batterRanking, pitcherRanking]) {
+      check("each group starts at first place", await group.locator("tbody tr td:first-child").first().innerText() === "1");
+      const scores = (await group.locator("tbody tr td:last-child").allTextContents()).map(Number);
+      check("each ranking sorted independently", scores.every((score,i)=>i===0||scores[i-1]>=score));
+    }
+    await p.getByText("선수별 점수와 덱코 상세 보기", { exact: true }).click();
     const ownRow = rows.shift();
     rows.push({ ...ownRow, total: 4100 });
     await nav("덱랭킹");
@@ -651,8 +662,8 @@ const baseURL = process.env.RENEWAL_URL || "http://localhost:5176";
     await nav("시뮬레이터");
     await p.locator(".sim-hub-option").first().waitFor();
     check(
-      "event remains locked before Monday",
-      await p.locator(".event-option").isDisabled(),
+      "event page remains accessible while server controls participation schedule",
+      await p.locator(".event-option").isEnabled(),
     );
     check(
       "simulator illustrations rendered",
@@ -716,6 +727,8 @@ const baseURL = process.env.RENEWAL_URL || "http://localhost:5176";
     await nav("내 라인업");
     await p.getByRole("button", { name: "+ 새 덱", exact: true }).click();
     await p.getByLabel("저장할 덱 이름").fill("기기 저장 검증");
+    check("empty draft cannot be published", await p.getByRole("button", { name: "저장", exact: true }).isDisabled());
+    check("draft explains required roster", (await p.getByRole("region", { name: "공개 덱 등록 조건" }).innerText()).includes("타자 9명"));
     await p.getByRole("checkbox", { name: "공개 랭킹에도 연결" }).uncheck();
     const writesBefore = calls.length;
     await p.getByRole("button", { name: "저장", exact: true }).click();
@@ -783,6 +796,29 @@ const baseURL = process.env.RENEWAL_URL || "http://localhost:5176";
       "new saved deck survives reload",
       (await local()).name === "신규 등록 검증",
     );
+    // Clearing a required player preserves the last public deck and holds automatic writes.
+    await sleep(300);
+    const beforeIncomplete = calls.length;
+    await p.locator(".field-player button").first().click();
+    await p.getByRole("dialog", { name: "선수 편집" }).getByLabel("선수 이름", { exact: true }).fill("");
+    await p.getByRole("dialog", { name: "선수 편집" }).getByRole("button", { name: "닫기", exact: true }).click();
+    await p.locator(".ranking-update-held").waitFor();
+    await sleep(400);
+    check("incomplete edited deck never syncs", calls.length === beforeIncomplete);
+    check("incomplete edit remains locally saved", (await local()).players[0].name === "");
+    await p.getByRole("button", { name: "덱 저장", exact: true }).click();
+    check("linked incomplete deck cannot be updated", await p.getByRole("button", { name: "저장", exact: true }).isDisabled());
+    check("save identifies missing batter", (await p.getByRole("region", { name: "공개 덱 등록 조건" }).innerText()).includes("타자 1명"));
+    await p.setViewportSize({width:390,height:844});
+    check("roster checklist fits mobile", await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    await p.screenshot({path:"/workspace/artifacts/ranking-roster-checklist.png",fullPage:true});
+    await p.getByRole("button", { name: "취소", exact: true }).click();
+    await p.setViewportSize({width:1440,height:1050});
+    await p.locator(".field-player button").first().click();
+    await p.getByRole("dialog", { name: "선수 편집" }).getByLabel("선수 이름", { exact: true }).fill(source.players[0].name);
+    await p.getByRole("dialog", { name: "선수 편집" }).getByRole("button", { name: "닫기", exact: true }).click();
+    await sleep(500);
+    check("restoring valid roster resumes sync state", await p.locator(".ranking-update-held").count()===0);
     check("no browser errors", errors.length === 0);
     console.log(
       `Renewal browser integration: ${passed} checks passed; ${calls.length} intercepted API calls; no live writes.`,
