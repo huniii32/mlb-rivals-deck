@@ -12,7 +12,9 @@ import {
 } from "../lib/events";
 import "./EventPage.css";
 import EventAdmin from "./events/EventAdmin";
-import { time, score, prizeStatus, auditLabels } from "./events/eventView";
+import { time, score } from "./events/eventView";
+import EventResults from "./events/EventResults";
+import { EVENT_CLOSURE } from "../lib/eventAnnouncement";
 
 function PlayerResult({ player }: { player: EventPlayer }) {
   return (
@@ -161,15 +163,13 @@ export default function EventPage({
   const unclaimed = (Object.keys(EVENT_MISSIONS) as EventMission[]).filter(
     m => me?.evidence[m] && !myTickets.some(t => t.mission === m),
   );
-  const nameOf = (id: string | null) =>
-    state?.rankings.find((r) => r.id === id)?.deck_name ||
-    state?.tickets.find((t) => t.participant_id === id)?.deck_name ||
-    "해당 없음";
   const phase = state?.event.phase,
     moment = me?.experiences.moment;
   const ended =
     !!state?.event.ends_at &&
     Date.parse(state.server_now) >= Date.parse(state.event.ends_at);
+  const closed = phase === "closed" || phase === "drawn" || ended;
+  const closureNotice = EVENT_ID === EVENT_CLOSURE.eventId;
   if (preview && state?.is_admin) {
     return (
       <EventAdmin
@@ -187,8 +187,9 @@ export default function EventPage({
       <div className="event-page">
         <section className="event-panel event-private" aria-busy={loading}>
           <div className="eyebrow">RIVALS EVENT</div>
-          <h2>{loading ? "이벤트 불러오는 중…" : "이벤트 준비 중"}</h2>
-          <p>스킬 점수 대회와 시뮬레이터 참여 이벤트를 준비하고 있어요.</p>
+          <h2>{closureNotice && !preview ? EVENT_CLOSURE.title : loading ? "이벤트 불러오는 중…" : "이벤트 준비 중"}</h2>
+          <p>{closureNotice && !preview ? EVENT_CLOSURE.message : "스킬 점수 대회와 시뮬레이터 참여 이벤트를 준비하고 있어요."}</p>
+          {closureNotice && !preview && <p>{loading ? "당첨 결과를 불러오고 있습니다." : "당첨 결과를 불러오지 못했습니다. 다시 확인해주세요."}</p>}
           {error && (
             <p className="event-error" role="alert">
               {error}
@@ -215,6 +216,16 @@ export default function EventPage({
           <a href="/demo/event-pilot.html">테스트 참가자 전환 →</a>
         </div>
       )}
+      {closed && <>
+        <section className="event-panel event-closure" aria-labelledby="event-closure-title">
+          <div className="eyebrow">EVENT CLOSED</div>
+          <h2 id="event-closure-title">{EVENT_CLOSURE.title}</h2>
+          <p>{EVENT_CLOSURE.message}</p>
+          <p>참여해주신 모든 분들께 감사드립니다. 다음 이벤트는 추후 공지하겠습니다.</p>
+          <p>이벤트 접수와 응모권 발급은 마감됐으며, 아래에서 순위와 당첨 결과를 확인할 수 있습니다.</p>
+        </section>
+        <EventResults state={state} />
+      </>}
       <section className="event-panel event-participant-ranking">
         <div className="eyebrow">LEADERBOARD</div>
         <h3>스킬 점수 순위</h3>
@@ -238,14 +249,14 @@ export default function EventPage({
           ))}
         </ol>
         {!state?.rankings.length && (
-          <p className="event-empty">첫 도전을 기다리고 있어요.</p>
+          <p className="event-empty">{closed ? "도전 기록이 없습니다." : "첫 도전을 기다리고 있어요."}</p>
         )}
       </section>
       <section className="event-hero-live">
         <div>
           <div className="eyebrow">RIVALS DECK · COMMUNITY EVENT</div>
           <h2>{state?.event.title || "스킬 챌린지 & 커피 이벤트"}</h2>
-          <p>5번의 도전, 가장 높은 스킬 점수에 도전하세요.</p>
+          <p>{closed ? "이벤트가 종료되었습니다. 참여해주셔서 감사합니다." : "5번의 도전, 가장 높은 스킬 점수에 도전하세요."}</p>
           <div className="event-rule-tags">
             <span>시그니처 선발 투수</span>
             <span>최고급 변경권 · S 레벨</span>
@@ -273,7 +284,9 @@ export default function EventPage({
         {state && (
           <span>
             {time(state.event.opens_at)} 시작 ·{" "}
-            {state.event.ends_at
+            {state.event.closed_at
+              ? `${time(state.event.closed_at)} 마감`
+              : state.event.ends_at
               ? `${time(state.event.ends_at)} 종료`
               : "운영자 마감 시 종료"}{" "}
             · 한국 시간
@@ -302,6 +315,7 @@ export default function EventPage({
               : "이벤트를 준비하고 있습니다. 아직 참여 횟수는 사용되지 않습니다."}
         </p>
       )}
+      {!closed && <>
       <section className="event-panel event-howto" aria-label="이벤트 참여 방법">
         <h3>이 순서로 참여해주세요</h3>
         <ol>
@@ -567,89 +581,8 @@ export default function EventPage({
           {!myTickets.length && <p>발급된 응모권이 없습니다.</p>}
         </details>
       </section>
-      <section className="event-panel event-results">
-        <div className="eyebrow">WINNERS</div>
-        <h3>당첨 결과</h3>
-        <p>
-          당첨자는 커뮤니티 쪽지로 운영자에게 실제 게임 속 덱과 참가 덱명을
-          보내주세요. 참가 당시 등록한 덱과 대조한 뒤 경품을 지급합니다. 인증
-          자료를 공개 댓글에 올릴 필요는 없습니다.
-        </p>
-        <div className="event-winners">
-          <div>
-            <span>🏆 스킬 점수 1위</span>
-            <strong>
-              {phase !== "open" && state?.event.champion_id
-                ? nameOf(state.event.champion_id)
-                : phase === "open" || !state
-                  ? "마감 후 확정"
-                  : "도전 참가자 없음"}
-            </strong>
-            <small>커피 기프티콘 1개</small>
-            {state?.event.champion_id && (
-              <span className="event-prize-status">
-                {prizeStatus(
-                  state.event.champion_verified_at,
-                  state.event.champion_delivered_at,
-                )}
-              </span>
-            )}
-          </div>
-          <div>
-            <span>🎟 응모권 추첨 당첨자</span>
-            <strong>
-              {state?.event.winner_id
-                ? nameOf(state.event.winner_id)
-                : phase === "drawn"
-                  ? "추첨 대상 없음"
-                  : "추첨 후 공개"}
-            </strong>
-            <small>커피 기프티콘 1개 · 점수 1위 제외</small>
-            {state?.event.winner_id && (
-              <span className="event-prize-status">
-                {prizeStatus(
-                  state.event.winner_verified_at,
-                  state.event.winner_delivered_at,
-                )}
-              </span>
-            )}
-          </div>
-        </div>
-        {state?.event.winning_ticket && (
-          <p>당첨 응모권: {state.event.winning_ticket}</p>
-        )}
-        <details className="event-details">
-          <summary>
-            전체 응모권 · {state?.tickets.length || 0}장 / 추첨 대상{" "}
-            {state?.tickets.filter((t) => t.eligible).length || 0}장
-          </summary>
-          <p>
-            {phase === "open"
-              ? "마감 시 점수 1위의 응모권을 모두 제외합니다."
-              : "점수 1위의 응모권은 추첨 대상에서 제외됐습니다."}
-          </p>
-          {state?.tickets.map((t) => (
-            <div className="event-ticket" key={t.id}>
-              <strong>{t.deck_name}</strong>
-              <span>
-                {EVENT_MISSIONS[t.mission]} ·{" "}
-                {t.eligible ? "추첨 대상" : "점수 1위 · 제외"}
-              </span>
-              <small>{t.id}</small>
-            </div>
-          ))}
-        </details>
-        {state?.audit.length ? (
-          <details className="event-details">
-            <summary>이벤트 진행 기록</summary>
-            {state.audit.map((a, i) => (
-              <p key={i}>
-                {time(a.at)} · {auditLabels[a.action] || a.action}
-              </p>
-            ))}
-          </details>
-        ) : null}
-      </section>
+      </>}
+      {!closed && <EventResults state={state} />}
     </div>
   );
 }

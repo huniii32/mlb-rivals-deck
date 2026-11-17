@@ -2,6 +2,8 @@ import { lazy, Suspense, useState } from "react";
 import type { SkillTables, PlayerInput } from "../lib/engine";
 import type { RankRef } from "../lib/deckFile";
 import { SimulatorArt } from "./renewal/SimulatorArt";
+import { EVENT_ID } from "../lib/events";
+import { EVENT_CLOSURE } from "../lib/eventAnnouncement";
 const SkillSimulator = lazy(() => import("./SkillSimulator"));
 const MomentCombination = lazy(() => import("./MomentCombination"));
 const HofRecruitment = lazy(() => import("./HofRecruitment"));
@@ -84,12 +86,12 @@ export default function Simulator({
               onClick={() => setScreen("event")}
             >
               <SimulatorArt type="event" />
-              <strong>이벤트</strong>
+              <strong>{EVENT_ID === EVENT_CLOSURE.eventId ? "이벤트 종료 · 당첨자 안내" : "이벤트"}</strong>
               <span className="muted">
-                5회 스킬 점수 대회 · 참여 응모권 · 행운 추첨
+                {EVENT_ID === EVENT_CLOSURE.eventId ? "참여해주셔서 감사합니다. 다음 이벤트는 추후 공지합니다." : "5회 스킬 점수 대회 · 참여 응모권 · 행운 추첨"}
               </span>
               <span className="sim-hub-enter">
-                이벤트 페이지 →
+                {EVENT_ID === EVENT_CLOSURE.eventId ? "당첨 결과 확인 →" : "이벤트 페이지 →"}
               </span>
             </button>
           </div>
