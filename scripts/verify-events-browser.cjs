@@ -322,9 +322,14 @@ async function stop() {
     await alice.reload();
     await alice.getByText("추첨 완료", { exact: true }).waitFor();
     assert.equal(
-      await alice.getByRole("button", { name: "5회 도전 완료" }).isDisabled(),
-      true,
+      await alice.locator(".event-challenge, .event-registration, .event-missions").count(),
+      0,
     );
+    await alice.getByRole("heading", { name: "이벤트가 종료되었습니다" }).waitFor();
+    assert.ok((await alice.locator(".event-closure").innerText()).includes("늦어진 점 진심으로 죄송합니다"));
+    assert.ok((await alice.locator(".event-closure").innerText()).includes("다음 이벤트는 추후 공지"));
+    assert.equal(await alice.locator(".event-results").evaluate(el =>
+      !!(el.compareDocumentPosition(document.querySelector(".event-participant-ranking")) & Node.DOCUMENT_POSITION_FOLLOWING)), true);
     const guest = await (await context()).newPage();
     await guest.goto(origin + "/?event=1#simulator");
     await guest.getByText("추첨 완료", { exact: true }).waitFor();
@@ -394,8 +399,8 @@ async function stop() {
       winners,
     );
     assert.equal(
-      await resumed.getByRole("button", { name: "5회 도전 완료" }).isDisabled(),
-      true,
+      await resumed.locator(".event-challenge, .event-registration, .event-missions").count(),
+      0,
     );
     assert.deepEqual(
       await resumed

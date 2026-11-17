@@ -1,0 +1,94 @@
+import { EVENT_MISSIONS, type EventState } from "../../lib/events";
+import { time, prizeStatus, auditLabels } from "./eventView";
+
+export default function EventResults({ state }: { state: EventState }) {
+  const nameOf = (id: string | null) =>
+    state.rankings.find(r => r.id === id)?.deck_name ||
+    state.tickets.find(t => t.participant_id === id)?.deck_name ||
+    "당첨자 확인 중";
+  return (
+    <section className="event-panel event-results">
+      <div className="eyebrow">WINNERS</div>
+      <h3>당첨 결과</h3>
+      <p>
+        당첨자는 커뮤니티 쪽지로 운영자에게 실제 게임 속 덱과 참가 덱명을
+        보내주세요. 참가 당시 등록한 덱과 대조한 뒤 경품을 지급합니다. 인증
+        자료를 공개 댓글에 올릴 필요는 없습니다.
+      </p>
+      <div className="event-winners">
+        <div>
+          <span>🏆 스킬 점수 1위</span>
+          <strong>
+            {state.event.phase !== "open" && state.event.champion_id
+              ? nameOf(state.event.champion_id)
+              : state.event.phase === "open"
+                ? "마감 후 확정"
+                : "도전 참가자 없음"}
+          </strong>
+          <small>커피 기프티콘 1개</small>
+          {state.event.champion_id && (
+            <span className="event-prize-status">
+              {prizeStatus(
+                state.event.champion_verified_at,
+                state.event.champion_delivered_at,
+              )}
+            </span>
+          )}
+        </div>
+        <div>
+          <span>🎟 응모권 추첨 당첨자</span>
+          <strong>
+            {state.event.winner_id
+              ? nameOf(state.event.winner_id)
+              : state.event.phase === "drawn"
+                ? "추첨 대상 없음"
+                : "추첨 후 공개"}
+          </strong>
+          <small>커피 기프티콘 1개 · 점수 1위 제외</small>
+          {state.event.winner_id && (
+            <span className="event-prize-status">
+              {prizeStatus(
+                state.event.winner_verified_at,
+                state.event.winner_delivered_at,
+              )}
+            </span>
+          )}
+        </div>
+      </div>
+      {state.event.winning_ticket && (
+        <p>당첨 응모권: {state.event.winning_ticket}</p>
+      )}
+      <details className="event-details">
+        <summary>
+          전체 응모권 · {state.tickets.length || 0}장 / 추첨 대상{" "}
+          {state.tickets.filter((t) => t.eligible).length || 0}장
+        </summary>
+        <p>
+          {state.event.phase === "open"
+            ? "마감 시 점수 1위의 응모권을 모두 제외합니다."
+            : "점수 1위의 응모권은 추첨 대상에서 제외됐습니다."}
+        </p>
+        {state.tickets.map((t) => (
+          <div className="event-ticket" key={t.id}>
+            <strong>{t.deck_name}</strong>
+            <span>
+              {EVENT_MISSIONS[t.mission]} ·{" "}
+              {t.eligible ? "추첨 대상" : "점수 1위 · 제외"}
+            </span>
+            <small>{t.id}</small>
+          </div>
+        ))}
+      </details>
+      {state.audit.length ? (
+        <details className="event-details">
+          <summary>이벤트 진행 기록</summary>
+          {state.audit.map((a, i) => (
+            <p key={i}>
+              {time(a.at)} · {auditLabels[a.action] || a.action}
+            </p>
+          ))}
+        </details>
+      ) : null}
+    </section>
+  );
+}
