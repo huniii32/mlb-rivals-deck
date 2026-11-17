@@ -76,7 +76,7 @@ export function RenewalLineup({
     [
       "팀 버프",
       "✦",
-      `적용 ${Object.values(deck.chem).filter((v) => v && v !== "X").length}개`,
+      `적용 ${Object.entries(deck.chem).filter(([key, v]) => key !== "comebackFlag" && v && v !== "X").length}개`,
     ],
     [
       "투수 전술",

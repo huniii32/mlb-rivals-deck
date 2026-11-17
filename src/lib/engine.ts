@@ -69,7 +69,7 @@ const DECADE_RULE_ROWS = new Map(DECK.rules.map(r => [r,
 ]));
 
 export interface Chem {
-  comebackFlag?: string; // 동점·열세 컴백 플래그의 팀 타자 버프
+  comebackFlag?: string; // 구버전 덱 호환용. 상시 팀 점수에는 사용하지 않는다.
   lockdown?: string; // CP 배치 락다운의 7~9회 팀 효과 (랭대 9이닝 평균)
   commander: string; // O2 커맨더
   catcher: string; // O3 포수리드

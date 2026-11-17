@@ -39,7 +39,7 @@ export const N_PLAYERS = LINEUP.length;
 export const MAX_PLAYERS = 14 + MAX_BULLPEN;
 
 export const DEFAULT_CHEM: Chem = {
-  comebackFlag: "X", lockdown: "X",
+  lockdown: "X",
   commander: "S", catcher: "S", pitchChem: "S", batChem: "S", wbcP: "S", wbcB: "S1",
 };
 
@@ -123,7 +123,9 @@ export function normalizeRoster(players: PlayerInput[]): PlayerInput[] {
 }
 
 export function normalizeDeck(d: Deck): Deck {
-  return { ...d, id: d.id ?? newId(), name: d.name ?? "가져온 덱", updatedAt: d.updatedAt ?? Date.now(), flags: d.flags ?? {}, yearInputs: d.yearInputs ?? {}, chem: { ...DEFAULT_CHEM, ...d.chem }, players: normalizeRoster(d.players), bullpenTactics: normalizeTactics(d.bullpenTactics) };
+  const chem = { ...DEFAULT_CHEM, ...d.chem };
+  delete chem.comebackFlag;
+  return { ...d, id: d.id ?? newId(), name: d.name ?? "가져온 덱", updatedAt: d.updatedAt ?? Date.now(), flags: d.flags ?? {}, yearInputs: d.yearInputs ?? {}, chem, players: normalizeRoster(d.players), bullpenTactics: normalizeTactics(d.bullpenTactics) };
 }
 
 /** 역할별 배치 수 변경. 감소 시 빈 슬롯부터 제거하고, 선수 삭제 확인은 호출자가 담당한다. */
