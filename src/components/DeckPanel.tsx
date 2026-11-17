@@ -12,7 +12,6 @@ const CHEM_LABELS: [keyof Chem, string][] = [
   ["batChem", "타자케미스트리"],
   ["wbcP", "WBC에이스(투수)"],
   ["wbcB", "WBC에이스(타자)"],
-  ["comebackFlag", "컴백 플래그(동점·열세)"],
   ["lockdown", "락다운(CP 배치)"],
 ];
 
@@ -40,7 +39,8 @@ export function ChemPanel({ chem, setChem }: {
         ))}
       </div>
       <p className="muted">스킬의 커맨더·포수리드는 타자 능력치에만 반영, 투수 버프는 여기서 선택한 값으로 자동 반영(원본 로직 동일).</p>
-      <p className="muted">컴백 플래그는 동점·열세 조건을 적용할 때 팀 타자의 파워·정확을 S/S1 +3, S2 +4로 평가합니다. 락다운은 CP 배치 효과를 랭킹대전 9이닝 중 7~9회 비중으로 반영하며 중복 적용하지 않습니다.</p>
+      <p className="muted">컴백 플래그의 팀 타자 효과는 중계 등판·동점/열세 조건의 효과이므로 상시 팀 버프에 포함하지 않습니다. 이전 선택값도 타자 점수에 가산하지 않으며, 투수 개인 스킬 점수는 유지합니다.</p>
+      <p className="muted">락다운은 CP 배치 효과를 랭킹대전 9이닝 중 7~9회 비중으로 반영하며 중복 적용하지 않습니다.</p>
     </div>
   );
 }

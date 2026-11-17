@@ -88,9 +88,8 @@ export function ScoreGuideModal({ close }: { close: () => void }) {
               <p>타자 케미·WBC 에이스(타자) → 파워·정확<br />커맨더·포수리드·투수 케미·WBC 에이스(투수) → 변화·구위</p>
             </div>
             <div className="score-tile"><h4>점수로 환산하는 팀 효과</h4>
-              <div className="score-key-value"><span>컴백 플래그 · 동점/열세</span><strong>타자마다 +6 / +8점</strong></div>
               <div className="score-key-value"><span>락다운 · CP 배치</span><strong>투수마다 +1.6점</strong></div>
-              <p className="score-caption">컴백 S·S1: +6 / S2: +8. 락다운 개인 점수에 포함된 +1.6은 중복 가산하지 않습니다.</p>
+              <p className="score-caption">락다운 개인 점수에 포함된 +1.6은 중복 가산하지 않습니다.</p>
             </div>
           </div>
           <div className="score-tactics" aria-label="투수 전술 가산">
@@ -141,16 +140,17 @@ export function ScoreGuideModal({ close }: { close: () => void }) {
             <Formula label="기존 스킬 검산 예시 · 키플레이어 S">타자: 6 × 2.4 = <strong>14.40점</strong><br />투수: 6 × 2.35 = <strong>14.10점</strong></Formula>
             <p>리그·라이브 매치 전용 추가 효과는 제외합니다. 기존 스킬은 저장된 점수표를 사용하며, 모든 항목을 공식 효과로 다시 검산한 것은 아닙니다.</p>
             <p>신속한 처리·레버리지 릴리퍼·승리 공식·컴백 플래그는 승리조·추격조·롱릴리프에만 적용합니다. 선발·마무리에 배치하면 0점입니다.</p>
+            <p>컴백 플래그는 중계 등판·동점/열세 조건에서 공격 시 팀 타자 전체의 파워·정확을 S/S1 +3, S2 +4 올리는 효과가 있습니다. 이 조건부 팀 효과는 상시 덱 점수에 가산하지 않습니다. 투수 개인 스킬 점수는 선택한 O/X 조건에 따라 유지합니다.</p>
             <p>점수표에 없는 스킬은 제외하고 임시 점수와 경고를 표시합니다. 스킬의 O/X는 사용자가 선택하며 자동 판정하지 않습니다.</p>
           </details>
         </Section>
 
         <Section index={5} title="선수 한 명의 최종 점수" subtitle="능력치를 가중합한 점수에 스킬 점수를 더합니다.">
           <div className="score-grid">
-            <Formula label="타자 능력치 점수"><span>파워 × <b>1.1</b></span> + <span>정확 × <b>0.9</b></span><br />+ <span>선구 × <b>0.4</b></span> + 팀 추가점수</Formula>
+            <Formula label="타자 능력치 점수"><span>파워 × <b>1.1</b></span> + <span>정확 × <b>0.9</b></span><br />+ <span>선구 × <b>0.4</b></span></Formula>
             <Formula label="투수 능력치 점수"><span>변화 × <b>1.15</b></span> + <span>구위 × <b>1.2</b></span><br />+ 팀 추가점수</Formula>
           </div>
-          <p className="score-note">위 능력치는 덱스코어·전술·팀 케미를 반영한 값입니다. 팀 추가점수는 컴백 플래그·락다운의 환산값입니다.</p>
+          <p className="score-note">위 능력치는 덱스코어·전술·팀 케미를 반영한 값입니다. 투수 팀 추가점수는 락다운의 환산값입니다. 컴백 플래그의 조건부 팀 타자 효과는 포함하지 않습니다.</p>
           <Formula label="선수 최종 점수" emphasis>능력치 점수 + 스킬 점수 = <strong>선수 점수</strong></Formula>
           <div className="score-example"><span className="score-label">타자 계산 예시 · 팀 추가점수 0</span>
             <p>파워 150 · 정확 140 · 선구 130 / 스킬 합계 60점</p>

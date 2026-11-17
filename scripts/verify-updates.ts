@@ -1,4 +1,4 @@
-import { blankPlayer, DEFAULT_CHEM, LINEUP, type Deck } from "../src/lib/deck";
+import { blankPlayer, DEFAULT_CHEM, LINEUP, normalizeDeck, type Deck } from "../src/lib/deck";
 import { calcDeckTotal, deckPlayerResults, flagDefaults, skillScore } from "../src/lib/engine";
 import { applyDeckUpdate } from "../src/lib/playerUpdates";
 import { syncLinks, rankArgs, deckSig, loadLinks } from "../src/lib/rankSync";
@@ -24,9 +24,21 @@ check("deselecting team score restores original total",off.players[0].finalOv.jo
 const year=applyDeckUpdate(deck,{flags:{...flags,"33-spec-L":true},yearInputs:{33:2020}},tables);
 check("special 615 year criterion changes correct stat",year.players[0].finalOv[1]===101);
 check("special year outside 0-9 is excluded",applyDeckUpdate(deck,{flags:{...flags,"33-spec-L":true},yearInputs:{33:2016}},tables).players[0].finalOv[1]===100);
-const now=deckPlayerResults(deck,tables)[0];
-const comeback=deckPlayerResults({...deck,chem:{...deck.chem,comebackFlag:"S2"}},tables)[0];
-check("comeback team power/contact +4 is +8",near(comeback.total-now.total,8));
+for (const grade of ["S", "S1", "S2"]) {
+ const legacy = {...deck, chem: {...deck.chem, comebackFlag: grade}};
+ const before = JSON.stringify(legacy);
+ const normalized = normalizeDeck(legacy);
+ const imported = parseDeckFile(legacy)[0].deck;
+ for (const [route, candidate] of [["direct", legacy], ["normalized", normalized], ["imported", imported]] as const) {
+  check(`legacy comeback ${grade} ${route} gives no team bonus`, deckPlayerResults(candidate,tables).every((r,i)=>near(r.total,deckPlayerResults(deck,tables)[i].total)));
+  check(`legacy comeback ${grade} ${route} leaves deck total unchanged`, near(calcDeckTotal(candidate,tables).total,calcDeckTotal(deck,tables).total));
+  const expectedPlayers = route === "direct" ? deck.players : normalizeDeck(deck).players;
+  check(`legacy comeback ${grade} ${route} preserves entered stats and skills`, JSON.stringify(candidate.players)===JSON.stringify(expectedPlayers));
+ }
+ check("legacy comeback selection removed on load "+grade, normalized.chem.comebackFlag===undefined&&imported.chem.comebackFlag===undefined);
+ check("legacy migration preserves other team settings "+grade, JSON.stringify(normalized.chem)===JSON.stringify(deck.chem));
+ check("legacy migration does not mutate original "+grade, JSON.stringify(legacy)===before);
+}
 const pDeck={...deck,players:deck.players.map((p,i)=>i===9?{...p,name:"투수"}:p)};
 const lock=deckPlayerResults({...pDeck,chem:{...deck.chem,lockdown:"O"}},tables);
 check("lockdown CP placement team effect is +1.6",near(lock[9].total-deckPlayerResults(pDeck,tables)[9].total,1.6));
@@ -54,12 +66,15 @@ for(const [kind,own,opponent] of [["batter",2.4,2.35],["pitcher",2.35,2.4]] as c
  check("WAR leader "+kind,near(skillScore(kind,"[S0] WAR 리더",tables)!,9*own+6*opponent));
  check("2026 trio excludes league-only bonus "+kind,near(skillScore(kind,"[S0] 2026 퍼포머트리오 (랭대기준)",tables)!,10*own));
 }
-for(const grade of ["S","S1"])check("comeback team "+grade,near(deckPlayerResults({...deck,chem:{...deck.chem,comebackFlag:grade}},tables)[0].total-now.total,6));
 check("name required",!validDeckName("")&&!validDeckName("   ")&&validDeckName("내 덱"));
 for (const pin of ["0000", "0123", "1234", "9999"]) check("four digit PIN accepted: " + pin, validDeckPassword(pin));
 for (const pin of ["", "123", "12345", "12a4", " 123", "1234 ", "１２３４", "١٢٣٤", "1234\n", "valid-password"]) check("invalid PIN rejected: " + JSON.stringify(pin), !validDeckPassword(pin));
 (async()=>{
  const publishingDeck={...deck,players:deck.players.map((p,i)=>({...p,name:p.name || `선수 ${i}`}))};
+ for(const grade of ["S","S1","S2"]) {
+  const legacy={...publishingDeck,chem:{...publishingDeck.chem,comebackFlag:grade}};
+  check("ranking score ignores legacy comeback "+grade,rankArgs(legacy,tables).args.p_total===rankArgs(publishingDeck,tables).args.p_total);
+ }
  const links={r:{deckId:deck.id,token:"session",password:true as const,sig:"old"}};
  const calls:{fn:string,args:Record<string,unknown>}[]=[];
  const synced=await syncLinks({decks:[publishingDeck],tables,links,rpc:async(fn,args)=>{calls.push({fn,args});return{data:true,error:null};}});

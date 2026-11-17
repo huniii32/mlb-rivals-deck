@@ -89,15 +89,15 @@ const source = normalizeDeck({
     batChem: "X",
     wbcP: "X",
     wbcB: "X",
-    comebackFlag: "X",
     lockdown: "X",
   },
   bullpenTactics: { winning: "division", chasing: "aggressive" },
 });
+const legacySource = { ...source, chem: { ...source.chem, comebackFlag: "S2" } };
 let rows = Array.from({ length: 8 }, (_, i) => ({
   id: `rank-${i}`,
   deck_name: i === 0 ? source.name : `검색용 덱 ${i}`,
-  deck_json: source,
+  deck_json: legacySource,
   total: 5000 - i * 100,
   named: 21,
   sp: 4800,
@@ -135,7 +135,7 @@ const baseURL = process.env.RENEWAL_URL || "http://localhost:5176";
         if (endpoint === "restore_ranking_password")
           data =
             args.p_password === "0123"
-              ? { id: args.p_id, token: "test-only-session", deck: source }
+              ? { id: args.p_id, token: "test-only-session", deck: legacySource }
               : { error: "invalid_password" };
         else if (endpoint === "update_ranking_password") data = true;
         else if (endpoint === "save_ranking_password")
@@ -361,6 +361,8 @@ const baseURL = process.env.RENEWAL_URL || "http://localhost:5176";
       flagOff.players[0].finalOv[0] === current.players[0].finalOv[0] - 3,
     );
     await p.getByRole("button", { name: /팀 버프 적용/ }).click();
+    check("conditional comeback has no team-buff selector", await p.getByRole("combobox", { name: /컴백 플래그/ }).count() === 0);
+    check("legacy comeback selection is cleared on load", (await local()).chem.comebackFlag === undefined);
     const chemSelect = p.locator("dialog select").first();
     const chemOption = await chemSelect
       .locator("option")

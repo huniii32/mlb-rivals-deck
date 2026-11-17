@@ -8056,7 +8056,6 @@
     1880
   ],
   "chem": {
-    "comebackFlag": ["X", "S", "S1", "S2"],
     "lockdown": ["X", "O"],
     "commander": [
       "S",
