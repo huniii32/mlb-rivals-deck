@@ -1,6 +1,7 @@
 import { PlayerArt, gradeColor } from "../../components/CardArt";
 import { SkillSlot } from "../../components/SkillInput";
 import { cardDisplayName } from "../../lib/cardNames";
+import { WBC_COUNTRIES, isWbcCard } from "../../lib/wbcSkills";
 import {
   BATTER_STATS,
   PITCHER_STATS,
@@ -162,6 +163,14 @@ export function RenewalPlayerEditor({
               onChange={(e) => update({ pos: e.target.value })}
             />
           </label>
+          {isWbcCard(p.card) && <label>
+            WBC 카드 국가
+            <select aria-label="WBC 카드 국가" value={p.wbcCountry ?? ""} onChange={e => update({ wbcCountry: e.target.value })}>
+              <option value="">카드 뒷면 국가 선택</option>
+              {p.wbcCountry && !WBC_COUNTRIES[p.wbcCountry] && <option value={p.wbcCountry}>기존 값 확인: {p.wbcCountry}</option>}
+              {Object.entries(WBC_COUNTRIES).map(([code, name]) => <option key={code} value={code}>{name} ({code})</option>)}
+            </select>
+          </label>}
           {role && (
             <label>
               불펜 역할
@@ -229,6 +238,9 @@ export function RenewalPlayerEditor({
         <p className="editor-hint training-applied" role="status" aria-label="포지션훈련 적용량">
           포지션훈련 적용 · {stats.map((stat, i) => `${stat} +${r.poh[i] ?? 0}`).join(" / ")}
         </p>
+        {typeof p.pohLv === "number" && p.pohLv > 20 && r.warnings.some(w => w.includes("포지션훈련")) && <p className="editor-hint" role="alert">
+          {p.pohLv <= 26 && Number.isInteger(p.pohLv) ? "포지션훈련 21~26레벨은 선호 구단 조건과 증가표 확인이 필요합니다. 확인된 20레벨까지만 자동 반영하며, 추가 효과는 게임 수치와 대조하세요." : "포지션훈련 레벨을 확인하세요. 최대 26레벨이며 정수로 입력해야 합니다."} 블랙 S3 점수도 도감 수치 확인 후 지원합니다.
+        </p>}
       </section>
       <section className="editor-section">
         <h3>능력치 입력</h3>
@@ -342,6 +354,7 @@ export function RenewalPlayerEditor({
               n={i + 1}
               kind={p.kind}
               value={p.skills[i]}
+              applied={r.skillDetails[i]}
               tables={tables}
               onChange={(name) => {
                 const skills = [...p.skills] as PlayerInput["skills"];
@@ -351,6 +364,9 @@ export function RenewalPlayerEditor({
             />
           ))}
         </div>
+        {p.skills.some(s => /WBC (키스톤|사령관|하모니)/.test(s)) && <p className="editor-hint">
+          신규 WBC 스킬은 실제 카드·포지션으로 계산합니다. 하모니는 이름과 국가를 입력한 WBC 선수들을 타자·투수 전체에서 세며, 자신을 포함합니다. 스킬 비교의 조건 선택과 달리 덱에서는 라인업 변경에 따라 점수가 바뀝니다.
+        </p>}
       </section>
       <details className="editor-section image-setting">
         <summary>카드 이미지</summary>

@@ -2,12 +2,12 @@
 
 진입: 상단 **시뮬레이터 → 스킬 시뮬레이션**. 화면 순서: 변경권·카드 설정 → 통계 → 스킬 결과·실행. 상세 설명·조건·기록은 기본 접힘입니다.
 
-확률 기준: 2026-11-05 개별 확률표. 확인일: 2026-11-06 UTC.
+확률 기준: 2026-11-18 개별 확률표. 확인일: 2026-11-18 UTC. WBC 신규 스킬을 반영했으며, 일반·HOF·블랙 확정·슈프림 모먼트 표는 11/05와 동일합니다.
 
 ## 공식 자료
 
 - [티어·레벨·슬롯 확률 안내](https://hive-fn.qpyou.cn/markup/img/tf/mlbrv/mlb9irivals_ko.html)
-- [개별 확률표](https://futuremlb-fn.qpyou.cn/futuremlb/push/IndividualRates/261105/RV1105LD.htm)
+- [개별 확률표](https://futuremlb-fn.qpyou.cn/futuremlb/push/IndividualRates/261118/RV1118UD.htm)
 - [최고급 변경권 첫 슬롯 골드 보장 추가](https://community.withhive.com/MLB9IRIVALS/ko/board/9/6062)
 - [슈프림 모먼트 첫 슬롯 모먼트 30%](https://community.withhive.com/MLB9IRIVALS/ko/board/9/16627)
 - [시그니처 블랙 네 번째 슬롯·블랙 스킬 1개 규칙](https://community.withhive.com/MLB9IRIVALS/ko/board/9/13358)
@@ -17,6 +17,8 @@
 Excel HTML은 CP949입니다. `%`가 붙지 않은 일부 확률 셀은 소수 비율로 저장되므로 100을 곱해 퍼센트로 변환합니다. 각 시트·포지션의 확률 합계를 검사하고, 100%에서 0.0001%p 이상 벗어나면 생성에 실패합니다. 표의 반올림 오차를 실제 확률 변경으로 해석하지 않습니다.
 
 ## 사용한 시트
+
+아래 번호는 11/05 원본 기준이며, 11/18 원본에서는 각각 **+1**입니다. 날짜별 주소와 해시는 데이터 파일의 sources가 기준입니다.
 
 | 시트 | 용도 |
 |---|---|

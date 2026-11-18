@@ -6,13 +6,12 @@ import {
   type SkillTables,
 } from "../../lib/engine";
 import { SkillSearch } from "./SkillSearch";
+import { skillCondition as condition } from "../../lib/skillLabels";
 const base = (name: string) =>
   name
     .replace(/^\[[^\]]+\]\s*/, "")
     .split("(")[0]
     .trim();
-const condition = (name: string) =>
-  name.includes("(") ? name.slice(name.indexOf("(") + 1, -1) : "조건 없음";
 export function SkillLab({ tables }: { tables: SkillTables }) {
   const [slotCount, setSlotCount] = useState(3);
   const slots = Array.from({ length: slotCount }, (_, i) => i);

@@ -2,10 +2,11 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const url = import.meta.env?.VITE_SUPABASE_URL as string | undefined;
 const key = import.meta.env?.VITE_SUPABASE_ANON_KEY as string | undefined;
+export const isDevelopmentSandbox = import.meta.env?.VITE_DEVELOPMENT_SANDBOX === "1";
 
 /** env 없으면 null → 각 패널에서 localStorage 폴백으로 동작 */
 export const supabase: SupabaseClient | null =
-  url && key ? createClient(url, key) : null;
+  !isDevelopmentSandbox && url && key ? createClient(url, key) : null;
 
 export const isSupabaseOn = () => supabase !== null;
 

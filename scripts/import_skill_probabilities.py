@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Import the official 2026-11-05 Skill Change tables (normal, advanced, superior), preserving displayed rates."""
+"""Import dated official Skill Change tables, preserving displayed rates and source hashes."""
 import argparse
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -9,10 +9,11 @@ import json
 from pathlib import Path
 import re
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 
 ROOT = Path(__file__).resolve().parents[1]
 CACHE = ROOT / 'data/skill-probabilities'
-BASE = 'https://futuremlb-fn.qpyou.cn/futuremlb/push/IndividualRates/261105/'
+RELEASES = {'2026-11-05': ('261105', 'RV1105LD', 0), '2026-11-18': ('261118', 'RV1118UD', 1)}
 OVERVIEW = 'https://hive-fn.qpyou.cn/markup/img/tf/mlbrv/mlb9irivals_ko.html'
 SHEETS = {'normal': 200, 'hof': 203, 'black': 206, 'blackOther': 207,
           'wbc': 210, 'wbcBlack': 212, 'wbcBlackOther': 213, 'supreme': 214,
@@ -68,17 +69,28 @@ def parse_sheet(raw):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__); ap.add_argument('--refresh', action='store_true'); args = ap.parse_args()
-    CACHE.mkdir(parents=True, exist_ok=True)
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument('--refresh', action='store_true')
+    ap.add_argument('--release', choices=RELEASES, default='2026-11-18')
+    args = ap.parse_args()
+    date, workbook, offset = RELEASES[args.release]
+    base = f'https://futuremlb-fn.qpyou.cn/futuremlb/push/IndividualRates/{date}/'
+    cache = CACHE / args.release
+    cache.mkdir(parents=True, exist_ok=True)
     tables, sources = {}, {}
-    for key, number in SHEETS.items():
-        url = BASE + f'RV1105LD.files/sheet{number}.htm'; path = CACHE / f'sheet{number}.htm'
+    def fetch(item):
+        key, previous = item
+        number = previous + offset
+        url = base + f'{workbook}.files/sheet{number}.htm'; path = cache / f'sheet{number}.htm'
         if args.refresh or not path.exists(): path.write_bytes(urllib.request.urlopen(url, timeout=30).read())
-        raw = path.read_bytes(); tables[key] = parse_sheet(raw)
-        sources[key] = {'url': url, 'sha256': hashlib.sha256(raw).hexdigest()}
-    overview = CACHE / 'overview.html'
+        raw = path.read_bytes()
+        return key, parse_sheet(raw), {'url': url, 'sha256': hashlib.sha256(raw).hexdigest()}
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        for key, table, source in pool.map(fetch, SHEETS.items()):
+            tables[key], sources[key] = table, source
+    overview = cache / 'overview.html'
     if args.refresh or not overview.exists(): overview.write_bytes(urllib.request.urlopen(OVERVIEW, timeout=30).read())
-    out = {'asOf': '2026-11-05', 'checkedAt': datetime.now(timezone.utc).date().isoformat(),
+    out = {'asOf': args.release, 'checkedAt': datetime.now(timezone.utc).date().isoformat(),
            'overview': {'url': OVERVIEW, 'sha256': hashlib.sha256(overview.read_bytes()).hexdigest()},
            'sources': sources, 'levels': LEVELS, 'tables': tables}
     (ROOT / 'src/data/skillProbabilities.json').write_text(json.dumps(out, ensure_ascii=False, separators=(',', ':')) + '\n', encoding='utf-8')

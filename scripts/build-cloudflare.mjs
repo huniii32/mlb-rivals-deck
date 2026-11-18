@@ -35,6 +35,7 @@ const result=spawnSync(process.platform==='win32'?'npm.cmd':'npm',['run','build'
   cwd:root,stdio:'inherit',env:{...env,VITE_BASE:'/',
     // Cloudflare supplies the Git branch for each deployment; local release builds default to production.
     VITE_DEPLOYMENT_CONTEXT: env.CF_PAGES_BRANCH && env.CF_PAGES_BRANCH !== 'main' ? 'preview' : 'production',
+    VITE_DEVELOPMENT_SANDBOX: privatePreview ? '1' : '0',
   },
 });
 if(result.error)throw result.error;

@@ -60,7 +60,7 @@ export function RenewalShell({
     <div className={`renewal ${theme === "dark" ? "night" : ""}${preview ? " is-preview" : ""}`}>
       {preview && <div className="preview-strip">
         <b>RENEWAL PREVIEW</b>
-        <span>{import.meta.env.DEV && import.meta.env.VITE_EVENT_PILOT === "1" ? "가상 참가자 · 별도 테스트 DB를 사용하는 이벤트 검증 화면입니다." : "실제 덱 저장 · 공개 랭킹과 연결되는 미리보기입니다."}</span>
+        <span>{import.meta.env.VITE_DEVELOPMENT_SANDBOX === "1" ? "11/18 개발 시험 · 덱은 이 브라우저에만 저장됩니다. 공개 랭킹·이벤트 서버와 연결하지 않습니다." : import.meta.env.DEV && import.meta.env.VITE_EVENT_PILOT === "1" ? "가상 참가자 · 별도 테스트 DB를 사용하는 이벤트 검증 화면입니다." : "실제 덱 저장 · 공개 랭킹과 연결되는 미리보기입니다."}</span>
       </div>}
       <aside className="sidebar">
         <a

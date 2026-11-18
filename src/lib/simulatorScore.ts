@@ -1,5 +1,6 @@
 import { LOOKUP, normalizeSkillKey, skillScore, type SkillTables } from "./engine";
 import { availableSkills, skillId, slotCount, type Board, type DrawSkill, type SimSettings } from "./skillSimulator";
+import { WBC_SKILLS } from "./wbcSkills";
 
 export interface ScoreOption { name: string; score: number }
 export type ScoreChoices = Record<string, string>;
@@ -12,6 +13,10 @@ function baseName(name: string) {
   return base.replace(/^worldbaseballclassic/, "wbc").replace(/^파워피처$/, "파워피쳐");
 }
 function applicable(name: string, settings: SimSettings) {
+  if (WBC_SKILLS.some(s => s.name === name) && /키스톤|사령관/.test(name)) {
+    const active = name.includes("키스톤") ? ["SS", "2B"].includes(settings.position) : settings.position === "C";
+    return name.endsWith(active ? " O)" : " X)");
+  }
   const condition = name.slice(name.indexOf("("));
   if (settings.position === "SP" || settings.position === "RP" || settings.position === "CP") {
     const roleWords = /선발|중계|마무리|승리조|추격조|롱\s*릴리프/;

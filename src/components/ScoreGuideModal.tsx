@@ -94,7 +94,7 @@ export function ScoreGuideModal({ close }: { close: () => void }) {
           </div>
           <div className="score-tactics" aria-label="투수 전술 가산">
             <div><span>승리조 · 분업</span><b>최소 3명</b><strong>변화·구위 각각 +4</strong><small>능력치 점수 +9.4</small></div>
-            <div><span>승리조·추격조 · 적극</span><b>해당 조 최소 2명</b><strong>변화·구위 각각 +2</strong><small>능력치 점수 +4.7</small></div>
+            <div><span>승리조·추격조 · 적극</span><b>승리조 최소 1명 · 추격조 최소 2명</b><strong>변화·구위 각각 +2</strong><small>능력치 점수 +4.7</small></div>
             <div><span>기본 · 롱릴리프 · 마무리</span><b>추가 효과 없음</b><strong>+0</strong><small>전술 인원 미충족 시에도 +0</small></div>
           </div>
           <p className="score-note">전술 인원은 이름이 등록된 선수만 셉니다. 지구력은 가산하지 않으며, 점수에는 변화·구위만 반영합니다.</p>
