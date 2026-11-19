@@ -20,6 +20,7 @@ const USERS = {
   },
 };
 const RPC_ARGS = {
+  mailbox_operator_sent: ["p_session", "p_offset"],
   mailbox_list: ["p_ranking_id", "p_token", "p_offset"],
   mailbox_read: ["p_ranking_id", "p_token", "p_id"],
   mailbox_operator_recipients: ["p_session", "p_event", "p_query", "p_offset"],
@@ -89,6 +90,7 @@ async function createEventTestDb(dataDir) {
   if (initialized) await db.exec(sql("supabase_mig_events.sql"));
   await db.exec(sql("supabase_mig_event_operator.sql"));
   await db.exec(sql("supabase_mig_private_messages.sql"));
+  await db.exec(sql("supabase_mig_mailbox_sent_history.sql"));
   const users = {};
   for (const [key, u] of Object.entries(USERS)) {
     const rank = (

@@ -3,7 +3,8 @@ import { EVENT_ID, type EventState } from "../../lib/events";
 import { mailboxError, mailboxRequest, readMessageImage, listAllMessageRecipients, findPrizeRecipients, PRIZE_LABELS, type MessagePrize, type MessageImage, type MessageRecipient, type PrivateMessage } from "../../lib/privateMessages";
 import { MessageList, MessageView, PrivateImage } from "./MessageView";
 import "./messages.css";
-function RecipientMessages({ session, recipient, composing }: { session: string; recipient: MessageRecipient; composing: (value: boolean) => void }) {
+import AdminSentHistory from "./AdminSentHistory";
+function RecipientMessages({ session, recipient, composing, onSent }: { session: string; recipient: MessageRecipient; composing: (value: boolean) => void; onSent: () => void }) {
   const [subject, setSubject] = useState(""), [body, setBody] = useState("");
   const [image, setImage] = useState<MessageImage | null>(null), [imageBusy, setImageBusy] = useState(false);
   const [prepared, setPrepared] = useState<{ id: string; subject: string; body: string; image: MessageImage | null } | null>(null);
@@ -47,7 +48,7 @@ function RecipientMessages({ session, recipient, composing }: { session: string;
       if (!mounted.current) return;
       setPrepared(null); composing(false); setSubject(""); setBody(""); setImage(null);
       setNotice("쪽지를 보냈습니다. 읽음 여부는 보낸 내역에서 확인할 수 있습니다. 경품 지급 상태는 자동으로 변경되지 않습니다.");
-      setOffset(0); setReload(n => n + 1);
+      setOffset(0); setReload(n => n + 1); onSent();
     } catch (e) { if (mounted.current) setError(mailboxError(e) + " 전송 여부가 불확실하면 같은 화면에서 다시 보내주세요. 동일 요청은 중복 발송되지 않습니다."); }
     finally { pending.current = false; if (mounted.current) setBusy(false); }
   }
@@ -87,6 +88,7 @@ function RecipientMessages({ session, recipient, composing }: { session: string;
 }
 export default function AdminMailbox({ session, state, initialPrize }: { session: string; state?: EventState; initialPrize?: MessagePrize }) {
   const eventId = state?.event.id || EVENT_ID;
+  const [historyOpen, setHistoryOpen] = useState(false), [sentRevision, setSentRevision] = useState(0);
   const [winners, setWinners] = useState<Partial<Record<MessagePrize, MessageRecipient>>>({});
   const [winnersBusy, setWinnersBusy] = useState(false), [winnersError, setWinnersError] = useState("");
   const [winnerReload, setWinnerReload] = useState(0);
@@ -120,6 +122,10 @@ export default function AdminMailbox({ session, state, initialPrize }: { session
   }, [session, eventId, state?.event.champion_id, state?.event.winner_id, state?.event.phase, state?.is_admin, initialPrize, winnerReload]);
   return <section className="event-panel private-messages">
     <h2>운영자 개인 쪽지</h2><p>등록된 덱에 안내문과 기프티콘 이미지를 보냅니다. 일반 사용자는 쪽지를 보낼 수 없습니다.</p>
+    <details className="operator-sent-history-toggle" onToggle={e => setHistoryOpen(e.currentTarget.open)}>
+      <summary>전체 보낸 쪽지 내역 · 날짜별 보기</summary>
+      {historyOpen && <AdminSentHistory session={session} revision={sentRevision} />}
+    </details>
     {state?.is_admin && <section className="winner-mailbox" aria-label="당첨자 쪽지 보내기">
       <div className="message-actions"><h3>당첨자에게 보내기</h3><button disabled={locked || winnersBusy} onClick={() => setWinnerReload(n => n + 1)}>당첨자 다시 확인</button></div>
       <p>당첨자 선택 → 안내문 작성 또는 이미지 첨부 → 전송 내용 확인 → 발송</p>
@@ -157,6 +163,6 @@ export default function AdminMailbox({ session, state, initialPrize }: { session
       {recipients.map(r => <option key={r.id} value={r.id}>{r.deck_name}{r.award ? ` · ${r.award}` : ""}</option>)}
     </select></label>
     {!busy && !error && !recipients.length && <p>{search ? "검색 결과가 없습니다. 전체 덱 보기를 눌러 다시 선택해주세요." : "등록된 덱이 없습니다."}</p>}
-    {recipient && <RecipientMessages key={`${session}:${recipient.id}`} session={session} recipient={recipient} composing={setLocked} />}
+    {recipient && <RecipientMessages key={`${session}:${recipient.id}`} session={session} recipient={recipient} composing={setLocked} onSent={() => setSentRevision(n => n + 1)} />}
   </section>;
 }

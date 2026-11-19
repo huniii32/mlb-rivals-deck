@@ -1,0 +1,31 @@
+const assert=require('node:assert/strict');
+const {randomUUID}=require('node:crypto');
+const fs=require('node:fs');
+const {createEventTestDb}=require('./event-test-db.cjs');
+(async()=>{const {db,users,rpc}=await createEventTestDb();try{
+ const password='b'.repeat(64);
+ await db.query('insert into sim_event_operator_credentials values($1,public._ranking_hash($2))',[users.admin.id,password]);
+ const login=await rpc('event_operator_login',{p_password:password});
+ const args={p_session:login.token,p_offset:0};
+ assert.deepEqual(await rpc('mailbox_operator_sent',args),[]);
+ for(let i=0;i<53;i++)await db.query('insert into deck_private_messages(id,recipient_id,sender_id,request_id,subject,body,created_at) values($1,$2,$3,$4,$5,$6,$7)',[randomUUID(),i%2?users.alice.rank:users.bob.rank,users.admin.id,randomUUID(),`History ${i}`,'Private body',i<27?'2026-11-18T15:00:00Z':'2026-11-18T14:59:59Z']);
+ // Another operator's sent messages are not part of this operator's history.
+ await db.query('insert into sim_event_admins values($1)',[users.bob.id]);
+ await db.query('insert into sim_event_operator_credentials values($1,public._ranking_hash($2))',[users.bob.id,'c'.repeat(64)]);
+ await db.query('insert into deck_private_messages(recipient_id,sender_id,request_id,subject,body) values($1,$2,$3,$4,$5)',[users.alice.rank,users.bob.id,randomUUID(),'Other operator','Hidden body']);
+ const first=await rpc('mailbox_operator_sent',args),second=await rpc('mailbox_operator_sent',{...args,p_offset:50});
+ assert.equal(first.length,50);assert.equal(second.length,3);assert.equal(new Set([...first,...second].map(m=>m.id)).size,53);
+ assert.ok(first.every(m=>m.recipient_name&&m.body===undefined&&m.image_base64===undefined&&m.subject!=='Other operator'));
+ assert.ok(first.every((m,i)=>!i||Date.parse(first[i-1].created_at)>=Date.parse(m.created_at)));
+ const metadata=first[0];await rpc('mailbox_operator_read',{p_session:login.token,p_id:metadata.id});
+ assert.equal((await rpc('mailbox_operator_sent',args))[0].read_at,null,'operator preview is not a recipient read');
+ const owner=metadata.recipient_id===users.alice.rank?users.alice:users.bob;
+ await rpc('mailbox_read',{p_ranking_id:owner.rank,p_token:owner.token,p_id:metadata.id});
+ assert.ok((await rpc('mailbox_operator_sent',args))[0].read_at);
+ await db.exec(fs.readFileSync(__dirname+'/supabase_mig_mailbox_sent_history.sql','utf8'));
+ assert.equal((await rpc('mailbox_operator_sent',{...args,p_offset:50})).length,3);
+ for(const token of [null,'',users.alice.token,'f'.repeat(64)])await assert.rejects(rpc('mailbox_operator_sent',{p_session:token,p_offset:0}),/session_expired/);
+ await rpc('event_operator_logout',{p_session:login.token});
+ await assert.rejects(rpc('mailbox_operator_sent',args),/session_expired/);
+ console.log('Sent history SQL PASS: own operator only, 53 messages across recipients/dates, stable pagination, metadata only, recipient read receipts, reapply and unauthorized/logout denial.');
+}finally{await db.close()}})().catch(e=>{console.error(e);process.exitCode=1});
