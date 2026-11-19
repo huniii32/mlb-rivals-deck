@@ -5,6 +5,7 @@ import {
   type EventState,
   type EventTicket,
 } from "../../lib/events";
+import type { MessagePrize } from "../../lib/privateMessages";
 import { auditLabels, prizeStatus, score, time } from "./eventView";
 import "./EventAdmin.css";
 
@@ -109,6 +110,7 @@ export default function EventAdmin({
   onAction,
   onRefresh,
   onLogout,
+  onMessage,
 }: {
   state: EventState;
   busy: boolean;
@@ -117,6 +119,7 @@ export default function EventAdmin({
   onAction: Action;
   onRefresh: () => void;
   onLogout?: () => void;
+  onMessage?: (prize: MessagePrize) => void;
 }) {
   const [query, setQuery] = useState("");
   const [drawing, setDrawing] = useState(false);
@@ -382,6 +385,7 @@ export default function EventAdmin({
                         )}
                       </details>
                       <div className="event-admin-actions">
+                        {onMessage && <button disabled={disabled} onClick={() => onMessage(prize)}>{title} · 쪽지 보내기</button>}
                         <button
                           disabled={disabled || !!verified}
                           onClick={() => {

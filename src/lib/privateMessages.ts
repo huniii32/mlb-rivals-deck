@@ -39,3 +39,26 @@ export function messageBlob(image: MessageImage): Blob {
   if (raw.length > 2097152) throw Error("mailbox_invalid_image");
   return new Blob([Uint8Array.from(raw, c => c.charCodeAt(0))], { type: image.mime });
 }
+
+export const PRIZE_LABELS = { champion: "스킬 점수 1위", winner: "응모권 추첨 당첨자" } as const;
+export type MessagePrize = keyof typeof PRIZE_LABELS;
+/** The RPC derives awards from participant ranking IDs, including renamed decks. */
+export async function findPrizeRecipients(
+  session: string, eventId: string, expected: MessagePrize[],
+  request = mailboxRequest,
+): Promise<Partial<Record<MessagePrize, MessageRecipient>>> {
+  const found: Partial<Record<MessagePrize, MessageRecipient>> = {};
+  const seen = new Set<string>();
+  for (let offset = 0; expected.some(prize => !found[prize]); offset += 50) {
+    const page = await request<MessageRecipient[]>("operator_recipients", {
+      p_session: session, p_event: eventId, p_query: "", p_offset: offset,
+    });
+    for (const recipient of page) {
+      for (const prize of expected) if (recipient.award === PRIZE_LABELS[prize]) found[prize] = recipient;
+    }
+    if (page.length < 50) break;
+    if (page.every(recipient => seen.has(recipient.id))) throw Error("mailbox_recipient_pagination_failed");
+    for (const recipient of page) seen.add(recipient.id);
+  }
+  return found;
+}
