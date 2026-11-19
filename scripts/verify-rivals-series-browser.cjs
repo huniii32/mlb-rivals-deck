@@ -20,14 +20,22 @@ const fs=require('node:fs');
   await check(5,2);
   assert.deepEqual(await page.locator('.group-title h3').allTextContents(),['주전 타자','후보 타자','선발 투수','불펜']);
   const boxes=await page.locator('.roster>.group').evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return {x:r.x,y:r.y}}));
-  assert.ok(boxes[0].x<boxes[1].x && Math.abs(boxes[0].y-boxes[1].y)<1);
+  assert.ok(boxes[1].y>boxes[0].y && Math.abs(boxes[0].x-boxes[1].x)<1);
   assert.ok(boxes[2].x<boxes[3].x && Math.abs(boxes[2].y-boxes[3].y)<1 && boxes[2].y>boxes[0].y);
   const catalog=page.locator('.pick-catalog');
   assert.equal(await catalog.getAttribute('open'),null);assert.equal(await page.locator('.pickgrid').isVisible(),false);
   await catalog.locator('summary').first().click();assert.equal(await page.locator('.pickgrid article').count(),60);
   await page.getByPlaceholder('예: LAD, 투수는 CP 또는 RP').fill('LAD');assert.equal(await page.locator('.pickgrid article').count(),2);
   await catalog.locator('summary').first().click();assert.equal(await page.locator('.pickgrid').isVisible(),false);
-  const openCard=async label=>{const details=page.getByLabel(label,{exact:true}).locator('xpath=ancestor::details[1]');if(await details.getAttribute('open')===null)await details.locator('summary').click();};
+  const openCard=async label=>{
+    const input=page.getByLabel(label,{exact:true});
+    const popup=input.locator('xpath=ancestor::*[@popover][1]');
+    if(await popup.count()) {
+      if(!await popup.isVisible()) await page.getByRole('button',{name:label.replace(/ 일반 .+$/,' 카드 조건 변경'),exact:true}).click();
+    } else {
+      const details=input.locator('xpath=ancestor::details[1]');if(await details.getAttribute('open')===null)await details.locator('summary').click();
+    }
+  };
 
   await page.getByText('전체 +19 · 타자 +4 · 투수 +5 계산표',{exact:true}).click();
   assert.equal(await page.locator('.recipe tbody tr').count(),6);
@@ -37,6 +45,7 @@ const fs=require('node:fs');
   const typeLabel=await page.locator('.card-options select[aria-label$="일반 종류"]').evaluateAll(nodes=>nodes.find(n=>n.value==='live').getAttribute('aria-label'));
   await openCard(typeLabel);
   await page.getByLabel(typeLabel,{exact:true}).selectOption('season');
+  await page.keyboard.press('Escape');
   assert.ok((await page.locator('.pending').innerText()).includes('전체 +16'));
   assert.ok((await page.locator('.pending').innerText()).includes('라이브 20명 조건에 1명 부족'));
   await page.getByRole('tab',{name:'조합 2',exact:false}).click();
@@ -45,6 +54,7 @@ const fs=require('node:fs');
   assert.ok((await page.locator('.pending').innerText()).includes('전체 +16'));
   await openCard(typeLabel);
   await page.getByLabel(typeLabel,{exact:true}).selectOption('live');
+  await page.keyboard.press('Escape');
   const before=await page.locator('.roster').innerText();await page.getByRole('tab',{name:'조합 2',exact:false}).click();assert.notEqual(await page.locator('.roster').innerText(),before);
   const search=async(sp,cp)=>{
    await page.getByLabel('선발 인원',{exact:true}).selectOption(String(sp));await page.getByLabel('마무리 인원',{exact:true}).selectOption(String(cp));
@@ -68,10 +78,18 @@ const fs=require('node:fs');
   assert.ok(data.lineup.every(x=>x.player.pick || x.player.requirement));
   for(const width of [320,390,768,1366]){
    await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`overflow ${width}`);
+   const geometry=await page.locator('.batters .lineup-cards').evaluate(field=>{
+     const f=field.getBoundingClientRect();const cards=[...field.querySelectorAll('.lineup-card')].map(n=>{const r=n.getBoundingClientRect();return {slot:n.dataset.slot,left:r.left,right:r.right,top:r.top,bottom:r.bottom}});
+     const overlaps=[];for(let i=0;i<cards.length;i++)for(let j=i+1;j<cards.length;j++){const a=cards[i],b=cards[j];if(Math.min(a.right,b.right)-Math.max(a.left,b.left)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>1)overlaps.push([a.slot,b.slot]);}
+     return {count:cards.length,overlaps,overflow:cards.filter(c=>c.left<f.left-1||c.right>f.right+1||c.top<f.top-1||c.bottom>f.bottom+1).map(c=>c.slot)};
+   });
+   assert.equal(geometry.count,9);assert.deepEqual(geometry.overlaps,[],`overlap ${width}`);assert.deepEqual(geometry.overflow,[],`field overflow ${width}`);
+
   }
   if(process.env.SERIES_SCREENSHOT) {
     await page.setViewportSize({width:1366,height:1000});
-    await page.locator('.roster').screenshot({path:process.env.SERIES_SCREENSHOT});
+    await page.locator('.batters').screenshot({path:process.env.SERIES_SCREENSHOT});
+    await page.setViewportSize({width:390,height:900});await page.locator('.batters').screenshot({path:process.env.SERIES_SCREENSHOT.replace('.png','-mobile.png')});
   }
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
   console.log('Rival Series browser PASS: worker, 18/4/5, breakdown, distinct candidates, SP4..6/CP1..2, five batter reserves, unrestricted relief roles, JSON, responsive UI.');
