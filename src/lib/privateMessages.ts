@@ -42,6 +42,21 @@ export function messageBlob(image: MessageImage): Blob {
 
 export const PRIZE_LABELS = { champion: "스킬 점수 1위", winner: "응모권 추첨 당첨자" } as const;
 export type MessagePrize = keyof typeof PRIZE_LABELS;
+/** Fetch every matching registered deck; the RPC returns at most 50 per page. */
+export async function listAllMessageRecipients(
+  session: string, eventId: string, query = "", request = mailboxRequest,
+): Promise<MessageRecipient[]> {
+  const recipients = new Map<string, MessageRecipient>();
+  for (let offset = 0; ; offset += 50) {
+    const page = await request<MessageRecipient[]>("operator_recipients", {
+      p_session: session, p_event: eventId, p_query: query, p_offset: offset,
+    });
+    const previousSize = recipients.size;
+    for (const recipient of page) recipients.set(recipient.id, recipient);
+    if (page.length < 50) return [...recipients.values()];
+    if (recipients.size === previousSize) throw Error("mailbox_recipient_pagination_failed");
+  }
+}
 /** The RPC derives awards from participant ranking IDs, including renamed decks. */
 export async function findPrizeRecipients(
   session: string, eventId: string, expected: MessagePrize[],
