@@ -16,12 +16,16 @@ const fs=require('node:fs');
    assert.equal(labels.length,26);assert.equal(labels.filter(s=>s.startsWith('SP')).length,sp);
    assert.equal(labels.filter(s=>s.startsWith('CP')).length,cp);assert.equal(labels.filter(s=>s.startsWith('RP')).length,12-sp-cp);
    assert.equal(labels.filter(s=>s.startsWith('후보')).length,5);
+   for(const [group,prefix,count] of [['starters','SP',sp],['bullpen','RP',12-sp-cp],['closers','CP',cp]]) {
+    const slots=await page.locator(`.${group} .position`).allTextContents();
+    assert.equal(slots.length,count);assert.ok(slots.every(slot=>slot.startsWith(prefix)));
+   }
   };
   await check(5,2);
-  assert.deepEqual(await page.locator('.group-title h3').allTextContents(),['주전 타자','후보 타자','선발 투수','불펜']);
+  assert.deepEqual(await page.locator('.group-title h3').allTextContents(),['주전 타자','후보 타자','선발투수','불펜','마무리']);
   const boxes=await page.locator('.roster>.group').evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return {x:r.x,y:r.y}}));
   assert.ok(boxes[1].y>boxes[0].y && Math.abs(boxes[0].x-boxes[1].x)<1);
-  assert.ok(boxes[2].x<boxes[3].x && Math.abs(boxes[2].y-boxes[3].y)<1 && boxes[2].y>boxes[0].y);
+  for(let i=2;i<boxes.length;i++)assert.ok(boxes[i].y>boxes[i-1].y && Math.abs(boxes[i].x-boxes[i-1].x)<1);
   const catalog=page.locator('.pick-catalog');
   assert.equal(await catalog.getAttribute('open'),null);assert.equal(await page.locator('.pickgrid').isVisible(),false);
   await catalog.locator('summary').first().click();assert.equal(await page.locator('.pickgrid article').count(),60);
@@ -37,6 +41,10 @@ const fs=require('node:fs');
     }
   };
 
+  assert.equal(await page.locator('.calculation').getAttribute('open'),null);
+  const flow=await page.locator('.controls,.workspace>.summary,.workspace>.result,.pick-catalog,.calculation').evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().top));
+  assert.ok(flow.every((top,i)=>i===0||top>flow[i-1]));
+  await page.locator('.calculation>summary').click();
   await page.getByText('전체 +19 · 타자 +4 · 투수 +5 계산표',{exact:true}).click();
   assert.equal(await page.locator('.recipe tbody tr').count(),6);
   assert.ok((await page.locator('.recipe').innerText()).includes('8개 구단'));
