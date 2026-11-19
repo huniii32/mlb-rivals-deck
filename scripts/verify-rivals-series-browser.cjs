@@ -18,12 +18,24 @@ const fs=require('node:fs');
    assert.equal(labels.filter(s=>s.startsWith('후보')).length,5);
   };
   await check(5,2);
+  assert.deepEqual(await page.locator('.group-title h3').allTextContents(),['주전 타자','후보 타자','선발 투수','불펜']);
+  const boxes=await page.locator('.roster>.group').evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return {x:r.x,y:r.y}}));
+  assert.ok(boxes[0].x<boxes[1].x && Math.abs(boxes[0].y-boxes[1].y)<1);
+  assert.ok(boxes[2].x<boxes[3].x && Math.abs(boxes[2].y-boxes[3].y)<1 && boxes[2].y>boxes[0].y);
+  const catalog=page.locator('.pick-catalog');
+  assert.equal(await catalog.getAttribute('open'),null);assert.equal(await page.locator('.pickgrid').isVisible(),false);
+  await catalog.locator('summary').first().click();assert.equal(await page.locator('.pickgrid article').count(),60);
+  await page.getByPlaceholder('예: LAD, 투수는 CP 또는 RP').fill('LAD');assert.equal(await page.locator('.pickgrid article').count(),2);
+  await catalog.locator('summary').first().click();assert.equal(await page.locator('.pickgrid').isVisible(),false);
+  const openCard=async label=>{const details=page.getByLabel(label,{exact:true}).locator('xpath=ancestor::details[1]');if(await details.getAttribute('open')===null)await details.locator('summary').click();};
+
   await page.getByText('전체 +19 · 타자 +4 · 투수 +5 계산표',{exact:true}).click();
   assert.equal(await page.locator('.recipe tbody tr').count(),6);
   assert.ok((await page.locator('.recipe').innerText()).includes('8개 구단'));
   assert.ok((await page.locator('.pending').innerText()).includes('전체 +18 / 타자 +4 / 투수 +5'));
   await page.getByText('버프 계산 근거',{exact:true}).click();assert.ok(await page.locator('.buff-row.on').count()>0);
   const typeLabel=await page.locator('.card-options select[aria-label$="일반 종류"]').evaluateAll(nodes=>nodes.find(n=>n.value==='live').getAttribute('aria-label'));
+  await openCard(typeLabel);
   await page.getByLabel(typeLabel,{exact:true}).selectOption('season');
   assert.ok((await page.locator('.pending').innerText()).includes('전체 +16'));
   assert.ok((await page.locator('.pending').innerText()).includes('라이브 20명 조건에 1명 부족'));
@@ -31,6 +43,7 @@ const fs=require('node:fs');
   assert.ok((await page.locator('.pending').innerText()).includes('전체 +18'));
   await page.getByRole('tab',{name:'조합 1',exact:false}).click();
   assert.ok((await page.locator('.pending').innerText()).includes('전체 +16'));
+  await openCard(typeLabel);
   await page.getByLabel(typeLabel,{exact:true}).selectOption('live');
   const before=await page.locator('.roster').innerText();await page.getByRole('tab',{name:'조합 2',exact:false}).click();assert.notEqual(await page.locator('.roster').innerText(),before);
   const search=async(sp,cp)=>{
@@ -53,8 +66,12 @@ const fs=require('node:fs');
   assert.equal(data.counts.live,20);
   assert.equal(data.lineup.filter(x=>x.player.requirement&&!x.player.live).length,6);
   assert.ok(data.lineup.every(x=>x.player.pick || x.player.requirement));
-  for(const width of [390,768,1366]){
+  for(const width of [320,390,768,1366]){
    await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`overflow ${width}`);
+  }
+  if(process.env.SERIES_SCREENSHOT) {
+    await page.setViewportSize({width:1366,height:1000});
+    await page.locator('.roster').screenshot({path:process.env.SERIES_SCREENSHOT});
   }
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
   console.log('Rival Series browser PASS: worker, 18/4/5, breakdown, distinct candidates, SP4..6/CP1..2, five batter reserves, unrestricted relief roles, JSON, responsive UI.');
