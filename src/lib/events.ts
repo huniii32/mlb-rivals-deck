@@ -111,7 +111,7 @@ const messages: Record<string, string> = {
   event_experience_required: "먼저 조합 후보를 확인해주세요.",
   event_admin_required: "운영자만 실행할 수 있습니다.",
   event_winner_required: "당첨자가 확정된 뒤 처리할 수 있습니다.",
-  event_verification_required: "실제 게임 덱 인증을 먼저 확인해주세요.",
+  event_verification_required: "지급 기록 기능의 서버 업데이트가 필요합니다. 운영자용 event-direct-delivery.sql을 적용한 뒤 다시 시도해주세요.",
   event_close_first: "이벤트를 마감한 후 추첨해주세요.",
   event_rules_missing:
     "이벤트 준비 중입니다. 아직 도전 횟수는 사용되지 않았습니다.",

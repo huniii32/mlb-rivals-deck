@@ -361,7 +361,6 @@ begin
       if prize='champion' then update public.sim_events set champion_verified_at=recorded where id=p_event;
       else update public.sim_events set winner_verified_at=recorded where id=p_event; end if;
     else
-      if verified is null then raise exception 'event_verification_required'; end if;
       if delivered is not null then return public.event_get(p_event); end if;
       recorded:=clock_timestamp();
       if prize='champion' then update public.sim_events set champion_delivered_at=recorded where id=p_event;

@@ -9,15 +9,8 @@ export const time = (value: string) =>
     hour12: false,
   });
 export const score = (value: number) => value.toFixed(2);
-export const prizeStatus = (
-  verified: string | null,
-  delivered: string | null,
-) =>
-  delivered
-    ? "지급 완료"
-    : verified
-      ? "게임 덱 인증 완료 · 지급 대기"
-      : "게임 덱 인증 대기";
+export const prizeStatus = (delivered: string | null) =>
+  delivered ? "지급 완료" : "쪽지함 지급 대기";
 export const auditLabels: Record<string, string> = {
   publish: "이벤트 공개",
   unpublish: "이벤트 비공개 전환",

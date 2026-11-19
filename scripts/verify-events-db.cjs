@@ -328,33 +328,27 @@ function summedScore(board) {
       () => call("event_admin", bob, { p_action: "verify_winner" }),
       /login_required|admin_required/,
     );
+    // Exercise an upgrade from the deployed verification gate, with winners already drawn.
+    const baseSql = fs.readFileSync(path.join(__dirname, "supabase_mig_events.sql"), "utf8");
+    const adminFunction = baseSql.slice(baseSql.indexOf("create or replace function public.event_admin("), baseSql.indexOf("\n-- Helpers are private."));
+    const upgrade = fs.readFileSync(path.join(__dirname, "supabase_mig_event_direct_delivery.sql"), "utf8");
+    assert.ok(upgrade.includes(adminFunction.trim()), "upgrade must match the fresh-install admin function");
+    await db.exec(adminFunction.replace("      if delivered is not null", "      if verified is null then raise exception 'event_verification_required'; end if;\n      if delivered is not null"));
+    await assert.rejects(() => call("event_admin", admin, {p_action:"deliver_champion"}), /verification_required/);
+    const beforeUpgrade = await call("event_get", admin);
+    await db.exec(upgrade);
+    const afterUpgrade = await call("event_get", admin);
+    assert.deepEqual({...afterUpgrade, server_now: beforeUpgrade.server_now}, beforeUpgrade, "upgrade must not change existing event data");
     for (const prize of ["champion", "winner"]) {
-      await assert.rejects(
-        () => call("event_admin", admin, { p_action: `deliver_${prize}` }),
-        /verification_required/,
-      );
-      const verified = await call("event_admin", admin, {
-        p_action: `verify_${prize}`,
-      });
-      assert.ok(verified.event[`${prize}_verified_at`]);
-      assert.equal(verified.event[`${prize}_delivered_at`], null);
-      const delivered = await call("event_admin", admin, {
-        p_action: `deliver_${prize}`,
-      });
+      await assert.rejects(() => call("event_admin", bob, {p_action:`deliver_${prize}`}), /login_required|admin_required/);
+      const delivered = await call("event_admin", admin, { p_action: `deliver_${prize}` });
       assert.ok(delivered.event[`${prize}_delivered_at`]);
-      await call("event_admin", admin, { p_action: `verify_${prize}` });
-      const retry = await call("event_admin", admin, {
-        p_action: `deliver_${prize}`,
-      });
+      assert.equal(delivered.event[`${prize}_verified_at`], null, "delivery must not invent verification");
+      await db.exec(upgrade);
+      const retry = await call("event_admin", admin, { p_action: `deliver_${prize}` });
       assert.deepEqual(retry.event, delivered.event);
-      assert.equal(
-        retry.audit.filter((a) => a.action === `verify_${prize}`).length,
-        1,
-      );
-      assert.equal(
-        retry.audit.filter((a) => a.action === `deliver_${prize}`).length,
-        1,
-      );
+      assert.equal(retry.audit.filter(a => a.action === `verify_${prize}`).length, 0);
+      assert.equal(retry.audit.filter(a => a.action === `deliver_${prize}`).length, 1);
     }
     // Private mode revokes reads and idempotent mutation retries, without deleting records.
     const beforeHide = (await call("event_get")).event;
@@ -515,7 +509,7 @@ function summedScore(board) {
       );
     }
     console.log(
-      "Event SQL: anonymous deck-password ownership and cross-device restore, atomic five attempts, idempotent retry, server scores, evidence, four tickets, earliest tie, close/draw exclusions, winner verification/delivery gates, scheduling, ACLs and migration replay passed.",
+      "Event SQL: anonymous deck-password ownership and cross-device restore, atomic five attempts, idempotent retry, server scores, evidence, four tickets, earliest tie, close/draw exclusions, direct winner delivery without fabricated verification, scheduling, ACLs and migration replay passed.",
     );
   } finally {
     await db.close();

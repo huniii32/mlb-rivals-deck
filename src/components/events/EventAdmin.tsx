@@ -337,7 +337,6 @@ export default function EventAdmin({
           <div className="event-winners">
             {(["champion", "winner"] as const).map((prize) => {
               const id = e[`${prize}_id`],
-                verified = e[`${prize}_verified_at`],
                 delivered = e[`${prize}_delivered_at`];
               const title = prize === "champion" ? "점수 1위" : "추첨 당첨자";
               const registered = state.verification_decks.find(
@@ -358,7 +357,7 @@ export default function EventAdmin({
                   {id && (
                     <>
                       <span className="event-prize-status">
-                        {prizeStatus(verified, delivered)}
+                        {prizeStatus(delivered)}
                       </span>
                       <details className="event-details">
                         <summary>참가 당시 덱 확인</summary>
@@ -387,22 +386,7 @@ export default function EventAdmin({
                       <div className="event-admin-actions">
                         {onMessage && <button disabled={disabled} onClick={() => onMessage(prize)}>{title} · 쪽지 보내기</button>}
                         <button
-                          disabled={disabled || !!verified}
-                          onClick={() => {
-                            if (
-                              confirm(
-                                `${nameOf(id)} 님의 실제 게임 덱을 확인했나요?`,
-                              )
-                            )
-                              void onAction("admin", {
-                                p_action: `verify_${prize}`,
-                              });
-                          }}
-                        >
-                          {title} · 게임 덱 인증 완료
-                        </button>
-                        <button
-                          disabled={disabled || !verified || !!delivered}
+                          disabled={disabled || !!delivered}
                           onClick={() => {
                             if (
                               confirm(
@@ -426,8 +410,8 @@ export default function EventAdmin({
         )}
         {phase !== "open" && !drawing && (
           <p className="event-admin-footnote">
-            게임 덱 인증 후 경품을 보내고 지급 완료를 기록하세요. 기프티콘은
-            자동 발송되지 않습니다.
+            별도 게임 덱 인증 없이 당첨 덱의 쪽지함으로 기프티콘을 보내고 지급 완료를 기록하세요.
+            쪽지 발송과 지급 완료 기록은 별개이며, 기프티콘은 자동 발송되지 않습니다.
           </p>
         )}
       </section>

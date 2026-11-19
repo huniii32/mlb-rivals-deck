@@ -27,7 +27,7 @@ function RecipientMessages({ session, recipient, composing }: { session: string;
     setSubject(gift ? "이벤트 기프티콘 전달" : `${recipient.award} 당첨 안내`);
     setBody(gift
       ? `${recipient.deck_name}님, 이벤트에 참여해주셔서 감사합니다.\n당첨 경품 이미지를 첨부해 보내드립니다. 쪽지 아래 ‘이미지 저장’ 버튼으로 원본을 저장해주세요.`
-      : `${recipient.deck_name}님, ${recipient.award} 당첨을 축하드립니다.\n당첨 안내가 늦어진 점 죄송합니다.\n커뮤니티 쪽지로 참가 덱명과 실제 게임 속 덱 인증을 보내주시면 확인 후 이 사이트 쪽지함으로 기프티콘을 전달하겠습니다.\n참여해주셔서 감사합니다.`);
+      : `${recipient.deck_name}님, ${recipient.award} 당첨을 축하드립니다.\n당첨 안내가 늦어진 점 죄송합니다.\n별도 게임 덱 인증 자료를 보내실 필요는 없습니다. 당첨 경품은 이 사이트의 개인 쪽지함으로 보내드릴 예정입니다.\n덱랭킹에서 비밀번호로 내 덱을 가져온 뒤 상단 쪽지함을 확인해주세요.\n참여해주셔서 감사합니다.`);
   }
   async function attach(file?: File) {
     const v = ++imageVersion.current;
@@ -58,7 +58,7 @@ function RecipientMessages({ session, recipient, composing }: { session: string;
   }
   return <section aria-label="쪽지 작성 및 보낸 내역">
     <h3>받는 덱: {recipient.deck_name}</h3>{recipient.award && <p>{recipient.award}</p>}
-    <p>기프티콘은 실제 게임 덱 인증을 확인한 후 보내주세요. 받는 사람은 사이트 쪽지함에서 확인합니다.</p>
+    <p>별도 게임 덱 인증 없이 당첨 덱의 쪽지함으로 기프티콘을 보내주세요. 받는 사람은 본인 덱을 비밀번호로 가져온 뒤 확인합니다.</p>
     {error && <p role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
     {!prepared ? <form onSubmit={e => { e.preventDefault(); if (!subject.trim() || !body.trim() || imageBusy) return;
       setPrepared({ id: crypto.randomUUID(), subject: subject.trim(), body: body.trim(), image }); composing(true); setNotice(""); setError(""); }}>
@@ -127,16 +127,16 @@ export default function AdminMailbox({ session, state, initialPrize }: { session
       <div className="winner-mailbox-grid">{(["champion", "winner"] as const).map(prize => {
         const participantId = state.event[`${prize}_id`], winner = winners[prize];
         const previousName = state.participants.find(p => p.id === participantId)?.deck_name;
-        const verified = state.event[`${prize}_verified_at`], delivered = state.event[`${prize}_delivered_at`];
+        const delivered = state.event[`${prize}_delivered_at`];
         return <article key={prize} className="winner-mailbox-card" aria-label={PRIZE_LABELS[prize]}>
           <span>{PRIZE_LABELS[prize]}</span><strong>{winner?.deck_name || previousName || "당첨자 미확정"}</strong>
           {winner && previousName && previousName !== winner.deck_name && <small>참가 당시: {previousName}</small>}
-          <small>{delivered ? "지급 완료 기록 있음" : verified ? "게임 덱 인증 완료" : "게임 덱 인증 대기"}</small>
+          <small>{delivered ? "지급 완료 기록 있음" : "쪽지함 지급 대기"}</small>
           <button disabled={locked || winnersBusy || !winner} onClick={() => { initialApplied.current = true; setRecipient(winner!); }}>{recipient?.id === winner?.id && winner ? "선택됨" : "이 당첨자에게 쪽지 작성"}</button>
           {!!participantId && !winner && !winnersBusy && !winnersError && <small>현재 등록 덱을 찾을 수 없습니다. 이름이 같은 다른 덱으로 대신 보내지 않습니다.</small>}
         </article>;
       })}</div>
-      <small>기프티콘은 게임 덱 인증 후 보내주세요. 쪽지 발송·읽음과 지급 완료 기록은 별개입니다.</small>
+      <small>기프티콘을 쪽지로 보낸 뒤 이벤트 관리에서 지급 완료를 기록하세요. 쪽지 발송·읽음과 지급 완료 기록은 별개입니다.</small>
     </section>}
     {locked && <p role="status">작성 중에는 받는 덱이 고정됩니다. 다른 덱을 선택하려면 작성 취소를 눌러주세요.</p>}
     <form className="message-recipient-search" onSubmit={e => { e.preventDefault(); setSearch(query.trim()); }}>

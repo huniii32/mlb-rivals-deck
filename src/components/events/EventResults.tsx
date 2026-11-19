@@ -11,9 +11,8 @@ export default function EventResults({ state }: { state: EventState }) {
       <div className="eyebrow">WINNERS</div>
       <h3>당첨 결과</h3>
       <p>
-        당첨자는 커뮤니티 쪽지로 운영자에게 실제 게임 속 덱과 참가 덱명을
-        보내주세요. 참가 당시 등록한 덱과 대조한 뒤 경품을 지급합니다. 인증
-        자료를 공개 댓글에 올릴 필요는 없습니다.
+        기프티콘은 당첨 덱의 사이트 쪽지함으로 보내드립니다. 별도 게임 덱 인증 자료는 필요하지 않습니다.
+        덱랭킹에서 비밀번호로 내 덱을 가져온 뒤 상단 쪽지함을 확인해주세요.
       </p>
       <div className="event-winners">
         <div>
@@ -29,7 +28,6 @@ export default function EventResults({ state }: { state: EventState }) {
           {state.event.champion_id && (
             <span className="event-prize-status">
               {prizeStatus(
-                state.event.champion_verified_at,
                 state.event.champion_delivered_at,
               )}
             </span>
@@ -48,7 +46,6 @@ export default function EventResults({ state }: { state: EventState }) {
           {state.event.winner_id && (
             <span className="event-prize-status">
               {prizeStatus(
-                state.event.winner_verified_at,
                 state.event.winner_delivered_at,
               )}
             </span>

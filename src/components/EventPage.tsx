@@ -370,8 +370,8 @@ export default function EventPage({
           </div>
         )}
         <p className="event-entry-note">
-          참가 덱명·기록·응모권·당첨 결과는 공개됩니다. 당첨자만 실제 게임 덱
-          인증 후 경품을 받습니다.
+          참가 덱명·기록·응모권·당첨 결과는 공개됩니다. 당첨 경품은 별도 게임 덱 인증 없이
+          당첨 덱의 사이트 쪽지함으로 지급합니다.
         </p>
       </section>
       <section className="event-panel event-challenge">
