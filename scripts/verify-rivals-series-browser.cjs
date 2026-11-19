@@ -91,6 +91,12 @@ const fs=require('node:fs');
      const overlaps=[];for(let i=0;i<cards.length;i++)for(let j=i+1;j<cards.length;j++){const a=cards[i],b=cards[j];if(Math.min(a.right,b.right)-Math.max(a.left,b.left)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>1)overlaps.push([a.slot,b.slot]);}
      return {count:cards.length,overlaps,overflow:cards.filter(c=>c.left<f.left-1||c.right>f.right+1||c.top<f.top-1||c.bottom>f.bottom+1).map(c=>c.slot)};
    });
+   const rows=await page.locator('.starters .lineup-cards,.bullpen .lineup-cards,.closers .lineup-cards').evaluateAll(groups=>groups.flatMap(group=>{
+     const bounds=group.getBoundingClientRect(), rows=new Map();
+     for(const card of group.children){const r=card.getBoundingClientRect(),key=Math.round(r.top);const row=rows.get(key)||[];row.push(r);rows.set(key,row);}
+     return [...rows.values()].map(cards=>Math.abs((Math.min(...cards.map(r=>r.left))+Math.max(...cards.map(r=>r.right)))/2-(bounds.left+bounds.right)/2));
+   }));
+   assert.ok(rows.every(delta=>delta<2),`pitching rows centered at ${width}`);
    assert.equal(geometry.count,9);assert.deepEqual(geometry.overlaps,[],`overlap ${width}`);assert.deepEqual(geometry.overflow,[],`field overflow ${width}`);
 
   }
@@ -99,6 +105,35 @@ const fs=require('node:fs');
     await page.locator('.batters').screenshot({path:process.env.SERIES_SCREENSHOT});
     await page.setViewportSize({width:390,height:900});await page.locator('.batters').screenshot({path:process.env.SERIES_SCREENSHOT.replace('.png','-mobile.png')});
   }
+  await page.locator('.team-selector>summary').click();
+  const club=team=>page.getByRole('checkbox',{name:team,exact:true});
+  await club('LAD').check();await club('NYY').check();
+  await page.getByRole('button',{name:'새 조합 찾기'}).click();
+  await page.getByRole('button',{name:'새 조합 찾기'}).waitFor({timeout:60000});
+  for(let i=1;i<=await page.getByRole('tab').count();i++) {
+    await page.getByRole('tab',{name:`조합 ${i}`,exact:false}).click();
+    assert.equal(await page.locator('.required-teams span[data-met="true"]').count(),2);
+    const clubs=await page.locator('.roster .club-mark').allTextContents();
+    for(const team of ['LAD','NYY'])assert.ok(clubs.filter(t=>t===team).length>=3);
+  }
+  const multiDownload=page.waitForEvent('download');await page.getByRole('button',{name:'조합 저장'}).click();
+  const saved=JSON.parse(fs.readFileSync(await (await multiDownload).path(),'utf8'));
+  assert.deepEqual(saved.options.teams,['LAD','NYY']);
+  const clubInput=await page.locator('.card-options select[aria-label$="일반 구단"]').evaluateAll(nodes=>nodes.find(n=>n.value==='LAD')?.getAttribute('aria-label'));
+  assert.ok(clubInput);
+  while(await page.locator('.required-teams span').filter({hasText:'LAD'}).getAttribute('data-met')==='true') {
+    const label=await page.locator('.card-options select[aria-label$="일반 구단"]').evaluateAll(nodes=>nodes.find(n=>n.value==='LAD')?.getAttribute('aria-label'));
+    if(!label)break;
+    await openCard(label);await page.getByLabel(label,{exact:true}).selectOption('NYY');await page.keyboard.press('Escape');
+  }
+  assert.ok((await page.locator('.required-teams').innerText()).includes('미달'));
+  const unchecked=await page.locator('.team-selector input:not(:checked)').evaluateAll(nodes=>nodes.slice(0,6).map(n=>n.parentElement.textContent));
+  for(const team of unchecked)await club(team).check();
+  assert.equal(await page.locator('.team-selector input:checked').count(),8);
+  assert.equal(await page.locator('.team-selector input:disabled').count(),22);
+  await page.getByRole('button',{name:'선택 초기화'}).click();
+  assert.equal(await page.locator('.team-selector input:checked').count(),0);
+  assert.equal(await page.locator('.team-selector input:disabled').count(),0);
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
   console.log('Rival Series browser PASS: worker, 18/4/5, breakdown, distinct candidates, SP4..6/CP1..2, five batter reserves, unrestricted relief roles, JSON, responsive UI.');
  } finally {await browser.close();}

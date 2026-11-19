@@ -18,7 +18,7 @@ export function formationSlots(f: Formation = defaultFormation) {
 }
 export const slots=formationSlots();
 export interface Selection { slot: string; player: SeriesPlayer }
-export interface SearchOptions extends Formation { preferredTeam: string; seed: number; nonLiveCount?: number }
+export interface SearchOptions extends Formation { preferredTeams: string[]; seed: number; nonLiveCount?: number }
 export function eligible(p: SeriesPlayer, slot: string) {
   if (!p.positions.length) return false;
   if (slot === 'DH' || slot.startsWith('후보')) return p.positions.some(pos => [...fieldPositions, 'DH'].includes(pos));
@@ -68,6 +68,9 @@ export function signature(lineup: Selection[]) {
 // Buffs and CP exclusion follow user-provided game evidence. Search is bounded.
 export function findCandidates(options: SearchOptions, attempts = 160): Selection[][] {
   const slots=formationSlots(options);
+  const requiredTeams=[...new Set(options.preferredTeams)].sort();
+  if(requiredTeams.length>8 || requiredTeams.some(team=>!teams.includes(team))) throw new Error('Select up to eight valid clubs');
+  const hasRequiredTeams=(lineup:Selection[])=>{const counts=summarize(lineup).byTeam;return requiredTeams.every(team=>(counts[team]||0)>=3);};
   const nonLiveCount=options.nonLiveCount??6;
   if(!Number.isInteger(nonLiveCount)||nonLiveCount<0||nonLiveCount>6) throw new Error('Search supports 0–6 non-live requirements');
   let state = options.seed >>> 0;
@@ -79,11 +82,11 @@ export function findCandidates(options: SearchOptions, attempts = 160): Selectio
     // Cover all eight field positions with verified Pick cards first.
     for (const slot of fieldPositions) {
       const choices = players.filter(p => p.pick && eligible(p, slot) && !used.has(p.id));
-      const preferred = choices.find(p => p.team === options.preferredTeam);
+      const preferred = choices.find(p => requiredTeams.includes(p.team));
       const p = preferred || choices[Math.floor(random() * choices.length)];
       if (p) add(slot, p);
     }
-    if (options.preferredTeam) selectedTeams.add(options.preferredTeam);
+    for(const team of requiredTeams) selectedTeams.add(team);
     // Include the verified relief Pick's club in some attempts, plus optional extra
     // clubs for batter reserves. This avoids limiting every candidate to eight clubs.
     if (attempt%2===0) for (const p of players.filter(p=>p.pick && p.positions.includes('RP'))) selectedTeams.add(p.team);
@@ -99,7 +102,24 @@ export function findCandidates(options: SearchOptions, attempts = 160): Selectio
       if (candidates[0]) add(slot, candidates[0].p);
     }
     if (!validateLineup(lineup, options)) continue;
-    if (options.preferredTeam && !lineup.some(x => x.player.team === options.preferredTeam)) continue;
+    // Reserve three slots per selected club before optimizing buffs. Ordinary
+    // requirements can satisfy any legal slot without inventing a named player.
+    for(const team of requiredTeams) {
+      while((summarize(lineup).byTeam[team]||0)<3) {
+        const counts=summarize(lineup).byTeam;
+        let replacement: {item:Selection;player:SeriesPlayer;score:number}|undefined;
+        for(const item of lineup) {
+          if(item.player.team===team || counts[item.player.team]<=(requiredTeams.includes(item.player.team)?3:0)) continue;
+          const old=item.player;
+          const player=makeRequirement(item.slot,team,old.grade==='A'?'A':'S');
+          item.player=player;const score=candidateScore(lineup);item.player=old;
+          if(!replacement || score>replacement.score) replacement={item,player,score};
+        }
+        if(!replacement) break;
+        used.delete(replacement.item.player.id);used.add(replacement.player.id);replacement.item.player=replacement.player;
+      }
+    }
+    if(!hasRequiredTeams(lineup)) continue;
     lineup.sort((a,b) => slots.indexOf(a.slot)-slots.indexOf(b.slot));
     // Repair within the same club/slot: retain team composition and prefer actual buff totals.
     for (let pass=0; pass<2; pass++) {
@@ -131,7 +151,7 @@ export function findCandidates(options: SearchOptions, attempts = 160): Selectio
         const ordinary=teams.flatMap(team=>['S','A'].map(grade=>makeRequirement(item.slot,team,grade as 'S'|'A')));
         for(const p of [...players,...ordinary]) {
           if(used.has(p.id) || !eligible(p,item.slot)) continue;
-          if(item.player.team===options.preferredTeam && p.team!==options.preferredTeam && lineup.filter(x=>x.player.team===options.preferredTeam).length===1) continue;
+          if(requiredTeams.includes(item.player.team) && p.team!==item.player.team && lineup.filter(x=>x.player.team===item.player.team).length<=3) continue;
           const old=item.player;item.player=p;const score=candidateScore(lineup);item.player=old;
           if(score>bestScore) {best=p;bestScore=score;}
         }
@@ -165,7 +185,7 @@ export function findCandidates(options: SearchOptions, attempts = 160): Selectio
       const live=remaining<=0; if(!live) remaining--;
       return {slot,player:makeRequirement(slot,p.team,p.grade==='A'?'A':'S',live)};
     });
-    if(remaining>0 || !validateLineup(lineup,options)) continue;
+    if(remaining>0 || !validateLineup(lineup,options) || !hasRequiredTeams(lineup)) continue;
     designs.set(signature(lineup),lineup);
   }
   return [...designs.values()].sort((a,b)=>candidateScore(b)-candidateScore(a)).slice(0,3);
