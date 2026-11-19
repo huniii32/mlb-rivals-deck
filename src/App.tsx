@@ -35,6 +35,7 @@ import { SkillLab } from "./components/renewal/SkillLab";
 import "./styles.css";
 import "./components/renewal/renewal.css";
 
+const InboxNotification = lazy(() => import("./components/messages/InboxNotification"));
 const Inbox = lazy(() => import("./components/messages/Inbox"));
 const Simulator = lazy(() => import("./components/Simulator"));
 
@@ -130,6 +131,7 @@ export default function App() {
 
   const deck = decks.find((d) => d.id === activeId) ?? decks[0];
   const { players, chem, flags, yearInputs } = deck;
+  const activeMailbox = withRank(deck, links).rank;
   const activeLink = Object.values(links).some((l) => l.deckId === deck.id);
 
   useEffect(() => {
@@ -355,6 +357,11 @@ export default function App() {
   return (
     <RenewalShell page={tab} navigate={navigate} theme={theme}
       toggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")} openModal={setModal}>
+      {activeMailbox?.password && activeMailbox.token && <Suspense fallback={null}>
+        <InboxNotification key={`${activeMailbox.id}:${activeMailbox.token}`} deck={{ ...activeMailbox, name: deck.name }}
+          paused={!!modal || selected !== null || !!setting || saveOpen || !!preview}
+          onOpen={() => setModal("inbox")} />
+      </Suspense>}
       <SiteMoveNotice count={savedDecks.length} backup={savedDecks.length ? exportAll : undefined} />
 
       {recovery !== null && <div className="card" role="status">

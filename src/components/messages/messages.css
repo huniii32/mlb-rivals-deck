@@ -19,3 +19,10 @@
 .operator-mail-tabs { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0; }
 .operator-mail-tabs [aria-pressed=true] { font-weight: 700; border: 2px solid #3865ac; }
 @media(max-width:600px) { .private-message-content,.message-confirm { padding: 12px; } }
+
+.inbox-notification { position:fixed; right:24px; bottom:24px; z-index:90; width:min(360px,calc(100vw - 32px)); box-sizing:border-box; padding:22px; border:1px solid var(--border,#d5dbe5); border-radius:16px; background:var(--panel,#fff); color:var(--text,#172d34); box-shadow:0 12px 40px #0003; display:grid; gap:10px; overflow-wrap:anywhere; }
+.inbox-notification p { margin:0; padding-right:24px; font-size:17px; font-weight:700; color:inherit; }
+.inbox-notification strong { font-size:15px; }.inbox-notification>span { font-size:14px; color:var(--muted,#667085); }
+.inbox-notification-close { position:absolute; top:10px; right:10px; padding:6px 9px; background:transparent; color:inherit; border:0; }
+.inbox-notification-open { margin-top:4px; width:100%; padding:11px 16px; font-size:15px; }
+@media(max-width:600px) { .inbox-notification { right:16px; bottom:calc(16px + env(safe-area-inset-bottom)); padding:18px; } }
