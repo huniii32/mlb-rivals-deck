@@ -14,7 +14,7 @@ export async function mailboxRequest<T>(action: string, args: Record<string, unk
 }
 export function mailboxError(e: unknown): string {
   const message = errMessage(e);
-  if (isMissingRpc(e) || message.includes("mailbox_unconfigured")) return "쪽지함 연결을 준비 중입니다. 개발 시험 화면에서는 운영 쪽지를 조회하거나 보내지 않습니다.";
+  if (isMissingRpc(e) || message.includes("mailbox_unconfigured")) return "쪽지함 연결을 준비 중입니다. 잠시 후 다시 확인해주세요.";
   if (message.includes("session_expired")) return "관리자 로그인이 만료되었습니다. 다시 로그인해주세요.";
   if (message.includes("mailbox_owner_required")) return "덱 소유 확인이 필요합니다. 덱랭킹에서 비밀번호로 내 덱을 다시 가져와주세요.";
   if (message.includes("mailbox_invalid_image")) return "PNG·JPG·WEBP 이미지(최대 2MB)를 선택해주세요.";

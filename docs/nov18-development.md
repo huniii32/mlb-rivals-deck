@@ -1,6 +1,6 @@
 # 11월 18일 업데이트 개발 시험
 
-브랜치: `feat/nov18-skills-deck-update`. 메인 병합 및 정식 배포 전 검증용.
+브랜치: `feat/nov18-skills-deck-update`. 2026-11-19 사용자 요청으로 최종 검증 후 운영 배포한다.
 
 ## 구현 범위
 
