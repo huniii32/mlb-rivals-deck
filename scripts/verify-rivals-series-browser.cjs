@@ -70,6 +70,7 @@ const fs=require('node:fs');
   };
   await page.getByLabel('시즌 일반 카드 수',{exact:true}).selectOption('0');
   await search(6,2);
+  assert.equal(await page.locator('.starters .lineup-card').evaluateAll(cards=>new Set(cards.map(card=>Math.round(card.getBoundingClientRect().top))).size),1);
   assert.equal(await page.locator('.summary dl>div').filter({hasText:'Live 카드'}).locator('dd').innerText(),'26명');
   await page.getByLabel('시즌 일반 카드 수',{exact:true}).selectOption('6');
   await search(4,1);
@@ -91,12 +92,12 @@ const fs=require('node:fs');
      const overlaps=[];for(let i=0;i<cards.length;i++)for(let j=i+1;j<cards.length;j++){const a=cards[i],b=cards[j];if(Math.min(a.right,b.right)-Math.max(a.left,b.left)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>1)overlaps.push([a.slot,b.slot]);}
      return {count:cards.length,overlaps,overflow:cards.filter(c=>c.left<f.left-1||c.right>f.right+1||c.top<f.top-1||c.bottom>f.bottom+1).map(c=>c.slot)};
    });
-   const rows=await page.locator('.starters .lineup-cards,.bullpen .lineup-cards,.closers .lineup-cards').evaluateAll(groups=>groups.flatMap(group=>{
-     const bounds=group.getBoundingClientRect(), rows=new Map();
-     for(const card of group.children){const r=card.getBoundingClientRect(),key=Math.round(r.top);const row=rows.get(key)||[];row.push(r);rows.set(key,row);}
-     return [...rows.values()].map(cards=>Math.abs((Math.min(...cards.map(r=>r.left))+Math.max(...cards.map(r=>r.right)))/2-(bounds.left+bounds.right)/2));
+   const pitching=await page.locator('.starters .lineup-cards,.bullpen .lineup-cards,.closers .lineup-cards').evaluateAll(groups=>groups.map(group=>{
+     const bounds=group.getBoundingClientRect(),cards=[...group.children].map(card=>card.getBoundingClientRect());
+     const scrolling=group.scrollWidth>group.clientWidth+1;
+     return {rows:new Set(cards.map(r=>Math.round(r.top))).size,center:Math.abs((cards[0].left+cards.at(-1).right)/2-(bounds.left+bounds.right)/2),scrolling,firstVisible:cards[0].left>=bounds.left-1};
    }));
-   assert.ok(rows.every(delta=>delta<2),`pitching rows centered at ${width}`);
+   for(const group of pitching){assert.equal(group.rows,1,`one pitching row at ${width}`);assert.ok(group.scrolling?group.firstVisible:group.center<2,`pitching row accessible/centered at ${width}`);}
    assert.equal(geometry.count,9);assert.deepEqual(geometry.overlaps,[],`overlap ${width}`);assert.deepEqual(geometry.overflow,[],`field overflow ${width}`);
 
   }
