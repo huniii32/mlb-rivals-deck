@@ -32,3 +32,9 @@
 @media(max-width:600px) { .inbox-notification { right:16px; bottom:calc(16px + env(safe-area-inset-bottom)); padding:18px; } }
 
 .winner-mailbox{padding:18px;margin:20px 0;border:1px solid var(--border,#d5dbe5);border-radius:14px;background:var(--soft,#f3f5f9)}.winner-mailbox h3{margin:0}.winner-mailbox-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:14px 0}.winner-mailbox-card{display:flex;flex-direction:column;gap:10px;min-width:0;padding:18px;border:1px solid var(--border,#d5dbe5);border-radius:12px;background:var(--panel,#fff)}.winner-mailbox-card>span{font-size:14px;color:var(--muted,#64748b)}.winner-mailbox-card>strong{font-size:21px}.winner-mailbox-card>button{margin-top:auto;white-space:normal}.winner-mailbox-card small{font-size:13px}@media(max-width:600px){.winner-mailbox{padding:12px}.winner-mailbox-grid{grid-template-columns:1fr}}
+
+.operator-sent-history-toggle { margin: 18px 0; border: 1px solid var(--border,#d5dbe5); border-radius: 12px; padding: 14px 18px; }
+.operator-sent-history-toggle > summary { cursor: pointer; font-weight: 700; }
+.operator-sent-history h4 { margin: 22px 0 8px; color: var(--accent,#315d9c); }
+.operator-sent-history .private-message-list { margin: 8px 0 18px; }
+.operator-sent-history .private-message-list button { padding: 12px 14px; }
