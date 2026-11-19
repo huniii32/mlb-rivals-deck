@@ -47,7 +47,7 @@ export function RenewalShell({
   navigate: (page: Page) => void;
   theme: string;
   toggleTheme: () => void;
-  openModal: (modal: "guide" | "patch" | "inquiry") => void;
+  openModal: (modal: "guide" | "patch" | "inquiry" | "inbox") => void;
   children: ReactNode;
 }) {
   const preview = import.meta.env.DEV || import.meta.env.VITE_DEPLOYMENT_CONTEXT === "preview";
@@ -127,6 +127,7 @@ export function RenewalShell({
             <button className="help-button" onClick={() => openModal("guide")}>
               산정방식 ↗
             </button>
+            <button className="help-button" onClick={() => openModal("inbox")}>쪽지함</button>
             <button className="help-button" onClick={() => openModal("patch")}>
               공지사항
             </button>

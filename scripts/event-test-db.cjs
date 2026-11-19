@@ -20,6 +20,12 @@ const USERS = {
   },
 };
 const RPC_ARGS = {
+  mailbox_list: ["p_ranking_id", "p_token", "p_offset"],
+  mailbox_read: ["p_ranking_id", "p_token", "p_id"],
+  mailbox_operator_recipients: ["p_session", "p_event", "p_query", "p_offset"],
+  mailbox_operator_list: ["p_session", "p_ranking_id", "p_offset"],
+  mailbox_operator_read: ["p_session", "p_id"],
+  mailbox_operator_send: ["p_session", "p_ranking_id", "p_request_id", "p_subject", "p_body", "p_image_mime", "p_image_base64"],
   event_get: ["p_event", "p_ranking_id", "p_token"],
   event_join: ["p_event", "p_ranking_id", "p_token"],
   event_attempt: ["p_event", "p_request_id", "p_ranking_id", "p_token"],
@@ -82,6 +88,7 @@ async function createEventTestDb(dataDir) {
   // Reapply additive event updates to an existing local pilot without losing records.
   if (initialized) await db.exec(sql("supabase_mig_events.sql"));
   await db.exec(sql("supabase_mig_event_operator.sql"));
+  await db.exec(sql("supabase_mig_private_messages.sql"));
   const users = {};
   for (const [key, u] of Object.entries(USERS)) {
     const rank = (

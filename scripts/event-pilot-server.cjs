@@ -60,7 +60,7 @@ const sign = (v) =>
     let text = "";
     for await (const chunk of req) {
       text += chunk;
-      if (text.length > 32768) throw Error("body_too_large");
+      if (text.length > 3000000) throw Error("body_too_large");
     }
     return text ? JSON.parse(text) : {};
   };
@@ -136,7 +136,7 @@ const sign = (v) =>
         });
         return;
       }
-      if (url.pathname.startsWith("/rest/v1/rpc/event_")) {
+      if (/^\/rest\/v1\/rpc\/(event_|mailbox_)/.test(url.pathname)) {
         const name = url.pathname.split("/").pop();
         send(200, await rpc(name, await body(req), u));
         return;
