@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { EVENT_ID, type EventState } from "../../lib/events";
-import { mailboxError, mailboxRequest, readMessageImage, findPrizeRecipients, PRIZE_LABELS, type MessagePrize, type MessageImage, type MessageRecipient, type PrivateMessage } from "../../lib/privateMessages";
+import { mailboxError, mailboxRequest, readMessageImage, listAllMessageRecipients, findPrizeRecipients, PRIZE_LABELS, type MessagePrize, type MessageImage, type MessageRecipient, type PrivateMessage } from "../../lib/privateMessages";
 import { MessageList, MessageView, PrivateImage } from "./MessageView";
 import "./messages.css";
 function RecipientMessages({ session, recipient, composing }: { session: string; recipient: MessageRecipient; composing: (value: boolean) => void }) {
@@ -91,17 +91,17 @@ export default function AdminMailbox({ session, state, initialPrize }: { session
   const [winnersBusy, setWinnersBusy] = useState(false), [winnersError, setWinnersError] = useState("");
   const [winnerReload, setWinnerReload] = useState(0);
   const initialApplied = useRef(false);
-  const [query, setQuery] = useState(""), [search, setSearch] = useState(""), [offset, setOffset] = useState(0);
+  const [query, setQuery] = useState(""), [search, setSearch] = useState("");
   const [recipients, setRecipients] = useState<MessageRecipient[]>([]), [recipient, setRecipient] = useState<MessageRecipient | null>(null);
   const [locked, setLocked] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState("");
   useEffect(() => {
     let active = true; setBusy(true); setError(""); setRecipients([]);
-    mailboxRequest<MessageRecipient[]>("operator_recipients", { p_session: session, p_event: eventId, p_query: search, p_offset: offset })
+    listAllMessageRecipients(session, eventId, search)
       .then(data => { if (active) setRecipients(data); })
       .catch(e => { if (active) { setRecipient(null); setLocked(false); setError(mailboxError(e)); } })
       .finally(() => { if (active) setBusy(false); });
     return () => { active = false; };
-  }, [session, eventId, search, offset]);
+  }, [session, eventId, search]);
   useEffect(() => {
     let active = true; setWinners({}); setWinnersError("");
     const expected = (["champion", "winner"] as const).filter(prize => !!state?.event[`${prize}_id`]);
@@ -123,7 +123,7 @@ export default function AdminMailbox({ session, state, initialPrize }: { session
     {state?.is_admin && <section className="winner-mailbox" aria-label="당첨자 쪽지 보내기">
       <div className="message-actions"><h3>당첨자에게 보내기</h3><button disabled={locked || winnersBusy} onClick={() => setWinnerReload(n => n + 1)}>당첨자 다시 확인</button></div>
       <p>당첨자 선택 → 안내문 작성 또는 이미지 첨부 → 전송 내용 확인 → 발송</p>
-      {winnersError && <p role="alert">{winnersError}</p>}{winnersBusy && <p role="status">당첨자 수신 덱을 확인하는 중…</p>}
+      {winnersError && <p role="alert">{winnersError}</p>}{winnersBusy && <p role="status">당첨자의 받는 덱을 확인하는 중…</p>}
       <div className="winner-mailbox-grid">{(["champion", "winner"] as const).map(prize => {
         const participantId = state.event[`${prize}_id`], winner = winners[prize];
         const previousName = state.participants.find(p => p.id === participantId)?.deck_name;
@@ -139,17 +139,24 @@ export default function AdminMailbox({ session, state, initialPrize }: { session
       <small>기프티콘은 게임 덱 인증 후 보내주세요. 쪽지 발송·읽음과 지급 완료 기록은 별개입니다.</small>
     </section>}
     {locked && <p role="status">작성 중에는 받는 덱이 고정됩니다. 다른 덱을 선택하려면 작성 취소를 눌러주세요.</p>}
-    <form className="message-actions" onSubmit={e => { e.preventDefault(); setSearch(query.trim()); setOffset(0); }}>
-      <label>수신 덱 검색<input disabled={locked} value={query} onChange={e => setQuery(e.target.value)} placeholder="덱 이름" /></label><button disabled={locked || busy}>검색</button>
+    <form className="message-recipient-search" onSubmit={e => { e.preventDefault(); setSearch(query.trim()); }}>
+      <label htmlFor="message-recipient-query">받는 덱 검색</label>
+      <div className="message-recipient-search-controls">
+        <input id="message-recipient-query" disabled={locked} value={query} onChange={e => setQuery(e.target.value)} placeholder="덱 이름" />
+        <button disabled={locked || busy}>검색</button>
+      </div>
     </form>
-    {error && <p role="alert">{error}</p>}{busy && <p role="status">등록 덱 확인 중…</p>}
-    <label>받는 덱 선택<select disabled={locked || busy || winnersBusy} value={recipient?.id || ""} onChange={e => { initialApplied.current = true; setRecipient(recipients.find(r => r.id === e.target.value) || null); }}>
-      <option value="">수신 덱을 선택하세요</option>
-      {recipient && !recipients.some(r => r.id === recipient.id) && <option value={recipient.id}>{recipient.deck_name}</option>}
+    {error && <p role="alert">{error}</p>}{busy && <p role="status">등록된 전체 덱을 불러오는 중…</p>}
+    <div className="message-actions">
+      {!busy && !error && <span role="status">{search ? `‘${search}’ 검색 결과 ${recipients.length}개` : `전체 등록 덱 ${recipients.length}개`}</span>}
+      {(query || search) && <button type="button" disabled={locked || busy} onClick={() => { setQuery(""); setSearch(""); }}>전체 덱 보기</button>}
+    </div>
+    <label>받는 덱 선택<select aria-label="받는 덱 선택" disabled={locked || busy || winnersBusy} value={recipient?.id || ""} onChange={e => { initialApplied.current = true; setRecipient(recipients.find(r => r.id === e.target.value) || null); }}>
+      <option value="">받는 덱을 선택하세요</option>
+      {recipient && !recipients.some(r => r.id === recipient.id) && <option value={recipient.id}>{recipient.deck_name} · 현재 선택</option>}
       {recipients.map(r => <option key={r.id} value={r.id}>{r.deck_name}{r.award ? ` · ${r.award}` : ""}</option>)}
     </select></label>
-    {!busy && !error && !recipients.length && <p>검색 결과가 없습니다.</p>}
-    <div className="message-actions"><button disabled={locked || busy || offset === 0} onClick={() => setOffset(o => Math.max(0, o - 50))}>이전 덱</button><button disabled={locked || busy || recipients.length < 50} onClick={() => setOffset(o => o + 50)}>다음 덱</button></div>
+    {!busy && !error && !recipients.length && <p>{search ? "검색 결과가 없습니다. 전체 덱 보기를 눌러 다시 선택해주세요." : "등록된 덱이 없습니다."}</p>}
     {recipient && <RecipientMessages key={`${session}:${recipient.id}`} session={session} recipient={recipient} composing={setLocked} />}
   </section>;
 }
