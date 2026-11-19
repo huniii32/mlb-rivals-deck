@@ -13,23 +13,28 @@ export function cookie(request, name) {
     ?.slice(name.length + 1);
 }
 
-function loginPage(status = 401, wrong = false) {
+function safeReturn(value) {
+  return ["/", "/event-demo/", "/event-demo/?view=admin", "/rivals-series-demo/"].includes(value) ? value : "/event-demo/?view=admin";
+}
+
+function loginPage(status = 401, wrong = false, returnTo = "/event-demo/?view=admin") {
   return new Response(
     `<!doctype html><html lang="ko"><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>운영자 이벤트 페이지</title><style>
+    <title>개인 미리보기</title><style>
     *{box-sizing:border-box}body{margin:0;background:#f3f5f8;color:#1d293e;font:16px/1.7 system-ui,sans-serif}
     main{max-width:460px;margin:12vh auto;padding:28px;background:white;border:1px solid #dce3ed;border-radius:16px}
     h1{font-size:25px;margin:8px 0}p{color:#5c6b80}label{display:block;font-weight:700}
     input,button{display:block;width:100%;padding:13px;border:1px solid #becbde;border-radius:8px;font:inherit;margin-top:10px}
     button{background:#315d9e;color:white;cursor:pointer}small{color:#617189}a{color:#315d9e}
     .error{color:#ad2828}@media(max-width:500px){main{margin:8vh 14px}}
-    </style><main><small>RIVALS DECK · PRIVATE PREVIEW</small><h1>운영자 이벤트 페이지</h1>
-    <p>전달받은 개인 접속 키를 붙여 넣으면 이벤트 화면을 확인할 수 있습니다.</p>
+    </style><main><small>RIVALS DECK · PRIVATE PREVIEW</small><h1>개인 미리보기</h1>
+    <p>전달받은 개인 접속 키를 붙여 넣으면 개발 화면을 확인할 수 있습니다.</p>
     ${wrong ? '<p role="alert" class="error">접속 키가 맞지 않습니다. 파일의 내용을 다시 복사해주세요.</p>' : ""}
     <form method="post" action="/__preview/login"><label for="key">개인 접속 키</label>
+    <input type="hidden" name="return_to" value="${safeReturn(returnTo)}">
     <input id="key" name="access_key" type="password" required autocomplete="current-password" spellcheck="false" maxlength="64">
-    <button>이벤트 페이지 열기</button></form><p><small>접속은 1시간 동안 유지됩니다.<br>운영자 확인용 가상 체험이며 실제 응모에는 반영되지 않습니다.</small></p>
+    <button>미리보기 열기</button></form><p><small>접속은 1시간 동안 유지됩니다.<br>개발 확인용이며 실제 덱이나 이벤트 기록은 변경되지 않습니다.</small></p>
     <a href="https://mlb-rivals-deck.pages.dev/">덱 관리로 돌아가기</a></main></html>`,
     {
       status,
@@ -76,15 +81,16 @@ export async function ownerAccess(request, keyHash, sessionKey) {
     if (request.headers.get("Origin") !== url.origin)
       return new Response("Forbidden", { status: 403 });
     const form = await readForm(request);
+    const returnTo = safeReturn(form?.get("return_to"));
     const key = form?.get("access_key")?.trim() || "";
-    if (!/^[a-f0-9]{64}$/.test(key)) return loginPage(401, true);
+    if (!/^[a-f0-9]{64}$/.test(key)) return loginPage(401, true, returnTo);
     const digest = new Uint8Array(
       await crypto.subtle.digest("SHA-256", encoder.encode(key)),
     );
     const expected = bytes(keyHash);
     let mismatch = digest.length ^ expected.length;
     for (let i = 0; i < digest.length; i++) mismatch |= digest[i] ^ expected[i];
-    if (mismatch) return loginPage(401, true);
+    if (mismatch) return loginPage(401, true, returnTo);
     const session = await new SignJWT({ role: "owner-preview" })
       .setProtectedHeader({ alg: "HS256" })
       .setIssuer(url.origin)
@@ -96,7 +102,7 @@ export async function ownerAccess(request, keyHash, sessionKey) {
     return new Response(null, {
       status: 303,
       headers: {
-        Location: "/event-demo/?view=admin",
+        Location: returnTo,
         "Set-Cookie": `${COOKIE}=${session}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=3600`,
       },
     });
@@ -114,7 +120,7 @@ export async function ownerAccess(request, keyHash, sessionKey) {
   }
   try {
     const token = cookie(request, COOKIE);
-    if (!token || token.length > 4096) return loginPage();
+    if (!token || token.length > 4096) return loginPage(401, false, safeReturn(path + url.search));
     const { payload } = await jwtVerify(token, signingKey, {
       algorithms: ["HS256"],
       issuer: url.origin,
@@ -122,10 +128,10 @@ export async function ownerAccess(request, keyHash, sessionKey) {
       requiredClaims: ["exp", "iat", "sub"],
     });
     if (payload.sub !== "owner" || payload.role !== "owner-preview")
-      return loginPage();
+      return loginPage(401, false, safeReturn(path + url.search));
     return null;
   } catch {
-    return loginPage();
+    return loginPage(401, false, safeReturn(path + url.search));
   }
 }
 

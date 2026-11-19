@@ -204,6 +204,20 @@ assert.equal(ownerReads, 0);
 const login = await ownerWorker.fetch(post(ownerKey), ownerEnv);
 assert.equal(login.status, 303);
 assert.equal(login.headers.get("Location"), "/event-demo/?view=admin");
+for (const [target, expected] of [
+  ["/rivals-series-demo/", "/rivals-series-demo/"],
+  ["/", "/"],
+  ["https://attacker.test/", "/event-demo/?view=admin"],
+  ['//attacker.test/" onfocus=alert(1)', "/event-demo/?view=admin"],
+]) {
+  const req = new Request("https://preview.example.test/__preview/login", {
+    method: "POST", headers: {Origin:"https://preview.example.test", "Content-Type":"application/x-www-form-urlencoded"},
+    body: new URLSearchParams({access_key:ownerKey,return_to:target}),
+  });
+  assert.equal((await ownerWorker.fetch(req,ownerEnv)).headers.get("Location"),expected);
+}
+const seriesLogin = await ownerWorker.fetch(request("/rivals-series-demo/"),ownerEnv);
+assert.ok((await seriesLogin.text()).includes('name="return_to" value="/rivals-series-demo/"'));
 const setCookie = login.headers.get("Set-Cookie"),
   sessionCookie = setCookie.split(";")[0];
 for (const option of ["HttpOnly", "Secure", "SameSite=Strict", "Max-Age=3600"])
