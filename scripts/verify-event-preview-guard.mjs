@@ -206,6 +206,7 @@ assert.equal(login.status, 303);
 assert.equal(login.headers.get("Location"), "/event-demo/?view=admin");
 for (const [target, expected] of [
   ["/rivals-series-demo/", "/rivals-series-demo/"],
+  ["/event-demo/", "/event-demo/?view=admin"],
   ["/", "/"],
   ["https://attacker.test/", "/event-demo/?view=admin"],
   ['//attacker.test/" onfocus=alert(1)', "/event-demo/?view=admin"],

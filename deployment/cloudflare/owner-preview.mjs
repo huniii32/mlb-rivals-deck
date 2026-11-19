@@ -14,6 +14,7 @@ export function cookie(request, name) {
 }
 
 function safeReturn(value) {
+  if (value === "/event-demo/") return "/event-demo/?view=admin";
   return ["/", "/event-demo/", "/event-demo/?view=admin", "/rivals-series-demo/"].includes(value) ? value : "/event-demo/?view=admin";
 }
 
