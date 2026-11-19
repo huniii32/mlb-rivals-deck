@@ -35,6 +35,7 @@ import { SkillLab } from "./components/renewal/SkillLab";
 import "./styles.css";
 import "./components/renewal/renewal.css";
 
+const Inbox = lazy(() => import("./components/messages/Inbox"));
 const Simulator = lazy(() => import("./components/Simulator"));
 
 const DECKS_KEY = "rivals-decks-v1";
@@ -120,7 +121,7 @@ export default function App() {
     return ["lineup", "skills", "simulator", "ranking", "news"].includes(hash) ? hash as Page : hash.startsWith("d=") ? "ranking" : "lineup";
   });
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "dark");
-  const [modal, setModal] = useState<"inquiry" | "patch" | "guide" | null>(null);
+  const [modal, setModal] = useState<"inquiry" | "patch" | "guide" | "inbox" | null>(null);
   const [preview, setPreview] = useState<Deck | null>(null);
   const { links, setLinks, status, code } = useRankSync(decks, tables);
   const [saveOpen, setSaveOpen] = useState(false);
@@ -388,7 +389,7 @@ export default function App() {
           <section><h4>파일 백업</h4><div className="row">
             <button onClick={exportDeck} disabled={!validDeckName(deck.name)}>현재 덱 백업</button>
             {(savedDecks.length > 1 || (!validDeckName(deck.name) && savedDecks.length > 0)) && <button onClick={exportAll}>전체 {savedDecks.length}개 백업</button>}
-          </div><p className="muted">랭킹에 연결된 백업에는 수정 권한이 포함됩니다. 본인 보관용으로 사용하세요.</p></section>
+          </div><p className="muted">랭킹에 연결된 백업에는 덱 수정·쪽지 열람 권한이 포함됩니다. 본인 보관용으로 사용하세요.</p></section>
           <section><h4>파일 불러오기</h4><button onClick={() => fileRef.current?.click()}>파일 선택</button>
             <p className="muted">JSON 백업과 덱관리 엑셀 파일을 읽습니다.</p></section>
           <section className="deck-tools-delete"><h4>기기에서 삭제</h4><button onClick={deleteDeck}>이 기기에서 덱 삭제</button>
@@ -450,6 +451,10 @@ export default function App() {
         </>
       )}
 
+      {modal === "inbox" && <RenewalDialog title="받은 쪽지함" close={() => setModal(null)}><Suspense fallback={<p>쪽지함을 여는 중…</p>}>
+        <Inbox decks={decks.flatMap(d => { const rank = withRank(d, links).rank; return rank ? [{ ...rank, name: d.name }] : []; })}
+          initialId={withRank(deck, links).rank?.id} onRestore={() => { setModal(null); navigate("ranking"); }} />
+      </Suspense></RenewalDialog>}
       {modal === "inquiry" && <InquiryModal close={() => setModal(null)} />}
       {modal === "guide" && <ScoreGuideModal close={() => setModal(null)} />}
       {modal === "patch" && <PatchNotesModal close={() => setModal(null)} />}

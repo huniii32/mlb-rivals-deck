@@ -43,7 +43,7 @@ export function bullpenCounts(players: PlayerInput[], namedOnly = false): Record
 export function tacticStatus(players: PlayerInput[], tactics?: BullpenTactics) {
   const t = normalizeTactics(tactics);
   const counts = bullpenCounts(players, true);
-  const winningRequired = t.winning === "division" ? 3 : t.winning === "aggressive" ? 2 : 0;
+  const winningRequired = t.winning === "division" ? 3 : t.winning === "aggressive" ? 1 : 0;
   const chasingRequired = t.chasing === "aggressive" ? 2 : 0;
   return {
     counts, winningRequired, chasingRequired,

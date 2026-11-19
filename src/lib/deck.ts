@@ -100,7 +100,7 @@ export function isDeck(d: unknown): d is Deck {
   if (!Array.isArray(players) || players.length < 14 || players.length > MAX_PLAYERS) return false;
   if (!players.every((p) => p && typeof p.name === "string" && typeof p.pos === "string" && Number.isInteger(p.excelRow))) return false;
   if (!players.every(p => {
-    for (const key of ["card", "team", "photoUrl", "enName"]) if (p[key] !== undefined && typeof p[key] !== "string") return false;
+    for (const key of ["card", "team", "photoUrl", "enName", "wbcCountry"]) if (p[key] !== undefined && typeof p[key] !== "string") return false;
     for (const key of ["year", "order", "transLv", "enhLv", "pohLv"]) if (p[key] !== undefined && !statValue(p[key])) return false;
     for (const key of STAT_ARRAYS) if (p[key] !== undefined && (!Array.isArray(p[key]) || p[key].length > 3 || !p[key].every(statValue))) return false;
     if (p.skills !== undefined && (!Array.isArray(p.skills) || p.skills.length > 4 || !p.skills.every((v: unknown) => typeof v === "string"))) return false;

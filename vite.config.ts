@@ -16,7 +16,7 @@ export default defineConfig({
   plugins: [react()],
   base: process.env.VITE_BASE || "/",
   build: {
-    rollupOptions: { input: { main: "index.html", eventControl: "event-control/index.html" } },
+    rollupOptions: { input: { main: "index.html", eventControl: "event-control/index.html", rivalsSeries: "rivals-series/index.html" } },
   },
   server: {
     host: process.env.WEB_HOST || "127.0.0.1",

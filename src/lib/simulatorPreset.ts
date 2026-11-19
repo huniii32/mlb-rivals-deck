@@ -1,6 +1,7 @@
 import type {PlayerInput,SkillTables} from './engine';
 import {availableSkills,canLockFirst,momentSkills,skillId,slotCount,TICKETS,POSITIONS,type SimSettings,type DrawSkill,type Board,type SimCard,type SimPosition,type Level} from './skillSimulator';
 import {createScoreEvaluator,type ScoreChoices} from './simulatorScore';
+import {resolveWbcSkill} from './wbcSkills';
 export interface SkillPreset {settings:SimSettings;board:Board;locked:DrawSkill|null;choices:ScoreChoices;message:string}
 const nameKey=(name:string)=>name.replace(/^\[[^\]]+\]\s*/,'').split('(')[0].replace(/\s/g,'').toLowerCase().replace(/^worldbaseballclassic/,'wbc').replace(/^파워피처$/,'파워피쳐');
 export function presetSkills(settings:SimSettings){
@@ -26,7 +27,7 @@ function playerCard(card:string):SimCard|null {
   if(/일반|라이브|시즌|임팩트|프라임|시그니처/.test(key))return 'normal';
   return null;
 }
-export function presetFromPlayer(player:PlayerInput,tables:SkillTables,ticket:SimSettings['ticket']='superior'):SkillPreset {
+export function presetFromPlayer(player:PlayerInput,tables:SkillTables,ticket:SimSettings['ticket']='superior',players?:PlayerInput[]):SkillPreset {
   const card=playerCard(player.card);if(!card)throw new Error('선수의 카드 종류를 먼저 지정하세요.');
   const rawPos=player.pos.replace(/\d+$/,'').toUpperCase();
   const position:SimPosition=player.kind==='pitcher'?(player.bullpenRole==='closer'||rawPos==='CP'?'CP':player.bullpenRole||rawPos==='RP'?'RP':'SP'):Object.prototype.hasOwnProperty.call(POSITIONS,rawPos)&&!['SP','RP','CP'].includes(rawPos)?rawPos as SimPosition:'DH';
@@ -41,7 +42,9 @@ export function presetFromPlayer(player:PlayerInput,tables:SkillTables,ticket:Si
     if(matched.length!==1||!level){warnings.push(`${i+1}번째 스킬은 직접 확인 필요`);return null;}
     const skill=matched[0],id=skillId(skill),draw={id,name:skill.name,tier:skill.tier,level};
     const evaluator=createScoreEvaluator(settings,tables,{},draw);
-    const original=source.replace(/^\[S[0-4]?\]/,'[S0]');
+    const resolved=resolveWbcSkill(player,source,players);
+    if(resolved&&!resolved.name)throw new Error(resolved.note);
+    const original=(resolved?.name??source).replace(/^\[S[0-4]?\]/,'[S0]');
     const option=evaluator.options.get(id)?.find(o=>o.name===original);
     if(option)choices[id]=option.name;
     return draw;

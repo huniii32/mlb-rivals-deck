@@ -13,3 +13,6 @@
 # Vite content-hashed assets can be cached across releases.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+/rivals-series/*
+  Cache-Control: no-cache

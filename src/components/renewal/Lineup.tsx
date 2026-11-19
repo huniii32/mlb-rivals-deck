@@ -115,6 +115,10 @@ export function RenewalLineup({
           점수는 어떻게 계산되나요? <span>↗</span>
         </button>
       </section>
+      {deck.players.some((p, i) => p.name.trim() && (results[i].skillDetails.some(s => s.score === null) || results[i].warnings.some(w => w.includes("포지션훈련")))) && <div className="panel" role="status">
+        <strong>일부 선수의 점수가 임시 계산입니다.</strong>
+        <p>스킬 조건·포지션훈련 수치를 확인하지 못한 선수가 있습니다. 선수 편집에서 안내를 확인하세요.</p>
+      </div>}
       <div className="lineup-layout">
         <section className="panel roster-panel">
           <div className="panel-heading">

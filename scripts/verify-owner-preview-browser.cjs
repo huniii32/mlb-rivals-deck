@@ -115,7 +115,7 @@ let server, browser;
           new URL(r.url()).pathname === "/__preview/login" &&
           r.request().method() === "POST",
       ),
-      page.getByRole("button", { name: "이벤트 페이지 열기" }).click(),
+      page.getByRole("button", { name: "미리보기 열기" }).click(),
     ]);
     assert.equal(
       denied.status(),
@@ -124,7 +124,7 @@ let server, browser;
     );
     await page.getByRole("alert").waitFor();
     await page.getByLabel("개인 접속 키", { exact: true }).fill(key);
-    await page.getByRole("button", { name: "이벤트 페이지 열기" }).click();
+    await page.getByRole("button", { name: "미리보기 열기" }).click();
     await page.locator(".event-admin").waitFor();
     assert.equal(
       await page.getByLabel("체험할 화면", { exact: true }).inputValue(),

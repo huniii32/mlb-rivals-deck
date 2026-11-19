@@ -48,6 +48,12 @@ export default function Simulator({
             저장됩니다.
           </p>
           <div className="sim-hub-options">
+            <button className="card sim-hub-option" onClick={() => { window.location.href = `${import.meta.env.BASE_URL}rivals-series/`; }}>
+              <span className="sim-hub-icon" aria-hidden="true">19 / 4 / 5</span>
+              <strong>라이벌 시리즈 덱 구성</strong>
+              <span className="muted">이번 달 라이벌픽 · 구단 복수 선택 · 라인업 버프 비교</span>
+              <span className="sim-hub-enter">조합 찾기 →</span>
+            </button>
             <button
               className="card sim-hub-option"
               onClick={() => setScreen("skills")}

@@ -8,6 +8,8 @@ const SESSION_KEY =
 const ASSET_KEY =
   typeof __PREVIEW_ASSET_KEY__ === "undefined" ? "" : __PREVIEW_ASSET_KEY__;
 
+const PUBLIC_DEMO_PATHS = typeof __PUBLIC_DEMO_PATHS__ === "undefined" ? [] : __PUBLIC_DEMO_PATHS__;
+
 const keySets = new Map();
 function remoteKeys(issuer) {
   if (!keySets.has(issuer)) {
@@ -58,10 +60,16 @@ export function createPreviewWorker(
     ownerKeyHash = OWNER_KEY_HASH,
     sessionKey = SESSION_KEY,
     assetKey = ASSET_KEY,
+    publicDemoPaths = PUBLIC_DEMO_PATHS,
   } = {},
 ) {
+  const publicFiles = new Set(publicDemoPaths);
   return {
     async fetch(request, env) {
+      const url = new URL(request.url);
+      if (publicFiles.has(url.pathname)) return serveAsset(request, env, assetKey);
+      if (url.pathname === '/rivals-series-demo' && publicFiles.has('/rivals-series-demo/'))
+        return privateResponse(new Response(null, {status:307,headers:{Location:'/rivals-series-demo/'+url.search}}));
       const team = env.EVENT_ACCESS_TEAM_DOMAIN?.trim();
       const audience = env.EVENT_ACCESS_AUD?.trim();
       const owner = env.EVENT_ACCESS_EMAIL?.trim().toLowerCase();

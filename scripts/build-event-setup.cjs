@@ -6,7 +6,7 @@ if (!output)
   throw Error(
     "Usage: node scripts/build-event-setup.cjs /path/event-setup.sql",
   );
-let sql = ["supabase_mig_events.sql", "event-rules-v1.sql", "supabase_mig_event_operator.sql"]
+let sql = ["supabase_mig_events.sql", "event-rules-v1.sql", "supabase_mig_event_operator.sql", "supabase_mig_private_messages.sql"]
   .map((name) => fs.readFileSync(path.join(__dirname, name), "utf8"))
   .join("\n");
 if (process.argv[3] === "--owner") {

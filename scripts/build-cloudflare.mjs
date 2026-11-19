@@ -35,6 +35,7 @@ const result=spawnSync(process.platform==='win32'?'npm.cmd':'npm',['run','build'
   cwd:root,stdio:'inherit',env:{...env,VITE_BASE:'/',
     // Cloudflare supplies the Git branch for each deployment; local release builds default to production.
     VITE_DEPLOYMENT_CONTEXT: env.CF_PAGES_BRANCH && env.CF_PAGES_BRANCH !== 'main' ? 'preview' : 'production',
+    VITE_DEVELOPMENT_SANDBOX: privatePreview ? '1' : '0',
   },
 });
 if(result.error)throw result.error;
@@ -46,6 +47,9 @@ if(privatePreview){
   const demo=spawnSync(process.execPath,['scripts/build-event-web-demo.mjs'],{cwd:root,stdio:'inherit',env});
   if(demo.error)throw demo.error;
   if(demo.status!==0)process.exit(demo.status??1);
+  const series=spawnSync(process.execPath,['scripts/build-rivals-series-demo.mjs'],{cwd:root,stdio:'inherit',env});
+  if(series.error)throw series.error;
+  if(series.status!==0)process.exit(series.status??1);
 }
 
 const dist=resolve(root,'dist');

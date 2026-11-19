@@ -1,4 +1,5 @@
 import { NEW_SKILLS } from "./skillUpdates";
+import { WBC_SKILLS, resolveWbcSkill } from "./wbcSkills";
 import lookup from "../data/lookup.json";
 import deckdata from "../data/deckrules.json";
 import { ROLE_PROFILES, bullpenRole, tacticBonuses } from "./bullpen";
@@ -28,8 +29,8 @@ interface Lookup {
 }
 export const LOOKUP: Lookup = {
   ...lookup,
-  batter: lookup.batter,
-  pitcher: lookup.pitcher,
+  batter: [...lookup.batter, ...WBC_SKILLS.filter(s => s.kind === "batter")],
+  pitcher: [...lookup.pitcher, ...WBC_SKILLS.filter(s => s.kind === "pitcher")],
 };
 
 interface DeckData {
@@ -88,6 +89,7 @@ export interface PlayerInput {
   card: string;
   name: string;
   team: string; // 도감식 카드 팀 뱃지용 (예: LAD, NYY)
+  wbcCountry?: string; // WBC 카드 뒷면 국가 코드. 기존 덱은 미입력으로 유지.
   year: number | "";
   enName: string; // Wikimedia Commons 검색용 영문명
   photoUrl: string; // 수동 사진 URL (직접 지정 시 우선)
@@ -111,6 +113,7 @@ export interface PlayerInput {
 }
 
 interface EvalCtx {
+  players?: PlayerInput[];
   tacticsByRow?: Record<number, number>;
   flags: Record<string, boolean>;
   yearInputs: Record<number, number | "">;
@@ -374,6 +377,7 @@ function tableBonus(
 }
 
 export interface PlayerResult {
+  skillDetails: {name: string; score: number | null; note?: string}[];
   team: number;
   tactics: number[];
   auto: number[];
@@ -424,12 +428,14 @@ export function calcPlayer(
       const tr = tableBonus(p.card + stat, p.transLv, "transcend", tables);
       const en = tableBonus(p.card + stat, p.enhLv, "enhance", tables);
       const ph = tableBonus(profile.pos + stat, p.pohLv, "pohoon", tables);
+      const extendedTraining = typeof p.pohLv === "number" && Number.isInteger(p.pohLv) && p.pohLv > 20 && p.pohLv <= 26;
+      const training = extendedTraining && ph.miss ? tableBonus(profile.pos + stat, 20, "pohoon", tables) : ph;
       if (tr.miss && p.transLv !== "") warnings.push(`${stat} 초월표에 '${p.card}' 없음`);
       if (en.miss && p.enhLv !== "") warnings.push(`${stat} 강화표에 '${p.card}' 없음`);
-      if (ph.miss && p.pohLv !== "") warnings.push(`${stat} 포훈표에 '${p.pos}' 없음`);
+      if (ph.miss && p.pohLv !== "") warnings.push(`${stat} 포지션훈련 ${p.pohLv}레벨: ${p.pos} 수치 미확인 · ${extendedTraining ? "20레벨까지만 반영한 임시 점수" : "자동 합계에서 제외됨"}. 게임의 적용 수치를 확인하세요.`);
       t = p.transLv === "" ? null : tr.v;
       e = p.enhLv === "" ? null : en.v;
-      h = p.pohLv === "" ? null : ph.v;
+      h = p.pohLv === "" ? null : training.v;
     }
     trans.push(t);
     enh.push(e);
@@ -475,17 +481,23 @@ export function calcPlayer(
     ability = (final[0] + chg) * 1.15 + (final[1] + ctl) * 1.2;
   }
 
-  const scores = p.skills.map((s) => {
+  const skillDetails = p.skills.map((s) => {
     // 현행 O/X·평균 이름과 이전 아웃별 이름에 같은 중계 전용 조건을 적용한다.
     const relieverOnly = /^\[S[0-4]\](신속한처리|레버리지릴리퍼|승리공식|컴백플래그)\(/i.test(normalizeSkillKey(s));
     if (p.kind === "pitcher" && relieverOnly && (!role || role === "closer")) {
       warnings.push(`${s}: 중계 투수 전용 효과 미적용`);
-      return 0;
+      return {name: s, score: 0};
     }
-    return s.trim() ? skillScore(p.kind, s, tables) : 0;
+    const wbc = resolveWbcSkill(p, s, ctx.players);
+    if (wbc) {
+      if (!wbc.name) warnings.push(`${s}: ${wbc.note}`);
+      return {name: wbc.name ?? s, score: wbc.inactive ? 0 : wbc.name ? skillScore(p.kind, wbc.name, tables) : null, note: wbc.note};
+    }
+    return {name: s, score: s.trim() ? skillScore(p.kind, s, tables) : 0};
   });
+  const scores = skillDetails.map(s => s.score);
   if (scores.slice(0, 3).some((s) => s === null)) {
-    warnings.push("스킬 1~3 중 점수표에 없는 스킬 있음");
+    warnings.push("스킬 1~3 중 점수 또는 적용 조건을 확인하지 못한 스킬 있음");
   }
   const missing4 = scores[3] === null;
   const skill: number | null =
@@ -500,9 +512,9 @@ export function calcPlayer(
   ability += team;
   const knownSkill = scores.reduce<number>((sum, score) => sum + (score ?? 0), 0);
   const total = knownSkill + ability;
-  if (scores.some(s => s === null)) warnings.push("미인식 스킬을 제외한 임시 점수입니다. 스킬명을 선택해 확정하세요.");
+  if (scores.some(s => s === null)) warnings.push("점수·조건 미확인 스킬을 제외한 임시 점수입니다. 스킬과 적용 조건을 확인하세요.");
   return {
-    auto, final, manual, trans, enh, poh, tactics, team,
+    auto, final, manual, trans, enh, poh, tactics, team, skillDetails,
     deck: [deckSums[0] ?? 0, deckSums[1] ?? 0, deckSums[2] ?? 0],
     deckHits: hits, ability, skill, total, warnings,
   };
@@ -529,6 +541,7 @@ export function deckPlayerResults(d: DeckLike, tables: SkillTables): PlayerResul
     yearByRow[p.excelRow] = typeof p.year === "number" ? p.year : 0;
   }
   const ctx: EvalCtx = {
+    players: d.players,
     tacticsByRow: tacticBonuses(d.players, d.bullpenTactics),
     flags: d.flags, yearInputs: d.yearInputs,
     cardByRow, orderByRow, enhByRow, yearByRow, chem: d.chem,

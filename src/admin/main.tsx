@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { supabase, isMissingRpc, errMessage } from "../lib/supabase";
 import { EVENT_ID, eventError, type EventState } from "../lib/events";
+import AdminMailbox from "../components/messages/AdminMailbox";
 import EventAdmin from "../components/events/EventAdmin";
 import "../components/EventPage.css";
 import "./style.css";
@@ -29,6 +30,7 @@ function errorText(e: unknown) {
 }
 function AdminApp() {
   const [login, setLogin] = useState<Login | null>(savedLogin);
+  const [view, setView] = useState<"event" | "messages">("event");
   const [password, setPassword] = useState("");
   const [state, setState] = useState<EventState | null>(null);
   const [busy, setBusy] = useState(false);
@@ -97,8 +99,12 @@ function AdminApp() {
   }
   return <main className="operator-shell">
     <header className="operator-header"><strong>Rivals Deck · 이벤트 관리</strong><a href={`${import.meta.env.BASE_URL}?event=1#simulator`}>참가자 화면 보기 →</a></header>
-    {state && login ? <EventAdmin state={state} busy={busy} error={error} message={message}
-      onAction={request} onRefresh={() => void request()} onLogout={() => void signOut()} /> :
+    {state && login ? <><nav className="operator-mail-tabs" aria-label="관리 메뉴">
+      <button aria-pressed={view === "event"} onClick={() => setView("event")}>이벤트 관리</button>
+      <button aria-pressed={view === "messages"} onClick={() => setView("messages")}>개인 쪽지 보내기</button>
+      {view === "messages" && <button disabled={busy} onClick={() => void signOut()}>로그아웃</button>}
+    </nav>{view === "messages" ? <AdminMailbox key={login.token} session={login.token} /> : <EventAdmin state={state} busy={busy} error={error} message={message}
+      onAction={request} onRefresh={() => void request()} onLogout={() => void signOut()} />}</> :
       <section className="operator-login event-panel">
         <div className="eyebrow">EVENT MANAGEMENT</div>
         <h1>{login ? "관리 화면 불러오기" : "관리자 로그인"}</h1>

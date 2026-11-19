@@ -204,6 +204,21 @@ assert.equal(ownerReads, 0);
 const login = await ownerWorker.fetch(post(ownerKey), ownerEnv);
 assert.equal(login.status, 303);
 assert.equal(login.headers.get("Location"), "/event-demo/?view=admin");
+for (const [target, expected] of [
+  ["/rivals-series-demo/", "/rivals-series-demo/"],
+  ["/event-demo/", "/event-demo/?view=admin"],
+  ["/", "/"],
+  ["https://attacker.test/", "/event-demo/?view=admin"],
+  ['//attacker.test/" onfocus=alert(1)', "/event-demo/?view=admin"],
+]) {
+  const req = new Request("https://preview.example.test/__preview/login", {
+    method: "POST", headers: {Origin:"https://preview.example.test", "Content-Type":"application/x-www-form-urlencoded"},
+    body: new URLSearchParams({access_key:ownerKey,return_to:target}),
+  });
+  assert.equal((await ownerWorker.fetch(req,ownerEnv)).headers.get("Location"),expected);
+}
+const seriesLogin = await ownerWorker.fetch(request("/rivals-series-demo/"),ownerEnv);
+assert.ok((await seriesLogin.text()).includes('name="return_to" value="/rivals-series-demo/"'));
 const setCookie = login.headers.get("Set-Cookie"),
   sessionCookie = setCookie.split(";")[0];
 for (const option of ["HttpOnly", "Secure", "SameSite=Strict", "Max-Age=3600"])
@@ -284,3 +299,20 @@ assert.equal(
 console.log(
   "Preview access: Access JWT or issued owner key; invalid/expired/redeployed sessions, wrong credentials, query bypass and cross-origin login blocked; encrypted assets decoded only for owner; no-store and secure cookies verified.",
 );
+
+// The public exception is a build-time file manifest, not a path-prefix bypass.
+const publicPaths=['/rivals-series-demo/','/rivals-series-demo/index.html','/rivals-series-demo/assets/app.js','/rivals-series-demo/assets/worker.js'];
+const seriesWorker=createPreviewWorker(undefined,{ownerKeyHash,sessionKey,assetKey,publicDemoPaths:publicPaths});
+const seriesEnv={ASSETS:{fetch:async()=>new Response(ciphertext,{headers:{'Content-Type':'text/html'}})}};
+for(const path of publicPaths) {
+ const response=await seriesWorker.fetch(request(path),seriesEnv);
+ assert.equal(response.status,200);assert.equal(await response.text(),plaintext);
+ assert.equal(response.headers.get('X-Robots-Tag'),'noindex, nofollow, noarchive');
+}
+assert.equal((await seriesWorker.fetch(request('/rivals-series-demo'),seriesEnv)).headers.get('Location'),'/rivals-series-demo/');
+for(const path of ['/','/event-demo/','/event-control/','/assets/app.js','/rivals-series-demo/assets/unknown.js','/rivals-series-demo/../../event-demo/','/rivals-series-demo/%2e%2e/event-demo/','/rivals-series-demo/%252e%252e/event-demo/','/_worker.js'])
+ assert.equal((await seriesWorker.fetch(request(path),seriesEnv)).status,401,path);
+assert.equal((await seriesWorker.fetch(new Request('https://preview.example.test/rivals-series-demo/',{method:'POST'}),seriesEnv)).status,405);
+assert.equal((await seriesWorker.fetch(request('/rivals-series-demo/'),{...seriesEnv,EVENT_ACCESS_TEAM_DOMAIN:'broken'})).status,200);
+assert.equal((await seriesWorker.fetch(request('/event-demo/'),{...seriesEnv,EVENT_ACCESS_TEAM_DOMAIN:'broken'})).status,503);
+console.log('Public series demo: enumerated HTML/JS/worker readable without key; other previews, unknown paths, traversal and write methods remain blocked.');

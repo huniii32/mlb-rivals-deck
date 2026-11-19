@@ -1,12 +1,13 @@
 import { build } from "esbuild";
 import { mkdirSync, writeFileSync, readFileSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
+import { resolve, relative, sep } from "node:path";
 import { randomBytes, createCipheriv } from "node:crypto";
 
 export async function buildEventPreviewGuard(root) {
   const dist = resolve(root, "dist");
   mkdirSync(dist, { recursive: true });
   const assetKey = randomBytes(32);
+  const publicDemoPaths = [];
   // Even if Pages falls back to static hosting, it only serves ciphertext.
   // Decryption keys are embedded exclusively in the server Worker, not public assets.
   function encrypt(dir) {
@@ -22,6 +23,13 @@ export async function buildEventPreviewGuard(root) {
         )
       )
         continue;
+      // Only the isolated Rival Series demo is public. Enumerate generated files
+      // rather than granting access to arbitrary paths beneath a prefix.
+      const urlPath = '/' + relative(dist, path).split(sep).join('/');
+      if (urlPath.startsWith('/rivals-series-demo/')) {
+        publicDemoPaths.push(urlPath);
+        if (urlPath === '/rivals-series-demo/index.html') publicDemoPaths.push('/rivals-series-demo/');
+      }
       const iv = randomBytes(12);
       const cipher = createCipheriv("aes-256-gcm", assetKey, iv);
       const content = Buffer.concat([
@@ -45,11 +53,12 @@ export async function buildEventPreviewGuard(root) {
     target: "es2022",
     minify: true,
     define: {
+      __PUBLIC_DEMO_PATHS__: JSON.stringify(publicDemoPaths),
       __PREVIEW_SESSION_KEY__: JSON.stringify(randomBytes(32).toString("hex")),
       __PREVIEW_ASSET_KEY__: JSON.stringify(assetKey.toString("hex")),
     },
   });
-  // Include assets too: protecting only HTML would leave the demo JS/DB public.
+  // Route all assets through the Worker: only enumerated Rival Series files bypass login.
   writeFileSync(
     resolve(dist, "_routes.json"),
     JSON.stringify({

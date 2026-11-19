@@ -31,7 +31,7 @@ export function BullpenControls({ players, tactics, setCount, setTactics }: {
       <div className="bullpen-tactics">
         <label>승리조 전술
           <select aria-label="승리조 전술" value={t.winning} onChange={(e) => setTactics({ ...t, winning: e.target.value as BullpenTactics["winning"] })}>
-            <option value="basic">기본</option><option value="aggressive">적극 · 2명 이상 · +2</option><option value="division">분업 · 3명 이상 · +4</option>
+            <option value="basic">기본</option><option value="aggressive">적극 · 1명 이상 · +2</option><option value="division">분업 · 3명 이상 · +4</option>
           </select>
           <span className={s.winningRequired && !s.winningBonus ? "bad" : "muted"}>{status(s.winningBonus, s.counts.winning, s.winningRequired)}</span>
         </label>
