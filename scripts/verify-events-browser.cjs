@@ -86,7 +86,8 @@ async function stop() {
         }
         if (
           u.pathname.includes("/rest/v1/rpc/") &&
-          !u.pathname.includes("/rpc/event_")
+          !u.pathname.includes("/rpc/event_") &&
+          u.pathname !== "/rest/v1/rpc/mailbox_list" // Read-only new-message notification polling.
         )
           unexpected.push(u.pathname);
         return r.continue();
@@ -277,7 +278,7 @@ async function stop() {
     assert.equal(
       await admin
         .locator(".event-winners .event-prize-status")
-        .filter({ hasText: "게임 덱 인증 대기" })
+        .filter({ hasText: "쪽지함 지급 대기" })
         .count(),
       2,
     );
@@ -286,24 +287,8 @@ async function stop() {
         name: `${title} · 지급 완료 기록`,
         exact: true,
       });
-      assert.equal(
-        await delivery.isDisabled(),
-        true,
-        "cannot mark delivery before verification",
-      );
-      await admin
-        .getByRole("button", {
-          name: `${title} · 게임 덱 인증 완료`,
-          exact: true,
-        })
-        .click();
-      await admin.waitForFunction(
-        (label) =>
-          Array.from(document.querySelectorAll("button")).some(
-            (b) => b.textContent === label && !b.disabled,
-          ),
-        `${title} · 지급 완료 기록`,
-      );
+      assert.equal(await delivery.isDisabled(), false, "delivery requires no game deck verification");
+      assert.equal(await admin.getByRole("button", {name: `${title} · 게임 덱 인증 완료`,exact:true}).count(),0);
       await delivery.click();
       await admin.waitForFunction(
         (label) =>
@@ -412,7 +397,7 @@ async function stop() {
     assert.deepEqual(errors, []);
     assert.deepEqual(unexpected, []);
     console.log(
-      "Event browser: anonymous deck-password registration, cross-device restoration, five attempts, lost-response recovery, four tickets each, hidden-card persistence, two distinct winners, winner verification and delivery, admin isolation, 320–1920px layout, DB process restart passed. No live calls.",
+      "Event browser: anonymous deck-password registration, cross-device restoration, five attempts, lost-response recovery, four tickets each, hidden-card persistence, two distinct winners, direct delivery without game-deck verification, admin isolation, 320–1920px layout, DB process restart passed. No live calls.",
     );
   } finally {
     await browser?.close();
