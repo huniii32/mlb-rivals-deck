@@ -17,6 +17,17 @@ export function SharePanel({ decks, tables, activeId, links, setLinks, code, onR
   onImportDeck: (d: Deck) => void; onPreviewDeck: (d: Deck) => void;
 }) {
   const [pub, setPub] = useState<PublicRank[]>([]);
+  // Hiding a date cell with CSS leaves a phantom fourth column when the
+  // expanded action row spans four columns. Keep the table structure in sync.
+  const [compactRanking, setCompactRanking] = useState(() => window.matchMedia("(max-width: 640px)").matches);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 640px)");
+    const update = () => setCompactRanking(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  const rankingColumns = compactRanking ? 3 : 4;
   const [scope, setScope] = useState<'top5' | 'all'>('top5');
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -137,8 +148,8 @@ export function SharePanel({ decks, tables, activeId, links, setLinks, code, onR
         {pub.length === 0 ? <div className="ranking-empty" role="status">
           {loading ? "랭킹을 불러오는 중입니다." : loadError ? "새로고침을 눌러 다시 시도하세요." : <><h3>아직 등록된 덱이 없습니다.</h3><p>현재 덱을 등록해 첫 랭킹을 남겨보세요.</p></>}
         </div> : <table className="ranking-table" aria-label="공개 덱 랭킹">
-          <colgroup><col className="ranking-rank-col" /><col /><col className="ranking-score-col" /><col className="ranking-date-col" /></colgroup>
-          <thead><tr><th scope="col">순위</th><th scope="col">덱</th><th scope="col">총점</th><th scope="col" className="ranking-date">등록일</th></tr></thead>
+          <colgroup><col className="ranking-rank-col" /><col /><col className="ranking-score-col" />{!compactRanking && <col className="ranking-date-col" />}</colgroup>
+          <thead><tr><th scope="col">순위</th><th scope="col">덱</th><th scope="col">총점</th>{!compactRanking && <th scope="col" className="ranking-date">등록일</th>}</tr></thead>
           <tbody>{visible.map(({ row: r, rank }) => <Fragment key={r.id}>
             <tr className={expanded === r.id ? "ranking-selected" : ""}>
               <td><span className={`ranking-number ${rank <= 3 ? "ranking-top" : ""}`}>{rank}</span></td>
@@ -147,9 +158,9 @@ export function SharePanel({ decks, tables, activeId, links, setLinks, code, onR
                 <span className="ranking-chevron" aria-hidden="true">{expanded === r.id ? "⌃" : "⌄"}</span>
               </button></td>
               <td className="ranking-score">{Number(r.total).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</td>
-              <td className="ranking-date">{new Date(r.created_at).toLocaleDateString("ko-KR")}</td>
+              {!compactRanking && <td className="ranking-date">{new Date(r.created_at).toLocaleDateString("ko-KR")}</td>}
             </tr>
-            {expanded === r.id && <tr className="ranking-expanded" id={`ranking-actions-${r.id}`}><td colSpan={4}>
+            {expanded === r.id && <tr className="ranking-expanded" id={`ranking-actions-${r.id}`}><td colSpan={rankingColumns}>
               <div className="ranking-row-actions">
                 <button onClick={() => withPubDeck(r, onPreviewDeck)}>라인업 보기</button>
                 <button onClick={() => withPubDeck(r, d => setCompare({ name: r.deck_name, deck: d }))}>현재 덱과 비교</button>
@@ -157,7 +168,7 @@ export function SharePanel({ decks, tables, activeId, links, setLinks, code, onR
                 {links[r.id] && <button className="ranking-delete" disabled={deleting === r.id} onClick={() => void deletePub(r.id)}>{deleting === r.id ? "삭제 중…" : "랭킹에서 삭제"}</button>}
               </div>
             </td></tr>}
-          </Fragment>)}{!visible.length && <tr><td colSpan={4} className="ranking-empty">검색 결과가 없습니다.</td></tr>}</tbody>
+          </Fragment>)}{!visible.length && <tr><td colSpan={rankingColumns} className="ranking-empty">검색 결과가 없습니다.</td></tr>}</tbody>
         </table>}
       </>}
       <p className="ranking-footnote">공개 등록·업데이트는 타자 9명, 선발투수 5명, 중계투수 3명, 마무리 1명 이상이 필요합니다. 같은 이름·같은 비밀번호로 저장하면 기존 랭킹이 갱신됩니다.</p>
