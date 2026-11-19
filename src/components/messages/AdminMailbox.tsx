@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { EVENT_ID } from "../../lib/events";
-import { mailboxError, mailboxRequest, readMessageImage, type MessageImage, type MessageRecipient, type PrivateMessage } from "../../lib/privateMessages";
+import { EVENT_ID, type EventState } from "../../lib/events";
+import { mailboxError, mailboxRequest, readMessageImage, findPrizeRecipients, PRIZE_LABELS, type MessagePrize, type MessageImage, type MessageRecipient, type PrivateMessage } from "../../lib/privateMessages";
 import { MessageList, MessageView, PrivateImage } from "./MessageView";
 import "./messages.css";
 function RecipientMessages({ session, recipient, composing }: { session: string; recipient: MessageRecipient; composing: (value: boolean) => void }) {
@@ -20,6 +20,15 @@ function RecipientMessages({ session, recipient, composing }: { session: string;
       .catch(e => { if (active) setError(mailboxError(e)); });
     return () => { active = false; };
   }, [session, recipient.id, offset, reload]);
+  const dirty = !!(subject.trim() || body.trim() || image || imageBusy || prepared);
+  useEffect(() => { composing(dirty); }, [dirty, composing]);
+  function template(gift: boolean) {
+    if (dirty) return;
+    setSubject(gift ? "이벤트 기프티콘 전달" : `${recipient.award} 당첨 안내`);
+    setBody(gift
+      ? `${recipient.deck_name}님, 이벤트에 참여해주셔서 감사합니다.\n당첨 경품 이미지를 첨부해 보내드립니다. 쪽지 아래 ‘이미지 저장’ 버튼으로 원본을 저장해주세요.`
+      : `${recipient.deck_name}님, ${recipient.award} 당첨을 축하드립니다.\n당첨 안내가 늦어진 점 죄송합니다.\n커뮤니티 쪽지로 참가 덱명과 실제 게임 속 덱 인증을 보내주시면 확인 후 이 사이트 쪽지함으로 기프티콘을 전달하겠습니다.\n참여해주셔서 감사합니다.`);
+  }
   async function attach(file?: File) {
     const v = ++imageVersion.current;
     setImage(null); setError("");
@@ -53,19 +62,21 @@ function RecipientMessages({ session, recipient, composing }: { session: string;
     {error && <p role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
     {!prepared ? <form onSubmit={e => { e.preventDefault(); if (!subject.trim() || !body.trim() || imageBusy) return;
       setPrepared({ id: crypto.randomUUID(), subject: subject.trim(), body: body.trim(), image }); composing(true); setNotice(""); setError(""); }}>
-      <label>쪽지 제목<input maxLength={100} required value={subject} onChange={e => setSubject(e.target.value)} /></label>
-      <label>쪽지 내용<textarea maxLength={2000} required rows={5} value={body} onChange={e => setBody(e.target.value)} /></label>
+      {recipient.award && <div className="message-actions"><button type="button" disabled={dirty} onClick={() => template(false)}>당첨 안내문 채우기</button><button type="button" disabled={dirty} onClick={() => template(true)}>기프티콘 전달문 채우기</button></div>}
+      <label>쪽지 제목<input aria-label="쪽지 제목" maxLength={100} required value={subject} onChange={e => setSubject(e.target.value)} /></label>
+      <label>쪽지 내용<textarea aria-label="쪽지 내용" maxLength={2000} required rows={5} value={body} onChange={e => setBody(e.target.value)} /></label>
       <label>기프티콘 이미지 (선택)<input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => { void attach(e.target.files?.[0]); e.target.value = ""; }} /></label>
       <small>PNG·JPG·WEBP 한 장, 최대 2MB. 바코드가 잘 보이는 원본 이미지를 첨부하세요.</small>
       {imageBusy && <p role="status">이미지 확인 중…</p>}
       {image && <><PrivateImage image={image} /><button type="button" onClick={() => { ++imageVersion.current; setImage(null); }}>이미지 제거</button></>}
-      <button disabled={imageBusy || !subject.trim() || !body.trim()}>전송 내용 확인</button>
+      <div className="message-actions"><button disabled={imageBusy || !subject.trim() || !body.trim()}>전송 내용 확인</button>
+      {dirty && <button type="button" onClick={() => { if (!confirm("작성 중인 내용과 첨부 이미지를 지울까요? 아직 쪽지는 발송되지 않았습니다.")) return; ++imageVersion.current; setSubject(""); setBody(""); setImage(null); setImageBusy(false); setError(""); }}>작성 취소</button>}</div>
     </form> : <section className="message-confirm" aria-label="전송 전 확인">
       <h4>{recipient.deck_name}에게 보낼 쪽지</h4><strong>{prepared.subject}</strong><p className="private-message-body">{prepared.body}</p>
       {prepared.image && <PrivateImage image={prepared.image} />}
       <p>수신 덱과 이미지를 확인해주세요. 보내면 수신자가 바로 열어볼 수 있습니다.</p>
       <div className="message-actions"><button disabled={busy} onClick={() => void send()}>{busy ? "보내는 중…" : "이 덱에 쪽지 보내기"}</button>
-        <button disabled={busy} onClick={() => { if (error && !confirm("보낸 내역을 먼저 확인해주세요. 이미 전송된 쪽지가 있으면 수정 후 보내기는 새 쪽지로 발송됩니다. 내용을 다시 편집할까요?")) return; setPrepared(null); composing(false); }}>다시 편집</button></div>
+        <button disabled={busy} onClick={() => { if (error && !confirm("보낸 내역을 먼저 확인해주세요. 이미 전송된 쪽지가 있으면 수정 후 보내기는 새 쪽지로 발송됩니다. 내용을 다시 편집할까요?")) return; setPrepared(null); }}>다시 편집</button></div>
     </section>}
     <h3>보낸 내역</h3><button disabled={busy} onClick={() => { setError(""); setReload(n => n + 1); }}>보낸 내역 새로고침</button>
     {!messages.length && <p>표시할 쪽지가 없습니다.</p>}
@@ -74,25 +85,65 @@ function RecipientMessages({ session, recipient, composing }: { session: string;
     {selected && <MessageView message={selected} />}
   </section>;
 }
-export default function AdminMailbox({ session }: { session: string }) {
+export default function AdminMailbox({ session, state, initialPrize }: { session: string; state?: EventState; initialPrize?: MessagePrize }) {
+  const eventId = state?.event.id || EVENT_ID;
+  const [winners, setWinners] = useState<Partial<Record<MessagePrize, MessageRecipient>>>({});
+  const [winnersBusy, setWinnersBusy] = useState(false), [winnersError, setWinnersError] = useState("");
+  const [winnerReload, setWinnerReload] = useState(0);
+  const initialApplied = useRef(false);
   const [query, setQuery] = useState(""), [search, setSearch] = useState(""), [offset, setOffset] = useState(0);
   const [recipients, setRecipients] = useState<MessageRecipient[]>([]), [recipient, setRecipient] = useState<MessageRecipient | null>(null);
   const [locked, setLocked] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState("");
   useEffect(() => {
     let active = true; setBusy(true); setError(""); setRecipients([]);
-    mailboxRequest<MessageRecipient[]>("operator_recipients", { p_session: session, p_event: EVENT_ID, p_query: search, p_offset: offset })
+    mailboxRequest<MessageRecipient[]>("operator_recipients", { p_session: session, p_event: eventId, p_query: search, p_offset: offset })
       .then(data => { if (active) setRecipients(data); })
       .catch(e => { if (active) { setRecipient(null); setLocked(false); setError(mailboxError(e)); } })
       .finally(() => { if (active) setBusy(false); });
     return () => { active = false; };
-  }, [session, search, offset]);
+  }, [session, eventId, search, offset]);
+  useEffect(() => {
+    let active = true; setWinners({}); setWinnersError("");
+    const expected = (["champion", "winner"] as const).filter(prize => !!state?.event[`${prize}_id`]);
+    if (!expected.length || !state?.is_admin || state.event.phase === "open") { setWinnersBusy(false); return; }
+    setWinnersBusy(true);
+    findPrizeRecipients(session, eventId, expected)
+      .then(found => {
+        if (!active) return;
+        setWinners(found);
+        if (initialPrize && !initialApplied.current && found[initialPrize]) {
+          initialApplied.current = true; setRecipient(found[initialPrize]!);
+        }
+      }).catch(e => { if (active) setWinnersError(mailboxError(e)); })
+      .finally(() => { if (active) setWinnersBusy(false); });
+    return () => { active = false; };
+  }, [session, eventId, state?.event.champion_id, state?.event.winner_id, state?.event.phase, state?.is_admin, initialPrize, winnerReload]);
   return <section className="event-panel private-messages">
     <h2>운영자 개인 쪽지</h2><p>등록된 덱에 안내문과 기프티콘 이미지를 보냅니다. 일반 사용자는 쪽지를 보낼 수 없습니다.</p>
+    {state?.is_admin && <section className="winner-mailbox" aria-label="당첨자 쪽지 보내기">
+      <div className="message-actions"><h3>당첨자에게 보내기</h3><button disabled={locked || winnersBusy} onClick={() => setWinnerReload(n => n + 1)}>당첨자 다시 확인</button></div>
+      <p>당첨자 선택 → 안내문 작성 또는 이미지 첨부 → 전송 내용 확인 → 발송</p>
+      {winnersError && <p role="alert">{winnersError}</p>}{winnersBusy && <p role="status">당첨자 수신 덱을 확인하는 중…</p>}
+      <div className="winner-mailbox-grid">{(["champion", "winner"] as const).map(prize => {
+        const participantId = state.event[`${prize}_id`], winner = winners[prize];
+        const previousName = state.participants.find(p => p.id === participantId)?.deck_name;
+        const verified = state.event[`${prize}_verified_at`], delivered = state.event[`${prize}_delivered_at`];
+        return <article key={prize} className="winner-mailbox-card" aria-label={PRIZE_LABELS[prize]}>
+          <span>{PRIZE_LABELS[prize]}</span><strong>{winner?.deck_name || previousName || "당첨자 미확정"}</strong>
+          {winner && previousName && previousName !== winner.deck_name && <small>참가 당시: {previousName}</small>}
+          <small>{delivered ? "지급 완료 기록 있음" : verified ? "게임 덱 인증 완료" : "게임 덱 인증 대기"}</small>
+          <button disabled={locked || winnersBusy || !winner} onClick={() => { initialApplied.current = true; setRecipient(winner!); }}>{recipient?.id === winner?.id && winner ? "선택됨" : "이 당첨자에게 쪽지 작성"}</button>
+          {!!participantId && !winner && !winnersBusy && !winnersError && <small>현재 등록 덱을 찾을 수 없습니다. 이름이 같은 다른 덱으로 대신 보내지 않습니다.</small>}
+        </article>;
+      })}</div>
+      <small>기프티콘은 게임 덱 인증 후 보내주세요. 쪽지 발송·읽음과 지급 완료 기록은 별개입니다.</small>
+    </section>}
+    {locked && <p role="status">작성 중에는 받는 덱이 고정됩니다. 다른 덱을 선택하려면 작성 취소를 눌러주세요.</p>}
     <form className="message-actions" onSubmit={e => { e.preventDefault(); setSearch(query.trim()); setOffset(0); }}>
       <label>수신 덱 검색<input disabled={locked} value={query} onChange={e => setQuery(e.target.value)} placeholder="덱 이름" /></label><button disabled={locked || busy}>검색</button>
     </form>
     {error && <p role="alert">{error}</p>}{busy && <p role="status">등록 덱 확인 중…</p>}
-    <label>받는 덱 선택<select disabled={locked || busy} value={recipient?.id || ""} onChange={e => setRecipient(recipients.find(r => r.id === e.target.value) || null)}>
+    <label>받는 덱 선택<select disabled={locked || busy || winnersBusy} value={recipient?.id || ""} onChange={e => { initialApplied.current = true; setRecipient(recipients.find(r => r.id === e.target.value) || null); }}>
       <option value="">수신 덱을 선택하세요</option>
       {recipient && !recipients.some(r => r.id === recipient.id) && <option value={recipient.id}>{recipient.deck_name}</option>}
       {recipients.map(r => <option key={r.id} value={r.id}>{r.deck_name}{r.award ? ` · ${r.award}` : ""}</option>)}
