@@ -47,7 +47,7 @@ def build(cache):
  sources=[]
  for name,url in [('notice-18460.html','https://community.withhive.com/MLB9IRIVALS/ko/board/10/18460')]+[(f'sheet{n:03}.htm',BASE+f'sheet{n:03}.htm') for n in [15,18,20,25]]:
   sources.append({'file':name,'url':url,'sha256':hashlib.sha256((cache/name).read_bytes()).hexdigest()})
- return {'version':'2026-11-19-live18','effectiveAt':'2026-11-19T11:00:00+09:00','title':'2026 시즌 18차 Live 업데이트','sources':sources,'limitations':['버프·편성 규칙은 별도 계산기에서 제공된 게임 화면 및 사용자 확인 기준으로 관리','시즌 카드는 이번 데모 목록에 포함하지 않음','선수명 축약 중복으로 구별하지 못한 포지션·등급은 미확인 처리','공지 OVR은 Rival Pick 효과 포함. 다른 선수 OVR·육성값은 미수집'], 'excludedFromSearch':excluded,'players':cards}
+ return {'version':'2026-11-19-live18','effectiveAt':'2026-11-19T11:00:00+09:00','title':'2026 시즌 18차 Live 업데이트','sources':sources,'limitations':['버프·편성 규칙은 별도 계산기에서 제공된 게임 화면 및 사용자 확인 기준으로 관리','시즌 선수 실명 목록은 미수집. 일반 카드는 별도의 구단·등급·종류 조건으로 구성 가능','선수명 축약 중복으로 구별하지 못한 포지션·등급은 미확인 처리','공지 OVR은 Rival Pick 효과 포함. 다른 선수 OVR·육성값은 미수집'], 'excludedFromSearch':excluded,'players':cards}
 if __name__=='__main__':
  ap=argparse.ArgumentParser();ap.add_argument('cache',type=Path);args=ap.parse_args();data=build(args.cache)
  target=ROOT/'src/data/rivalsSeries-20261119.json';target.write_text(json.dumps(data,ensure_ascii=False,separators=(',',':'))+'\n')
