@@ -34,6 +34,7 @@ const {
 const tables = { customs: [], overrides: {} };
 const source = normalizeDeck({
   id: "source-deck",
+  preferredTeam: "LAD",
   name: "복원 검증 덱",
   updatedAt: 1,
   players: resizeBullpen(
@@ -129,6 +130,7 @@ const baseURL = process.env.RENEWAL_URL || "http://localhost:5176";
         endpoint = new URL(req.url()).pathname.split("/").pop();
       let data = [];
       if (endpoint === "rankings") data = rows;
+      else if (endpoint === "mailbox_list") data = [];
       else {
         const args = req.postDataJSON();
         calls.push({ endpoint, args });
@@ -325,6 +327,7 @@ const baseURL = process.env.RENEWAL_URL || "http://localhost:5176";
       ),
     );
     passed++;
+    await editor.getByLabel("선수 OVR", {exact: true}).fill("80");
     await editor.getByLabel("파워 훈련", { exact: true }).fill("12");
     await sleep(200);
     current = await local();
@@ -349,6 +352,9 @@ const baseURL = process.env.RENEWAL_URL || "http://localhost:5176";
     assert.deepEqual((await local()).players, current.players);
     passed++;
     await p.getByRole("button", { name: /덱스코어 선택/ }).click();
+    await p.getByLabel("선호 구단", {exact: true}).selectOption("NYY");
+    check("switching club removes the bonus", (await local()).players[0].finalOv[0] === current.players[0].finalOv[0] - 3);
+    await p.getByLabel("선호 구단", {exact: true}).selectOption("LAD");
     await p.getByLabel("팀 덱스코어 200 좌", { exact: true }).click();
     await p.getByRole("button", { name: "설정 완료", exact: true }).click();
     const flagOff = await local();
@@ -381,6 +387,9 @@ const baseURL = process.env.RENEWAL_URL || "http://localhost:5176";
     const beforeDecade = await local();
     await p.getByRole("button", { name: /덱스코어 선택/ }).click();
     await p.getByRole("tab", { name: "스페셜 덱 스코어", exact: true }).click();
+    await p.getByLabel("스페셜 덱스코어 440 좌", {exact: true}).click();
+    assert.deepEqual((await local()).players[0].finalOv, beforeDecade.players[0].finalOv.map((v,i)=>v+[2,0,1][i])); passed++;
+    await p.getByLabel("스페셜 덱스코어 440 좌", {exact: true}).click();
     await p.getByLabel("스페셜 덱스코어 615 우", { exact: true }).click();
     await p.getByLabel("스페셜 덱스코어 645 기준 연도", { exact: true }).fill("2020");
     await p.getByLabel("스페셜 덱스코어 645 우", { exact: true }).click();
@@ -671,7 +680,7 @@ const baseURL = process.env.RENEWAL_URL || "http://localhost:5176";
       "simulator illustrations rendered",
       (await p.locator(".sim-hub-option svg.sim-art").count()) === 4,
     );
-    await p.locator(".sim-hub-option").first().click();
+    await p.getByRole("button", { name: /스킬 시뮬레이션/ }).click();
     await p.getByRole("button", { name: "1회 변경", exact: true }).click();
     check(
       "skill simulation produces three skills",

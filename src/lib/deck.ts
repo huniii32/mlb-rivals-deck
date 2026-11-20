@@ -4,6 +4,7 @@ import { BULLPEN_ROLES, BULLPEN_ROWS, MAX_BULLPEN, ROLE_LIMITS, bullpenCounts, b
 import type { BullpenRole, BullpenTactics } from "./bullpen";
 
 export interface Deck {
+  preferredTeam?: string;
   id: string;
   name: string;
   updatedAt: number;
@@ -84,7 +85,7 @@ export const newId = (): string =>
 /** 기존 18명 덱과 불펜 0~7명의 확장 덱을 모두 읽는다. */
 export function isDeck(d: unknown): d is Deck {
   if (!record(d)) return false;
-  for (const key of ["id", "name"]) if (d[key] !== undefined && typeof d[key] !== "string") return false;
+  for (const key of ["id", "name", "preferredTeam"]) if (d[key] !== undefined && typeof d[key] !== "string") return false;
   if (d.updatedAt !== undefined && (typeof d.updatedAt !== "number" || !Number.isFinite(d.updatedAt))) return false;
   for (const key of ["chem", "flags", "yearInputs"]) if (d[key] !== undefined && !record(d[key])) return false;
   if (d.chem && !Object.values(d.chem).every(v => typeof v === "string")) return false;
@@ -101,7 +102,7 @@ export function isDeck(d: unknown): d is Deck {
   if (!players.every((p) => p && typeof p.name === "string" && typeof p.pos === "string" && Number.isInteger(p.excelRow))) return false;
   if (!players.every(p => {
     for (const key of ["card", "team", "photoUrl", "enName", "wbcCountry"]) if (p[key] !== undefined && typeof p[key] !== "string") return false;
-    for (const key of ["year", "order", "transLv", "enhLv", "pohLv"]) if (p[key] !== undefined && !statValue(p[key])) return false;
+    for (const key of ["year", "cardOvr", "order", "transLv", "enhLv", "pohLv"]) if (p[key] !== undefined && !statValue(p[key])) return false;
     for (const key of STAT_ARRAYS) if (p[key] !== undefined && (!Array.isArray(p[key]) || p[key].length > 3 || !p[key].every(statValue))) return false;
     if (p.skills !== undefined && (!Array.isArray(p.skills) || p.skills.length > 4 || !p.skills.every((v: unknown) => typeof v === "string"))) return false;
     return p.bullpenRole === undefined || BULLPEN_ROLES.includes(p.bullpenRole);

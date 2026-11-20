@@ -1,22 +1,14 @@
 import { NEW_SKILLS } from "./skillUpdates";
 import { WBC_SKILLS, resolveWbcSkill } from "./wbcSkills";
 import lookup from "../data/lookup.json";
-import deckdata from "../data/deckrules.json";
+import { flags as workbookFlags } from "../data/deckrules.json";
 import { ROLE_PROFILES, bullpenRole, tacticBonuses } from "./bullpen";
 import type { BullpenRole, BullpenTactics } from "./bullpen";
 import { additionalTeamScore } from "./teamBuffs";
-import { DECADE_TARGET_ROWS, decadeTarget } from "./deckScoreTargets";
-
-// 엑셀(MLB라이벌_덱관리프로그램_260910.xlsx) 로직의 웹 이식.
-// 수식 출처: 라인업 시트 J/O/P/D열, 강화/포훈/초월/스킬점수 시트, 덱코(BF:HL) 규칙 파서 추출.
-// 260910 vs 260812: 덱코 조건·점수 동일(1496규칙·684conds 일치), 행9 임계값 라벨 164건 추가(계산 무관), 신스킬 27종.
+import { BATTER_STATS, PITCHER_STATS, officialDeckBonus } from "./deckScoreOptions";
+export { BATTER_STATS, PITCHER_STATS } from "./deckScoreOptions";
 
 export type Kind = "batter" | "pitcher";
-
-export const BATTER_STATS = ["파워", "정확", "선구"];
-export const PITCHER_STATS = ["변화", "구위"];
-// 덱코 규칙의 스탯 표기(파워/정확/선구)를 선수 스탯 인덱스로 매핑
-const RULE_STAT_IDX: Record<string, number> = { 파워: 0, 정확: 1, 선구: 2 };
 
 interface Lookup {
   batter: { name: string; score: number }[];
@@ -32,42 +24,6 @@ export const LOOKUP: Lookup = {
   batter: [...lookup.batter, ...WBC_SKILLS.filter(s => s.kind === "batter")],
   pitcher: [...lookup.pitcher, ...WBC_SKILLS.filter(s => s.kind === "pitcher")],
 };
-
-interface DeckData {
-  conds: Cond[];
-  rules: { r: number; g: number; t: number | null; s: string; a: [number, number][] }[];
-  flags: Record<string, boolean | number | null>;
-}
-const DECK = deckdata as unknown as DeckData;
-
-type Cond =
-  | { t: "num"; v: number }
-  | { t: "str"; v: string }
-  | { t: "flag"; row: number; region: string; side: string }
-  | { t: "yearinput"; row: number }
-  | { t: "card"; row: number }
-  | { t: "order"; row: number }
-  | { t: "enh"; row: number }
-  | { t: "year"; row: number }
-  | { t: "not"; x: Cond }
-  | { t: "and"; items: Cond[] }
-  | { t: "or"; items: Cond[] }
-  | { t: "arith"; op: string; a: Cond; b: Cond }
-  | { t: "cmp"; op: string; a: Cond; b: Cond };
-
-// 병합된 엑셀 임계값 셀은 두 번째 능력치부터 r.t가 null이다.
-// 라벨 대신 실제 연도 입력 조건을 찾아 모든 관련 능력치에 대상 제한을 건다.
-function decadeRow(c: Cond): number | undefined {
-  if (c.t === "yearinput") return Object.values(DECADE_TARGET_ROWS).includes(c.row) ? c.row : undefined;
-  if (c.t === "not") return decadeRow(c.x);
-  if (c.t === "and" || c.t === "or") return c.items.map(decadeRow).find(v => v !== undefined);
-  if (c.t === "arith" || c.t === "cmp") return decadeRow(c.a) ?? decadeRow(c.b);
-  return undefined;
-}
-const DECADE_CONDITION_ROWS = DECK.conds.map(decadeRow);
-const DECADE_RULE_ROWS = new Map(DECK.rules.map(r => [r,
-  r.g === 1 ? r.a.map(([ci]) => DECADE_CONDITION_ROWS[ci]).find(v => v !== undefined) : undefined,
-]));
 
 export interface Chem {
   comebackFlag?: string; // 구버전 덱 호환용. 상시 팀 점수에는 사용하지 않는다.
@@ -89,6 +45,7 @@ export interface PlayerInput {
   card: string;
   name: string;
   team: string; // 도감식 카드 팀 뱃지용 (예: LAD, NYY)
+  cardOvr?: number | "";
   wbcCountry?: string; // WBC 카드 뒷면 국가 코드. 기존 덱은 미입력으로 유지.
   year: number | "";
   enName: string; // Wikimedia Commons 검색용 영문명
@@ -113,98 +70,16 @@ export interface PlayerInput {
 }
 
 interface EvalCtx {
+  preferredTeam?: string;
   players?: PlayerInput[];
   tacticsByRow?: Record<number, number>;
   flags: Record<string, boolean>;
   yearInputs: Record<number, number | "">;
-  cardByRow: Record<number, string>;
-  orderByRow: Record<number, number>;
-  enhByRow: Record<number, number>;
-  yearByRow: Record<number, number>;
   chem: Chem;
 }
 
 const num = (v: number | "" | null | undefined): number =>
   typeof v === "number" && Number.isFinite(v) ? v : 0;
-
-function evVal(c: Cond, ctx: EvalCtx): string | number | boolean {
-  switch (c.t) {
-    case "num": return c.v;
-    case "str": return c.v;
-    case "flag": return !!ctx.flags[`${c.row}-${c.region}-${c.side}`];
-    case "yearinput": {
-      const v = ctx.yearInputs[c.row];
-      return typeof v === "number" ? v : NaN;
-    }
-    case "card": return ctx.cardByRow[c.row] ?? "";
-    case "order": return ctx.orderByRow[c.row] ?? 0;
-    case "enh": return ctx.enhByRow[c.row] ?? 0;
-    case "year": return ctx.yearByRow[c.row] ?? 0;
-    case "not": return !evVal(c.x, ctx);
-    case "and": return c.items.every((x) => !!evVal(x, ctx));
-    case "or": return c.items.some((x) => !!evVal(x, ctx));
-    case "arith": {
-      const a = evVal(c.a, ctx) as number;
-      const b = evVal(c.b, ctx) as number;
-      return c.op === "+" ? a + b : c.op === "-" ? a - b : c.op === "*" ? a * b : a / b;
-    }
-    case "cmp": {
-      const a = evVal(c.a, ctx);
-      const b = evVal(c.b, ctx);
-      if (typeof a === "string" || typeof b === "string") {
-        const x = String(a).toLowerCase();
-        const y = String(b).toLowerCase();
-        return c.op === "=" ? x === y : x !== y;
-      }
-      const x = a as number;
-      const y = b as number;
-      switch (c.op) {
-        case "=": return x === y;
-        case "<>": return x !== y;
-        case "<": return x < y;
-        case ">": return x > y;
-        case "<=": return x <= y;
-        case ">=": return x >= y;
-        default: return false;
-      }
-    }
-  }
-}
-
-/** 덱코 보너스 합계 (스탯 인덱스별). 적중 내역도 반환(설명용). */
-function deckBonus(
-  excelRow: number,
-  ctx: EvalCtx,
-  kind: Kind,
-): { sums: number[]; hits: { threshold: number | null; region: string; stat: string; pts: number }[] } {
-  const sums = [0, 0, 0];
-  const hits: { threshold: number | null; region: string; stat: string; pts: number }[] = [];
-  const stats = kind === "batter" ? BATTER_STATS : PITCHER_STATS;
-  for (const r of DECK.rules) {
-    if (r.r !== excelRow) continue;
-    // 원본 연도 수식에는 타자/투수 선택 조건이 빠져 있었다.
-    const targetRow = DECADE_RULE_ROWS.get(r);
-    if (targetRow !== undefined && decadeTarget(ctx.flags, targetRow) !== kind) continue;
-    let pts = 0;
-    for (const [ci, p] of r.a) {
-      const c = ci < 0 ? null : DECK.conds[ci];
-      if (c === null || !!evVal(c, ctx)) {
-        pts = p;
-        break;
-      }
-    }
-    if (pts) {
-      const idx = RULE_STAT_IDX[r.s] ?? -1;
-      if (idx >= 0) {
-        sums[idx] += pts;
-        // 규칙 라벨(r.s)은 엑셀 원본 표기(파워/정확/선구)라 투수 행에서도 그대로 나옴.
-        // 실제로는 idx로 매핑되므로(변화=0,구위=1) 표시는 kind에 맞는 스탯명을 써야 함.
-        hits.push({ threshold: r.t, region: r.g === 0 ? "팀덱코" : "스덱코", stat: stats[idx] ?? r.s, pts });
-      }
-    }
-  }
-  return { sums, hits };
-}
 
 export interface SkillTables {
   overrides: Record<string, number>; // kind:name -> score
@@ -410,13 +285,7 @@ export function calcPlayer(
   const poh: (number | null)[] = [];
   const role = bullpenRole(p);
   const profile = role ? ROLE_PROFILES[role] : { row: p.excelRow, pos: p.pos };
-  const ownCtx = profile.row === p.excelRow ? ctx : {
-    ...ctx,
-    cardByRow: { ...ctx.cardByRow, [profile.row]: p.card },
-    enhByRow: { ...ctx.enhByRow, [profile.row]: num(p.enhLv) },
-    yearByRow: { ...ctx.yearByRow, [profile.row]: num(p.year) },
-  };
-  const { sums: deckSums, hits } = deckBonus(profile.row, ownCtx, p.kind);
+  const { sums: deckSums, hits } = officialDeckBonus(p, ctx.flags, ctx.yearInputs, ctx.preferredTeam);
   const tactic = p.kind === "pitcher" ? ctx.tacticsByRow?.[p.excelRow] ?? 0 : 0;
   const tactics = [tactic, tactic, 0];
   for (let i = 0; i < 3; i++) {
@@ -521,6 +390,7 @@ export function calcPlayer(
 }
 
 interface DeckLike {
+  preferredTeam?: string;
   bullpenTactics?: BullpenTactics;
   players: PlayerInput[];
   chem: Chem;
@@ -530,21 +400,11 @@ interface DeckLike {
 
 /** 덱의 선수별 계산 결과 (players와 같은 순서). 덱 비교·랭킹 등에서 재사용. */
 export function deckPlayerResults(d: DeckLike, tables: SkillTables): PlayerResult[] {
-  const cardByRow: Record<number, string> = {};
-  const orderByRow: Record<number, number> = {};
-  const enhByRow: Record<number, number> = {};
-  const yearByRow: Record<number, number> = {};
-  for (const p of d.players) {
-    cardByRow[p.excelRow] = p.card;
-    orderByRow[p.excelRow] = typeof p.order === "number" ? p.order : 0;
-    enhByRow[p.excelRow] = typeof p.enhLv === "number" ? p.enhLv : 0;
-    yearByRow[p.excelRow] = typeof p.year === "number" ? p.year : 0;
-  }
   const ctx: EvalCtx = {
     players: d.players,
     tacticsByRow: tacticBonuses(d.players, d.bullpenTactics),
     flags: d.flags, yearInputs: d.yearInputs,
-    cardByRow, orderByRow, enhByRow, yearByRow, chem: d.chem,
+    preferredTeam: d.preferredTeam, chem: d.chem,
   };
   return d.players.map((p) => calcPlayer(p, ctx, tables));
 }
@@ -575,61 +435,9 @@ export function calcDeckTotal(
   return { ...deckTotals(d.players, deckPlayerResults(d, tables)), named };
 }
 
-/** 덱코표 전체 임계값 (AT=팀, AX=스펙). 규칙 미참조 행(팀 330/345 등)도 포함. */
-export function allThresholds(region: "team" | "spec"): { row: number; threshold: number }[] {
-  const col = region === "team" ? "AT" : "AX";
-  const out: { row: number; threshold: number }[] = [];
-  for (const [k, v] of Object.entries(DECK.flags)) {
-    const m = k.match(new RegExp(`^(\\d+)-${col}$`));
-    if (m && typeof v === "number") out.push({ row: Number(m[1]), threshold: v });
-  }
-  return out.sort((a, b) => a.threshold - b.threshold);
-}
-
-/** 덱코 패널에 보여줄 참조 플래그 목록 (원본 규칙 + 연대 대상 보정).
- *  행별 임계값(게임 화면의 POINT 숫자)은 해당 플래그를 참조하는 첫 규칙의 t에서 가져온다. */
-export function referencedFlags(): { row: number; region: string; side: string; threshold: number | null }[] {
-  const seen = new Map<string, { row: number; region: string; side: string; threshold: number | null }>();
-  const walk = (c: Cond | null) => {
-    if (!c) return;
-    if (c.t === "flag") {
-      const k = `${c.row}-${c.region}-${c.side}`;
-      if (!seen.has(k)) seen.set(k, { row: c.row, region: c.region, side: c.side, threshold: thresholdForFlag(c.row, c.region, c.side) });
-    } else if (c.t === "not") walk(c.x);
-    else if (c.t === "and" || c.t === "or") c.items.forEach(walk);
-    else if (c.t === "arith" || c.t === "cmp") { walk(c.a); walk(c.b); }
-  };
-  for (const r of DECK.rules) for (const [ci] of r.a) {
-    if (ci >= 0) walk(DECK.conds[ci]);
-  }
-  for (const [threshold, row] of Object.entries(DECADE_TARGET_ROWS)) {
-    for (const side of ["L", "R"]) {
-      seen.set(`${row}-spec-${side}`, { row, region: "spec", side, threshold: Number(threshold) });
-    }
-  }
-  return [...seen.values()].sort((a, b) => a.region.localeCompare(b.region) || (a.threshold ?? 0) - (b.threshold ?? 0) || a.row - b.row || a.side.localeCompare(b.side));
-}
-
-/** (region, row, side) 플래그를 참조하는 첫 규칙의 임계값 t */
-function thresholdForFlag(row: number, region: string, side: string): number | null {
-  const isFlag = (c: Cond | null): boolean =>
-    !!c && (c.t === "flag"
-      ? (c.row === row && c.region === region && c.side === side)
-      : c.t === "not" ? isFlag(c.x)
-      : c.t === "and" || c.t === "or" ? c.items.some(isFlag)
-      : c.t === "arith" || c.t === "cmp" ? isFlag(c.a) || isFlag(c.b)
-      : false);
-  for (const r of DECK.rules) {
-    for (const [ci] of r.a) {
-      if (ci >= 0 && isFlag(DECK.conds[ci]) && r.t !== null) return r.t;
-    }
-  }
-  return null;
-}
-
 export function flagDefaults(): Record<string, boolean> {
   const out: Record<string, boolean> = {};
-  for (const [k, v] of Object.entries(DECK.flags)) {
+  for (const [k, v] of Object.entries(workbookFlags)) {
     if (k.includes("team") || k.includes("spec")) out[k] = !!v;
   }
   return out;

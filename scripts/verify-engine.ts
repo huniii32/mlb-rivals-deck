@@ -12,7 +12,7 @@ function eq(name: string, got: unknown, want: unknown) {
 function blank(row: number, kind: "batter" | "pitcher", pos: string): PlayerInput {
   return {
     excelRow: row, kind, pos, order: "", card: "", name: "", year: "",
-    enName: "", team: "", photoUrl: "",
+    enName: "", team: "NYY", cardOvr: 80, photoUrl: "",
     base: ["", "", ""], train: ["", "", ""], spec: ["", "", ""],
     transLv: "", enhLv: "", pohLv: "", extra: ["", "", ""],
     synergy: ["", "", ""], locker: ["", "", ""],
@@ -21,7 +21,7 @@ function blank(row: number, kind: "batter" | "pitcher", pos: string): PlayerInpu
 }
 const CHEM_S: Chem = { commander: "S", catcher: "S", pitchChem: "S", batChem: "S", wbcP: "S", wbcB: "S" };
 const ctxOf = (p: PlayerInput, chem: Chem) => ({
-  flags: flagDefaults(), yearInputs: { 33: "", 35: "", 37: "" } as Record<number, number | "">,
+  preferredTeam: "NYY", flags: flagDefaults(), yearInputs: { 33: "", 35: "", 37: "" } as Record<number, number | "">,
   cardByRow: { [p.excelRow]: p.card },
   orderByRow: { [p.excelRow]: typeof p.order === "number" ? p.order : 0 },
   enhByRow: { [p.excelRow]: typeof p.enhLv === "number" ? p.enhLv : 0 },
@@ -92,7 +92,7 @@ const TABLES = { overrides: {}, customs: [] };
   const players = mkDeck();
   players[0].name = "T"; players[0].finalOv = [0, 0, 0];
   // ability: chem 전부 X → J=0, skill 없음 → total=0. 수동 최종으로 total을 만들 수 없으니 J 직접 검증 대신 가중합 구조 검증:
-  const t = calcDeckTotal({ players, chem: { ...CHEM_S, commander: "X", catcher: "X", pitchChem: "X", batChem: "X", wbcP: "X", wbcB: "X" }, flags: flagDefaults(), yearInputs: {} }, TABLES);
+  const t = calcDeckTotal({ players, chem: { ...CHEM_S, commander: "X", catcher: "X", pitchChem: "X", batChem: "X", wbcP: "X", wbcB: "X" }, preferredTeam: "NYY", flags: flagDefaults(), yearInputs: {} }, TABLES);
   eq("T7 totals zero", [t.sp, t.rp, t.bt, t.total], [0, 0, 0, 0]);
 }
 // T8: 표 조회 인덱싱 (강화 lv18 → 19번째열=U열 레벨18, 포훈 lv16 → S열 레벨16, 초월 lv0 → D열 레벨0)

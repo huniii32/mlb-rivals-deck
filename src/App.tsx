@@ -422,7 +422,8 @@ export default function App() {
 
       {setting && <RenewalDialog title={setting} close={() => setSetting(null)}>
         <div className="working-settings">
-          {setting === "덱스코어" ? <DeckScorePanel flags={flags} yearInputs={yearInputs}
+          {setting === "덱스코어" ? <DeckScorePanel preferredTeam={deck.preferredTeam ?? ""} setPreferredTeam={preferredTeam => patchDeck({ preferredTeam })}
+            flags={flags} yearInputs={yearInputs}
             toggleFlag={k => patchDeck({ flags: { ...flags, [k]: !flags[k] } })} setRowSide={pickRowSide}
             setYearInput={(r, v) => patchDeck({ yearInputs: { ...yearInputs, [r]: v } })} />
             : setting === "팀 버프" ? <ChemPanel chem={chem} setChem={chem => patchDeck({ chem })} />

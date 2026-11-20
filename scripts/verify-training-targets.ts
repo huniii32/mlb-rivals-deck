@@ -24,7 +24,7 @@ const base: Deck = {
   id: "target-training", name: "계산 검증", updatedAt: 1, flags: {}, yearInputs: {},
   chem: { ...DEFAULT_CHEM },
   players: resizeBullpen(resizeBullpen(LINEUP.map(l => ({ ...blankPlayer(l.row, l.kind, l.pos, l.order), name: `선수${l.row}`, year: 2024 })), "winning", 3), "chasing", 2)
-    .map(p => ({ ...p, name: `선수${p.excelRow}`, year: 2024 })),
+    .map(p => ({ ...p, name: `선수${p.excelRow}`, card: "시그니처", year: 2024 })),
 };
 
 // User's game screenshots: 615 pitcher BRK +1; 645 pitcher STF +1.

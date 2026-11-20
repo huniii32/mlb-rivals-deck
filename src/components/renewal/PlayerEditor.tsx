@@ -1,6 +1,7 @@
 import { PlayerArt, gradeColor } from "../../components/CardArt";
 import { SkillSlot } from "../../components/SkillInput";
 import { cardDisplayName } from "../../lib/cardNames";
+import { TEAMS } from "../../lib/mlbTeams";
 import { WBC_COUNTRIES, isWbcCard } from "../../lib/wbcSkills";
 import {
   BATTER_STATS,
@@ -152,8 +153,10 @@ export function RenewalPlayerEditor({
             <input
               value={p.team}
               placeholder="LAD"
+              list="editor-mlb-teams"
               onChange={(e) => update({ team: e.target.value.toUpperCase() })}
             />
+            <datalist id="editor-mlb-teams">{TEAMS.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</datalist>
           </label>
           <label>
             포지션
@@ -194,6 +197,9 @@ export function RenewalPlayerEditor({
           )}
           <label>
             연도{numberInput("연도", p.year, (v) => update({ year: v }))}
+          </label>
+          <label>선수 OVR (스페셜 440점)
+            {numberInput("선수 OVR", p.cardOvr ?? "", cardOvr => update({ cardOvr }))}
           </label>
           {p.kind === "batter" && (
             <label>

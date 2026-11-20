@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Chem } from "../lib/engine";
 import { LOOKUP } from "../lib/engine";
-import { LINEUP } from "../lib/deck";
+import { TEAMS } from "../lib/mlbTeams";
 import { decadeTarget, decadeStatus, type DeckScoreRegion, type DeckScoreSide } from "../lib/deckScoreTargets";
 import { DECK_SCORE_OPTIONS } from "../lib/deckScoreOptions";
 
@@ -14,13 +14,6 @@ const CHEM_LABELS: [keyof Chem, string][] = [
   ["wbcB", "WBC에이스(타자)"],
   ["lockdown", "락다운(CP 배치)"],
 ];
-
-const POS_LABEL: Record<number, string> = Object.fromEntries(LINEUP.map((l) => [l.row, l.pos]));
-
-function rowLabel(row: number): string {
-  if (row === 10) return "전체";
-  return POS_LABEL[row] ?? `행${row}`;
-}
 
 export function ChemPanel({ chem, setChem }: {
   chem: Chem;
@@ -45,8 +38,10 @@ export function ChemPanel({ chem, setChem }: {
   );
 }
 
-export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setYearInput,
+export function DeckScorePanel({ preferredTeam, setPreferredTeam, flags, toggleFlag, setRowSide, yearInputs, setYearInput,
 }: {
+  preferredTeam: string;
+  setPreferredTeam: (team: string) => void;
   flags: Record<string, boolean>;
   toggleFlag: (key: string) => void;
   setRowSide: (region: DeckScoreRegion, row: number, side: DeckScoreSide) => void;
@@ -68,12 +63,19 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
             </button>
           ))}
         </div>
+        <label>선호 구단{" "}
+          <select aria-label="선호 구단" value={preferredTeam} onChange={e => setPreferredTeam(e.target.value)}>
+            <option value="">구단 선택</option>
+            {TEAMS.map(t => <option key={t.id} value={t.id}>{t.name} ({t.id})</option>)}
+          </select>
+        </label>
         <ul className="tight-list muted">
           <li>행마다 좌·우 중 하나만 선택 (다시 누르면 해제)</li>
           <li>615·645: 타자 또는 투수와 기준 연도를 함께 선택해야 적용됩니다.</li>
           <li>연도 조건: 입력 연도부터 9년 뒤까지 (2020 → 2020~2029)</li>
-          <li>팀 덱 스코어: 선택 효과 적용 (일부 카드·타순 조건 필요)</li>
-          <li>포지션별 값 차이는 타순·카드·강화Lv·연도 조건 때문</li>
+          <li>일반 카드의 선호 구단 효과는 선수 편집에 입력한 팀이 선호 구단과 같을 때 적용됩니다. FA·WBC·명예의 전당 카드는 모든 구단에서 선호 구단 효과를 받습니다.</li>
+          <li>스페셜 440점은 선수 편집에 입력한 OVR이 80 이상일 때 적용됩니다.</li>
+          <li>연대 효과에서 명예의 전당·모먼트 계열 카드는 제외됩니다.</li>
         </ul>
         <div className="deckscore-rows">
           {list.map((g) => {
@@ -83,26 +85,28 @@ export function DeckScorePanel({ flags, toggleFlag, setRowSide, yearInputs, setY
             const target = targetRow === undefined ? null : decadeTarget(flags, targetRow);
             return (
               <div key={`${g.region}-${g.row}`} className={`deckscore-row${targetRow !== undefined ? " deckscore-target-row" : ""}`}>
-                <span className="dia dia-th" title={rowLabel(g.row)}>
-                  <span>{g.threshold ?? rowLabel(g.row)}</span>
+                <span className="dia dia-th">
+                  <span>{g.threshold}</span>
                 </span>
                 {g.sides.length > 0 && (
                   <span className={`dia-pair${g.sides.length < 2 ? " centered" : ""}`}>
                     {(["L", "R"] as const).map((s) => {
                       if (!g.sides.includes(s)) return null;
                       const on = s === "L" ? onL : onR;
+                      const effect = s === "L" ? g.left : g.right!;
+                      const league = effect.target.match(/^(AL|NL) /)?.[1];
                       return (
                         <button key={s} className={`dia dia-opt${on ? " on" : ""}`}
-                          title={`${rowLabel(g.row)} ${s === "L" ? "좌" : "우"}${on ? " (선택됨, 다시 누르면 해제)" : ""}`}
+                          title={`${g.threshold} · ${effect.target}${on ? " (선택됨, 다시 누르면 해제)" : ""}`}
                           aria-pressed={on}
-                          aria-label={`${g.region === "team" ? "팀" : "스페셜"} 덱스코어 ${g.threshold ?? g.row} ${s === "L" ? "좌" : "우"}`}
+                          aria-label={`${g.region === "team" ? "팀" : "스페셜"} 덱스코어 ${g.threshold} ${s === "L" ? "좌" : "우"}`}
                           onClick={() => {
                             const key = `${g.row}-${g.region}-${s}`;
                             // 한쪽만 있는 행이면 기존 체크 토글, 양쪽 행이면 택1 로직
                             if (g.sides.length < 2) toggleFlag(key);
                             else setRowSide(g.region, g.row, s);
                           }}>
-                          <span>{targetRow !== undefined ? s === "L" ? "타자" : "투수" : g.sides.length < 2 ? "선택" : s === "L" ? "좌" : "우"}</span>
+                          <span>{league ?? (targetRow !== undefined ? s === "L" ? "타자" : "투수" : g.sides.length < 2 ? "선택" : s === "L" ? "좌" : "우")}</span>
                           {on && <b className="dia-check">✓</b>}
                         </button>
                       );

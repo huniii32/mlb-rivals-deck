@@ -5,7 +5,7 @@ import { deckPlayerResults } from "./engine";
 /** 기존에 입력한 최종 능력치의 보정 차이를 보존하고, 육성·덱코 변경분을 자동 반영한다. */
 export function applyDeckUpdate(deck: Deck, patch: Partial<Deck>, tables: SkillTables): Deck {
   const next = { ...deck, ...patch };
-  if (!patch.players && !patch.flags && !patch.yearInputs) return next;
+  if (!patch.players && !patch.flags && !patch.yearInputs && !("preferredTeam" in patch)) return next;
   const before = deckPlayerResults(deck, tables);
   const after = deckPlayerResults(next, tables);
   return {

@@ -17,7 +17,7 @@
   {"key":"19-spec-R","row":22,"card":"라이브/시즌","order":1,"enh":0,"delta":[1,0,0]},
   {"key":"20-spec-L","row":11,"card":"라이브/시즌","order":1,"enh":10,"delta":[0,1,0]},
   {"key":"20-spec-R","row":22,"card":"라이브/시즌","order":1,"enh":10,"delta":[1,0,0]},
-  {"key":"21-spec-L","row":22,"card":"라이브/시즌","order":1,"enh":0,"delta":[1,0,0]},
+  {"key":"21-spec-L","row":22,"card":"라이브/시즌","order":1,"enh":0,"delta":[1,1,0]},
   {"key":"21-spec-R","row":22,"card":"명예의 전당","order":1,"enh":0,"delta":[1,0,0]},
   {"key":"22-spec-L","row":11,"card":"라이브/시즌","order":1,"enh":0,"delta":[1,1,1]},
   {"key":"23-spec-L","row":11,"card":"라이브/시즌","order":1,"enh":0,"delta":[1,1,1]},
@@ -49,7 +49,7 @@
   {"key":"12-team-R","row":27,"card":"라이브/시즌","order":1,"enh":0,"delta":[0,1,0]},
   {"key":"13-team-L","row":11,"card":"라이브/시즌","order":1,"enh":0,"delta":[2,2,2]},
   {"key":"13-team-R","row":11,"card":"명예의 전당","order":1,"enh":0,"delta":[1,1,1]},
-  {"key":"14-team-L","row":13,"card":"라이브/시즌","order":1,"enh":0,"delta":[0,2,0]},
+  {"key":"14-team-L","row":13,"card":"라이브/시즌","order":1,"enh":0,"delta":[0,2,1]},
   {"key":"14-team-R","row":12,"card":"라이브/시즌","order":1,"enh":0,"delta":[2,0,0]},
   {"key":"15-team-L","row":11,"card":"라이브/시즌","order":1,"enh":0,"delta":[1,1,1]},
   {"key":"18-team-L","row":16,"card":"라이브/시즌","order":1,"enh":0,"delta":[1,1,0]},
@@ -88,5 +88,13 @@
   {"key":"33-spec-L","row":11,"card":"시그니처","order":9,"enh":0,"delta":[0,1,1]},
   {"key":"33-spec-R","row":22,"card":"시그니처","order":"","enh":0,"delta":[1,0,0]},
   {"key":"35-spec-L","row":11,"card":"시그니처","order":9,"enh":0,"delta":[1,0,0]},
-  {"key":"35-spec-R","row":22,"card":"시그니처","order":"","enh":0,"delta":[0,1,0]}
+  {"key":"35-spec-R","row":22,"card":"시그니처","order":"","enh":0,"delta":[0,1,0]},
+  {"key":"13-spec-R","row":11,"card":"라이브/시즌","order":1,"enh":0,"delta":[0,1,1]},
+  {"key":"17-spec-R","row":22,"card":"라이브/시즌","order":1,"enh":0,"delta":[1,1,0]},
+  {"key":"27-spec-R","row":11,"card":"라이브/시즌","order":1,"enh":0,"delta":[2,2,2]},
+  {"key":"15-team-R","row":11,"card":"라이브/시즌","order":1,"enh":0,"delta":[1,1,1]},
+  {"key":"16-team-L","row":27,"card":"라이브/시즌","order":1,"enh":0,"delta":[0,0,0]},
+  {"key":"16-team-R","row":11,"card":"시그니처","order":1,"enh":0,"delta":[0,0,0]},
+  {"key":"17-team-L","row":11,"card":"라이브/시즌","order":1,"enh":0,"delta":[0,0,0]},
+  {"key":"17-team-R","row":27,"card":"라이브/시즌","order":1,"enh":0,"delta":[0,0,0]}
 ]

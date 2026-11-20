@@ -41,7 +41,7 @@ const ROWS: Row[] = [
 const CHEM: Chem = { commander: "S", catcher: "S", pitchChem: "S", batChem: "S", wbcP: "S", wbcB: "S1" };
 const TABLES = { overrides: {}, customs: [] };
 const CTX = {
-  flags: flagDefaults(), yearInputs: {} as Record<number, number | "">,
+  preferredTeam: "NYY", flags: flagDefaults(), yearInputs: {} as Record<number, number | "">,
   cardByRow: {} as Record<number, string>, orderByRow: {} as Record<number, number>,
   enhByRow: {} as Record<number, number>, yearByRow: {} as Record<number, number>,
   chem: CHEM,
@@ -64,7 +64,7 @@ function toPlayer(r: Row): PlayerInput {
   const n = r[1] === "batter" ? 3 : 2;
   return {
     excelRow: r[0], kind: r[1], pos: r[2], order: r[3], card: r[4], name: `T${r[0]}`, year: r[5],
-    enName: "", team: "", photoUrl: "",
+    enName: "", team: "NYY", cardOvr: 80, photoUrl: "",
     base: [r[6], r[7], n === 3 ? r[8] : ""],
     train: [r[9], r[10], n === 3 ? r[11] : ""],
     spec: [r[12], r[13], n === 3 ? r[14] : ""],
@@ -110,7 +110,7 @@ for (const [row, want] of [[11, 4], [19, 8], [27, 4], [28, 1]] as const) {
     p.finalOv = [0, 0, 0];
     return p;
   });
-  const t = calcDeckTotal({ players, chem: CHEM, flags: flagDefaults(), yearInputs: {} }, TABLES);
+  const t = calcDeckTotal({ players, chem: CHEM, preferredTeam: "NYY", flags: flagDefaults(), yearInputs: {} }, TABLES);
   eq("totals", [t.sp, t.rp, t.bt, Math.round(t.total * 10) / 10], [780, 780, 371, 575.5]);
 }
 
