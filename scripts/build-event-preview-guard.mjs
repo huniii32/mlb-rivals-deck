@@ -23,12 +23,13 @@ export async function buildEventPreviewGuard(root) {
         )
       )
         continue;
-      // Only the isolated Rival Series demo is public. Enumerate generated files
+      // Only the isolated browser demos are public. Enumerate generated files
       // rather than granting access to arbitrary paths beneath a prefix.
       const urlPath = '/' + relative(dist, path).split(sep).join('/');
-      if (urlPath.startsWith('/rivals-series-demo/')) {
+      const demoRoot = ['/rivals-series-demo/', '/deck-score-demo/'].find(prefix => urlPath.startsWith(prefix));
+      if (demoRoot) {
         publicDemoPaths.push(urlPath);
-        if (urlPath === '/rivals-series-demo/index.html') publicDemoPaths.push('/rivals-series-demo/');
+        if (urlPath === demoRoot + 'index.html') publicDemoPaths.push(demoRoot);
       }
       const iv = randomBytes(12);
       const cipher = createCipheriv("aes-256-gcm", assetKey, iv);

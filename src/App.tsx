@@ -13,7 +13,8 @@ import { selectDeckScoreSide, type DeckScoreRegion, type DeckScoreSide } from ".
 import { DeckSaveModal } from "./components/DeckSaveModal";
 import { passwordError, passwordResult, validDeckName, type PasswordCredential } from "./lib/deckPassword";
 import { getClientId, supabase } from "./lib/supabase";
-import { ChemPanel, DeckScorePanel } from "./components/DeckPanel";
+import { DeckScorePanel } from "./components/DeckScorePanel";
+import { ChemPanel } from "./components/DeckPanel";
 import { SkillPanel } from "./components/SkillPanel";
 import { TableEditor } from "./components/TableEditor";
 import { NewsTab } from "./components/NewsTab";
