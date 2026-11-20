@@ -31,6 +31,24 @@ const fs=require('node:fs');
   await catalog.locator('summary').first().click();assert.equal(await page.locator('.pickgrid article').count(),60);
   await page.getByPlaceholder('예: LAD, 투수는 CP 또는 RP').fill('LAD');assert.equal(await page.locator('.pickgrid article').count(),2);
   await catalog.locator('summary').first().click();assert.equal(await page.locator('.pickgrid').isVisible(),false);
+  const forecast=page.locator('#next-picks');
+  const lineupBefore=await page.locator('.roster').innerText();
+  assert.equal(await forecast.getAttribute('open'),null);
+  await forecast.locator('summary').click();
+  assert.equal(await forecast.locator('tbody tr').count(),30);
+  assert.equal(await forecast.getByText(/차순위 · 직전 픽/).count(),7);
+  assert.equal(await forecast.getByText(/규정 162이닝 미달/).count(),4);
+  await forecast.getByLabel('구단 선택').selectOption('ARI');
+  assert.equal(await forecast.locator('tbody tr').count(),1);
+  assert.match(await forecast.innerText(),/공동 1위 · 각 147안타/);
+  await forecast.getByLabel('구단 선택').selectOption('LAD');
+  assert.match(await forecast.innerText(),/야마모토 요시노부/);
+  for(const width of [320,393,768,1366]){
+    await page.setViewportSize({width,height:900});
+    assert.ok(await forecast.evaluate(el=>el.scrollWidth<=el.clientWidth));
+  }
+  await forecast.locator('summary').click();
+  assert.equal(await page.locator('.roster').innerText(),lineupBefore);
   const openCard=async label=>{
     const input=page.getByLabel(label,{exact:true});
     const popup=input.locator('xpath=ancestor::*[@popover][1]');
