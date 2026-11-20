@@ -18,8 +18,8 @@ function innings(outs: number) {
 
 export function RivalPickForecast() {
   const [club, setClub] = useState('');
-  return <details className="panel pick-forecast" id="next-picks" open={window.location.hash === '#next-picks' || undefined}>
-    <summary>20차 라이벌픽 예상 명단 · 30개 구단</summary>
+  return <section className="catalog-content pick-forecast" aria-labelledby="forecast-title">
+    <h2 id="forecast-title">구단별 예상 명단 · 30개 구단</h2>
     <p>게임 내 예고 기준은 구단별 최다 안타와 최다 투구 이닝입니다. 집계 기간은 공개되지 않아 2026 MLB 정규시즌 해당 구단 성적으로 예상했습니다. 18차 픽과 겹치면 차순위 선수를 표시합니다.</p>
     <label>구단 선택
       <select value={club} onChange={e => setClub(e.target.value)}>
@@ -49,5 +49,5 @@ export function RivalPickForecast() {
       </table>;
     })}
     <p className="forecast-sources">기록 기준일 2026.11.20 · <a href="https://www.mlb.com/stats/hits/2026">MLB 안타</a> · <a href="https://www.mlb.com/stats/pitching/innings-pitched/2026">MLB 투구 이닝</a> · <a href="https://community.withhive.com/MLB9IRIVALS/ko/board/10/18460">18차 공식 명단</a></p>
-  </details>;
+  </section>;
 }

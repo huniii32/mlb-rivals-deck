@@ -1,3 +1,5 @@
+import forecast from '../src/data/rivalPickForecast20.json';
+import {forecastRoster, arizonaBatters} from '../src/lib/rivalPickForecastRoster';
 import assert from 'node:assert/strict';
 import {calculateBuffs} from '../src/lib/rivalsSeriesBuffs';
 import {players, teams, findCandidates, summarize, validateLineup, signature, eligible, seriesData, formationSlots, targetFeasibility, editRequirement, makeRequirement} from '../src/lib/rivalsSeries';
@@ -82,3 +84,27 @@ for(const preferredTeams of [['LAD','NYY'],teams.slice(0,8)]) {
 assert.throws(()=>findCandidates({preferredTeams:teams.slice(0,9),starters:5,closers:2,seed:19}));
 assert.throws(()=>findCandidates({preferredTeams:['INVALID'],starters:5,closers:2,seed:19}));
 console.log('Multiple required clubs: three per club, eight-club boundary and invalid input PASS');
+
+for (const batter of arizonaBatters) {
+ const roster=forecastRoster(batter);
+ const projected=roster.filter(p=>p.pick);
+ assert.equal(projected.length,60);
+ for (const team of teams) assert.equal(projected.filter(p=>p.team===team).length,2);
+ assert.ok(projected.every(p=>!picks.some(old=>old.id===p.id) && p.ovr===null));
+ assert.equal(projected.filter(p=>!p.positions.length).length,3);
+ assert.ok(projected.some(p=>p.noticeName===batter && p.team==='AZ'));
+ for (const row of Object.values(forecast)) {
+   assert.ok(projected.some(p=>p.id===row.pitcherCardId && p.noticeName===row.pitcher));
+ }
+ const options={preferredTeams:['LAD','NYY'],starters:6 as const,closers:1 as const,seed:19};
+ const results=findCandidates(options,40,roster);
+ assert.equal(results.length,3);
+ for (const lineup of results) {
+   assert.ok(validateLineup(lineup,options,roster));
+   assert.ok(!validateLineup(lineup,options));
+   const counts=summarize(lineup);
+   assert.ok(counts.byTeam.LAD>=3 && counts.byTeam.NYY>=3);
+   assert.equal(calculateBuffs(counts).match,'exact');
+ }
+}
+console.log('20차 예상 카드 대조, AZ 동률 시나리오, 19/4/5 탐색 PASS');

@@ -3,49 +3,87 @@ import {createRoot} from 'react-dom/client';
 import {players, teams, seriesData, summarize, targetFeasibility, editRequirement, type Selection, type Formation} from '../lib/rivalsSeries';
 import {calculateBuffs, buffRules, buffLabels, buffText} from '../lib/rivalsSeriesBuffs';
 import {RivalPickForecast} from './RivalPickForecast';
+import {arizonaBatters} from '../lib/rivalPickForecastRoster';
 import './rivalsSeries.css';
 
 const isDemo = import.meta.env.VITE_SERIES_DEMO === '1';
+function isForecastRound() {
+  return window.location.hash === '#next-picks';
+}
+
 function App() {
+  const [next, setNext] = useState(isForecastRound);
+  const [visitedNext, setVisitedNext] = useState(isForecastRound);
+  const [visitedCurrent, setVisitedCurrent] = useState(() => !isForecastRound());
+  useEffect(() => {
+    function syncRound() {
+      const forecast = isForecastRound();
+      if (forecast) setVisitedNext(true);
+      else setVisitedCurrent(true);
+      setNext(forecast);
+    }
+    window.addEventListener('hashchange', syncRound);
+    return () => window.removeEventListener('hashchange', syncRound);
+  }, []);
+
+  return <main>
+    <header><a href={isDemo?"https://mlb-rivals-deck.pages.dev/#simulator":`${import.meta.env.BASE_URL}#simulator`}>R<span>·</span> RIVALS DECK</a><span className="pill">{isDemo?'개발 데모 · 실제 덱 변경 없음':'라인업 구성 도우미 · 실제 덱 변경 없음'}</span></header>
+    <nav className="round-picker" aria-label="라이벌픽 회차 선택">
+      <button type="button" disabled={!next} aria-label="현재 18차 라이벌픽 보기" onClick={() => { window.location.hash = 'current-picks'; }}>←</button>
+      <div aria-live="polite">
+        <h1>{next ? '다음 20차 라이벌픽' : '현재 18차 라이벌픽'}</h1>
+        <p>{next ? '(20차 업데이트부터 · 일정 미정)' : '(2026.11.19 11:00 KST ~ 20차 업데이트 전)'}</p>
+      </div>
+      <button type="button" disabled={next} aria-label="다음 20차 라이벌픽 보기" onClick={() => { window.location.hash = 'next-picks'; }}>→</button>
+    </nav>
+    {visitedCurrent && <RoundPlanner forecast={false} visible={!next}/>}
+    {visitedNext && <RoundPlanner forecast visible={next}/>}
+    <footer>RIVALS DECK · 라이벌 시리즈 덱 구성{isDemo?' 개발 데모':''}</footer>
+  </main>;
+}
+
+function RoundPlanner({forecast, visible}: {forecast: boolean; visible: boolean}) {
+  const [tieBatter, setTieBatter] = useState(arizonaBatters[0]);
+  const version = forecast ? 'live20-forecast' : seriesData.version;
   const [selectedTeams,setSelectedTeams] = useState<string[]>([]);
   const [starters,setStarters] = useState<Formation['starters']>(5);
   const [closers,setClosers] = useState<Formation['closers']>(2);
   const [nonLiveCount,setNonLiveCount] = useState(6);
   const [roles,setRoles] = useState<Record<string,string>>({});
-  const feasibility=targetFeasibility();
+  const feasibility=forecast ? {possible:null,reason:'20차 예상 선수와 18차 카드 자료로 계산한 후보입니다. 공식 명단과 카드 능력이 공개되면 결과가 달라질 수 있습니다.'} : targetFeasibility();
   const roleFor=(slot:string)=>roles[slot] || (Number(slot.slice(2))<=3?'승리조':Number(slot.slice(2))<=5?'추격조':'롱릴리프');
   const [results,setResults] = useState<Selection[][]>([]);
   const [active,setActive] = useState(0); const [query,setQuery] = useState('');
-  const [run,setRun] = useState({teams:[] as string[],starters:5 as Formation['starters'],closers:2 as Formation['closers'],nonLiveCount:6,seed:19}); const [busy,setBusy] = useState(true);
+  const [run,setRun] = useState({teams:[] as string[],starters:5 as Formation['starters'],closers:2 as Formation['closers'],nonLiveCount:6,seed:19,forecastBatter:forecast ? arizonaBatters[0] : undefined}); const [busy,setBusy] = useState(true);
   const [error,setError] = useState('');
   useEffect(()=>{
     let active=true; const worker=new Worker(new URL('../lib/rivalsSeriesWorker.ts',import.meta.url),{type:'module'});
     setBusy(true);setError('');
     worker.onmessage=(event: MessageEvent<{results?:Selection[][];error?:string}>)=>{if(!active)return;setResults(event.data.results||[]);setError(event.data.error||'');setActive(0);setBusy(false);worker.terminate();};
     worker.onerror=()=>{if(active){setError('조합을 계산하지 못했습니다. 다시 시도해주세요.');setBusy(false);}worker.terminate();};
-    worker.postMessage({preferredTeams:run.teams,starters:run.starters,closers:run.closers,nonLiveCount:run.nonLiveCount,seed:run.seed});
+    worker.postMessage({preferredTeams:run.teams,starters:run.starters,closers:run.closers,nonLiveCount:run.nonLiveCount,seed:run.seed,forecastBatter:run.forecastBatter});
     return ()=>{active=false;worker.terminate();};
   },[run]);
   const lineup = results[active] || []; const counts = summarize(lineup);
   const buffs = calculateBuffs(counts);
   const status = !lineup.length ? '조합 없음' : buffs.match==='unknown' ? '등급 미확인 · 확인된 효과만 합산' : buffs.match==='exact' ? '19/4/5 계산 일치' : buffs.match==='above' ? '목표 이상' : '목표 미달 · 부족한 조건 확인';
-  const dirty = selectedTeams.join(',') !== run.teams.join(',') || starters !== run.starters || closers !== run.closers || nonLiveCount !== run.nonLiveCount;
+  const dirty = (forecast && tieBatter !== run.forecastBatter) || selectedTeams.join(',') !== run.teams.join(',') || starters !== run.starters || closers !== run.closers || nonLiveCount !== run.nonLiveCount;
   const picks = players.filter(p => p.pick && `${p.noticeName} ${p.team} ${p.positions.join(' ')}`.toLowerCase().includes(query.toLowerCase()));
   function search() {
     setBusy(true);setResults([]);setActive(0);
-    setRun({teams:[...selectedTeams],starters,closers,nonLiveCount,seed:run.seed+1});
+    setRun({teams:[...selectedTeams],starters,closers,nonLiveCount,seed:run.seed+1,forecastBatter:forecast ? tieBatter : undefined});
   }
   function updateCard(slot:string, patch:Parameters<typeof editRequirement>[2]) {
     setResults(current=>current.map((r,i)=>i===active?editRequirement(r,slot,patch):r));
   }
   function download() {
-    const file=new Blob([JSON.stringify({version:seriesData.version,buffRulesVersion:'user-screenshots-20261119',verification:'card-requirements-not-owned-player-roster',buffs,formation:{batters:9,benchBatters:5,pitchers:12,starters:run.starters,closers:run.closers,relievers:12-run.starters-run.closers},roles:Object.fromEntries(lineup.filter(x=>x.slot.startsWith('RP')).map(x=>[x.slot,roleFor(x.slot)])),options:run,counts,lineup},null,2)],{type:'application/json'});
-    const url=URL.createObjectURL(file); const a=document.createElement('a');a.href=url;a.download=`rivals-series-${seriesData.version}-candidate-${active+1}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    const file=new Blob([JSON.stringify({version,forecastBatter:run.forecastBatter,cardDataVersion:seriesData.version,buffRulesVersion:'user-screenshots-20261119',verification:'card-requirements-not-owned-player-roster',buffs,formation:{batters:9,benchBatters:5,pitchers:12,starters:run.starters,closers:run.closers,relievers:12-run.starters-run.closers},roles:Object.fromEntries(lineup.filter(x=>x.slot.startsWith('RP')).map(x=>[x.slot,roleFor(x.slot)])),options:run,counts,lineup},null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(file); const a=document.createElement('a');a.href=url;a.download=`rivals-series-${version}-candidate-${active+1}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
-  return <main>
-    <header><a href={isDemo?"https://mlb-rivals-deck.pages.dev/#simulator":`${import.meta.env.BASE_URL}#simulator`}>R<span>·</span> RIVALS DECK</a><span className="pill">{isDemo?'개발 데모 · 실제 덱 변경 없음':'라인업 구성 도우미 · 실제 덱 변경 없음'}</span></header>
-    <section className="series-heading"><div><p className="eyebrow">RIVAL SERIES · 2026.11.19</p><h1>라이벌 시리즈 조합 탐색</h1></div><span>목표 버프 <strong>19 / 4 / 5</strong></span></section>
-    <section className="panel controls"><div><h2>조합 탐색</h2><p>19/4/5에 일치하는 후보를 우선하고, 부족하면 목표에 가까운 후보를 함께 표시합니다.</p></div><details className="team-selector"><summary>포함할 구단 <span>{selectedTeams.length?selectedTeams.join(' · '):'전체 구단에서 탐색'}</span><small>{selectedTeams.length} / 8개 선택</small></summary><p>선택한 구단마다 최소 3명씩 포함합니다. 선택하지 않으면 전체 구단에서 자유롭게 탐색합니다.</p><fieldset><legend>포함할 구단 복수 선택</legend>{teams.map(t=><label key={t}><input type="checkbox" checked={selectedTeams.includes(t)} disabled={selectedTeams.length>=8&&!selectedTeams.includes(t)} onChange={e=>setSelectedTeams(current=>e.target.checked?[...current,t].sort():current.filter(x=>x!==t))}/>{t}</label>)}</fieldset><button className="secondary" onClick={()=>setSelectedTeams([])} disabled={!selectedTeams.length}>선택 초기화</button></details><div className="inputs"><label>선발<select aria-label="선발 인원" value={starters} onChange={e=>setStarters(Number(e.target.value) as Formation['starters'])}>{[4,5,6].map(n=><option key={n} value={n}>{n}명</option>)}</select></label><label>마무리<select aria-label="마무리 인원" value={closers} onChange={e=>setClosers(Number(e.target.value) as Formation['closers'])}>{[1,2].map(n=><option key={n} value={n}>{n}명</option>)}</select></label><label>시즌 일반 카드<select aria-label="시즌 일반 카드 수" value={nonLiveCount} onChange={e=>setNonLiveCount(Number(e.target.value))}>{[0,1,2,3,4,5,6].map(n=><option key={n} value={n}>{n}명</option>)}</select></label><span>중계 {12-starters-closers}명</span><button onClick={search} disabled={busy}>{busy?'조합 찾는 중…':'새 조합 찾기'}</button></div>{dirty&&<p role="status">조건이 바뀌었습니다. ‘새 조합 찾기’를 눌러 반영하세요.</p>}</section>
+  if (!visible) return null;
+  return <>
+    <section className="series-heading"><div><h2>{forecast ? '예상 라이벌픽 조합 탐색' : '라이벌 시리즈 조합 탐색'}</h2>{forecast && <p>20차 예상 명단에 18차 카드 등급과 포지션을 적용합니다. 카드 포지션이 확인되지 않은 얀디 디아스(TB), 조던 워커(STL), 에두아르도 로드리게스(AZ)는 탐색에서 제외합니다.</p>}</div><span>목표 버프 <strong>19 / 4 / 5</strong></span></section>
+    <section className="panel controls"><div><h2>조합 탐색</h2><p>19/4/5에 일치하는 후보를 우선하고, 부족하면 목표에 가까운 후보를 함께 표시합니다.</p></div><details className="team-selector"><summary>포함할 구단 <span>{selectedTeams.length?selectedTeams.join(' · '):'전체 구단에서 탐색'}</span><small>{selectedTeams.length} / 8개 선택</small></summary><p>선택한 구단마다 최소 3명씩 포함합니다. 선택하지 않으면 전체 구단에서 자유롭게 탐색합니다.</p><fieldset><legend>포함할 구단 복수 선택</legend>{teams.map(t=><label key={t}><input type="checkbox" checked={selectedTeams.includes(t)} disabled={selectedTeams.length>=8&&!selectedTeams.includes(t)} onChange={e=>setSelectedTeams(current=>e.target.checked?[...current,t].sort():current.filter(x=>x!==t))}/>{t}</label>)}</fieldset><button className="secondary" onClick={()=>setSelectedTeams([])} disabled={!selectedTeams.length}>선택 초기화</button></details><div className="inputs">{forecast && <label>AZ 공동 1위 타자<select value={tieBatter} onChange={e=>setTieBatter(e.target.value)}>{arizonaBatters.map(name=><option key={name}>{name}</option>)}</select></label>}<label>선발<select aria-label="선발 인원" value={starters} onChange={e=>setStarters(Number(e.target.value) as Formation['starters'])}>{[4,5,6].map(n=><option key={n} value={n}>{n}명</option>)}</select></label><label>마무리<select aria-label="마무리 인원" value={closers} onChange={e=>setClosers(Number(e.target.value) as Formation['closers'])}>{[1,2].map(n=><option key={n} value={n}>{n}명</option>)}</select></label><label>시즌 일반 카드<select aria-label="시즌 일반 카드 수" value={nonLiveCount} onChange={e=>setNonLiveCount(Number(e.target.value))}>{[0,1,2,3,4,5,6].map(n=><option key={n} value={n}>{n}명</option>)}</select></label><span>중계 {12-starters-closers}명</span><button onClick={search} disabled={busy}>{busy?'조합 찾는 중…':'새 조합 찾기'}</button></div>{dirty&&<p role="status">조건이 바뀌었습니다. ‘새 조합 찾기’를 눌러 반영하세요.</p>}</section>
     <div className="workspace"><aside className="panel summary"><p className="eyebrow">COMPOSITION</p><h2>구성 조건 확인</h2><div className="tabs" role="tablist" aria-label="조합 후보">{results.map((r,i)=><button key={i} role="tab" aria-selected={active===i} onClick={()=>setActive(i)}>조합 {i+1}<small>{(() => {const b=calculateBuffs(summarize(r));return `${b.total.all}/${b.total.batter}/${b.total.pitcher} · ${b.match==='exact'?'계산 일치':b.match==='unknown'?'미확인':b.match==='above'?'목표 이상':'미달'}`;})()}</small></button>)}</div><dl><div><dt>등록 선수</dt><dd>{lineup.length} / 26</dd></div><div><dt>Live 카드</dt><dd>{counts.live}명</dd></div><div><dt>시즌 일반 카드</dt><dd>{lineup.filter(x=>x.player.requirement&&!x.player.live).length}명</dd></div><div><dt>Rival Pick</dt><dd>{counts.pick}명</dd></div><div><dt>S등급 / A등급</dt><dd>{counts.s} / {counts.a}명</dd></div><div><dt>등급 미확인</dt><dd>{counts.unknownGrade}명</dd></div><div><dt>3명 이상 구단</dt><dd>{counts.teamsOfThree}개</dd></div></dl>{run.teams.length>0&&lineup.length>0&&<div className="required-teams" aria-live="polite"><strong>선택 구단 · 각 3명 이상</strong>{run.teams.map(t=><span key={t} data-met={(counts.byTeam[t]||0)>=3}>{t} {counts.byTeam[t]||0}명 · {(counts.byTeam[t]||0)>=3?'충족':'미달'}</span>)}</div>}<h3>구단별 인원</h3>{Object.entries(counts.byTeam).sort(([a],[b])=>a.localeCompare(b)).map(([t,n])=><div className="teamrow" key={t}><span>{t}</span><div><i style={{width:`${Math.min(100,n/6*100)}%`}}/></div><b>{n}명</b></div>)}<div className="pending" data-match={buffs.match}><strong>전체 +{buffs.total.all} / 타자 +{buffs.total.batter} / 투수 +{buffs.total.pitcher}</strong><p>상자 획득 확률 +{buffs.total.box}%</p><p>{status}</p>{lineup.length>0&&counts.live<20&&<p role="status">라이브 20명 조건에 {20-counts.live}명 부족합니다.</p>}</div></aside><section className="panel result"><div className="title"><div><p className="eyebrow">LINEUP CANDIDATES</p><h2>추천 구성 확인</h2></div><button className="secondary" onClick={download} disabled={!lineup.length || busy}>조합 저장</button></div>{lineup.length>0&&<div className="lineup-buff-strip" aria-live="polite"><strong>전체 +{buffs.total.all} · 타자 +{buffs.total.batter} · 투수 +{buffs.total.pitcher}</strong><span>Live {counts.live} · Pick {counts.pick} · S {counts.s} / A {counts.a}</span></div>}{error?<p role="alert">{error}</p>:!lineup.length?<p role="status">{busy?'편성 조건과 버프를 계산하고 있습니다…':'이번 탐색 범위에서 완성된 후보를 찾지 못했습니다. 조건을 바꿔 다시 탐색하세요.'}</p>:<><p className="caption">{run.teams.length?`${run.teams.join(' · ')} 각 3명 이상 · `:''}선발 {run.starters}명 · 중계 {12-run.starters-run.closers}명 · 마무리 {run.closers}명 · {status}</p><div className="roster">{[
       {name:'주전 타자',caption:'STARTING NINE',kind:'batters',items:lineup.filter(x=>!/^(SP|RP|CP|후보)/.test(x.slot))},
       {name:'후보 타자',caption:'BENCH',kind:'bench',items:lineup.filter(x=>x.slot.startsWith('후보'))},
@@ -62,13 +100,11 @@ function App() {
       {slot.startsWith('RP')&&<label className="relief-role">불펜 역할<select aria-label={`${slot} 역할`} className="role-select" value={roleFor(slot)} onChange={e=>setRoles({...roles,[slot]:e.target.value})}>{['승리조','추격조','롱릴리프'].map(role=><option key={role}>{role}</option>)}</select></label>}
     </article>)}</div>{['starters','bullpen','closers'].includes(group.kind)&&group.items.length>2&&<p className="pitcher-swipe-hint">좌우로 밀어 전체 투수 카드를 확인하세요.</p>}</section>)}</div></>}</section>
 </div>
-    <details className="panel pick-catalog"><summary><span>라이벌픽 선수 · 이번 업데이트 60명</span><span className="catalog-toggle">목록 펼치기 / 접기</span></summary><div className="catalog-content"><div className="title"><div><p className="eyebrow">OFFICIAL RIVAL PICKS</p><h2>공식 Pick 선수 목록</h2><p>공지 OVR은 Pick 효과가 이미 포함된 값입니다. 육성 후 최종 능력치가 아닙니다.</p></div><label>선수·구단·포지션 검색<input placeholder="예: LAD, 투수는 CP 또는 RP" value={query} onChange={e=>setQuery(e.target.value)}/></label></div><p className="caption">검색 결과 {picks.length}명</p><div className="pickgrid">{picks.map(p=><article key={p.id}><small>{p.team} · {p.positions.join('/')} · {p.grade || '등급 미확인'}</small><strong>{p.noticeName}</strong><span>OVR <b>{p.ovr}</b></span></article>)}</div></div></details>
-    <RivalPickForecast/>
+    {forecast ? <details className="panel pick-catalog"><summary>라이벌픽 예상 선수 · 30개 구단</summary><RivalPickForecast/></details> : <details className="panel pick-catalog"><summary><span>라이벌픽 선수 · 이번 업데이트 60명</span><span className="catalog-toggle">목록 펼치기 / 접기</span></summary><div className="catalog-content"><div className="title"><div><p className="eyebrow">OFFICIAL RIVAL PICKS</p><h2>공식 Pick 선수 목록</h2><p>공지 OVR은 Pick 효과가 이미 포함된 값입니다. 육성 후 최종 능력치가 아닙니다.</p></div><label>선수·구단·포지션 검색<input placeholder="예: LAD, 투수는 CP 또는 RP" value={query} onChange={e=>setQuery(e.target.value)}/></label></div><p className="caption">검색 결과 {picks.length}명</p><div className="pickgrid">{picks.map(p=><article key={p.id}><small>{p.team} · {p.positions.join('/')} · {p.grade || '등급 미확인'}</small><strong>{p.noticeName}</strong><span>OVR <b>{p.ovr}</b></span></article>)}</div></div></details>}
     <details className="panel calculation"><summary>계산식 · 19/4/5 구성 기준</summary><div className="calculation-content"><section className="panel recipe"><h2>19/4/5 구성 기준</h2><p><strong>8개 구단에서 각 3명 이상</strong>을 모아 24자리를 채우고, 남은 2명으로 다른 조건을 맞춥니다. 같은 선수가 구단·Live·Pick·등급 조건에 함께 집계됩니다.</p><details><summary>전체 +19 · 타자 +4 · 투수 +5 계산표</summary><table><thead><tr><th>조건</th><th>전체</th><th>타자</th><th>투수</th></tr></thead><tbody>{[['8개 구단 × 3명 이상',8,0,0],['Live 20명 이상',6,1,1],['Pick 15명 이상',3,1,1],['S등급 20명',2,2,2],['A등급 6명',0,0,1],['합계',19,4,5]].map(([label,all,bat,pitch])=><tr key={label}><th>{label}</th><td>+{all}</td><td>+{bat}</td><td>+{pitch}</td></tr>)}</tbody></table><p>26명 = S 20명 + A 6명. 후보 타자 5명도 조건에 포함됩니다.</p></details></section>
     <aside className="notice"><strong>게임 내 버프 조건표를 반영했습니다.</strong><p>Pick 선수는 실명으로, 일반 카드는 구단·등급·카드 종류 조건으로 표시합니다. 일반 카드의 실제 보유 여부와 동일 선수 중복 여부는 직접 확인해주세요. 구단·라이브·Pick·S/A등급의 누적 효과를 계산합니다. S 20명과 A 6명을 함께 구성하면 투수 +1을 추가로 받을 수 있습니다. 타자 주전 9명·후보 5명과 투수 12명을 포함해 계산합니다. 선발은 4~6명, 마무리는 최대 2명이며 나머지는 중계입니다. CP의 중계 배치는 허용하지 않습니다.</p></aside>
-    <details className="notice"><summary><strong>{feasibility.possible===false?'26인 편성 기준 · 이번 공지 명단으로는 19/4/5를 맞출 수 없습니다.':'목표 달성 가능 여부 확인 중'}</strong></summary><p>{feasibility.reason}</p><p>가능한 후보의 실제 합계와 부족한 효과를 비교하세요. 후보 탐색 결과 자체는 전체 최적해를 보장하지 않습니다.</p></details><details className="buff-details"><summary>버프 계산 근거</summary>{(Object.keys(buffRules) as (keyof typeof buffRules)[]).map(category=><div key={category}><h3>{buffLabels[category]}</h3>{buffs.breakdown.filter(row=>row.category===category).map((row,i)=><div className={row.active?'buff-row on':'buff-row'} key={i}><span>{row.team?`${row.team} `:''}{row.count}/{row.at}명 {row.active?'✓':'미달'}</span><small>{buffText(row.effect)}</small></div>)}</div>)}</details></div></details>
+    <details className="notice"><summary><strong>{feasibility.possible===false?'26인 편성 기준 · 이번 공지 명단으로는 19/4/5를 맞출 수 없습니다.':'예상 조합의 계산 기준'}</strong></summary><p>{feasibility.reason}</p><p>가능한 후보의 실제 합계와 부족한 효과를 비교하세요. 후보 탐색 결과 자체는 전체 최적해를 보장하지 않습니다.</p></details><details className="buff-details"><summary>버프 계산 근거</summary>{(Object.keys(buffRules) as (keyof typeof buffRules)[]).map(category=><div key={category}><h3>{buffLabels[category]}</h3>{buffs.breakdown.filter(row=>row.category===category).map((row,i)=><div className={row.active?'buff-row on':'buff-row'} key={i}><span>{row.team?`${row.team} `:''}{row.count}/{row.at}명 {row.active?'✓':'미달'}</span><small>{buffText(row.effect)}</small></div>)}</div>)}</details></div></details>
     <details className="panel"><summary>출처와 이용 안내</summary><p>공식 확률표 Live 카드 {players.length}개 중 축약 이름으로 포지션을 식별하지 못한 {seriesData.excludedFromSearch.length}개는 탐색에서 제외했습니다. S / A는 해당 날짜 팩 목록에서 확인한 등급이며 미확인 등급은 추정하지 않습니다.</p><p>160번의 제한된 후보 탐색 후 구단·등급 조건을 조정해 후보를 만듭니다. 시즌 일반 카드는 기본 6명이며 0~6명으로 탐색할 수 있습니다. 후보 안에서는 일반 카드 종류를 더 바꿀 수 있고 버프가 즉시 다시 계산됩니다. 최적해나 전체 조합의 존재 여부를 증명하지 않습니다. 버프 규칙은 2026년 11월 19일 제공된 게임 화면 4장을 기준으로 합니다. 같은 구단 단계별 효과와 각 유형의 효과를 누적하며 S/A등급 인원은 별개로 계산합니다. 일반 카드는 라이브·시즌 S/A등급의 필요 조건이며 특정 선수의 실재 여부·보유 여부를 확인한 명단이 아닙니다. 카드 선택 시 해당 구단·등급·종류·슬롯 포지션을 만족하고 이미 배치한 선수와 중복되지 않아야 합니다. 보유 카드·현재 덱과 교체 비교·고정 선수·최종 OVR 순위는 아직 지원하지 않습니다.</p><p>승리조·추격조·롱릴리프는 역할별 인원 제한 없이 배치할 수 있습니다. 중계 카드의 역할을 바꿔도 이 라인업 버프 합계는 같습니다. 서버 저장 및 운영 DB 연결은 없습니다. ‘조합 저장’은 이 기기에 JSON 파일을 내려받습니다.</p><ul>{seriesData.sources.map(s=><li key={s.file}><a href={s.url} target="_blank" rel="noreferrer">{s.file==='notice-18460.html'?'공식 Live 업데이트':s.file} ↗</a></li>)}</ul><a href="https://community.withhive.com/MLB9IRIVALS/ko/board/23/6480" target="_blank" rel="noreferrer">라이벌 시리즈 공식 가이드 (2024년 자료 · 버프 수치는 제공된 게임 화면 기준) ↗</a></details>
-    <footer>RIVALS DECK · 라이벌 시리즈 덱 구성 · 2026.11.19{isDemo?' 개발 데모':''}</footer>
-  </main>;
+  </>;
 }
 createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>);
