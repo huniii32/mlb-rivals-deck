@@ -1,3 +1,4 @@
+import { useSiteUsage } from "./lib/siteUsage";
 import { rankingEligibility } from "./lib/rankingEligibility";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import type { Kind, PlayerInput, SkillTables } from "./lib/engine";
@@ -122,6 +123,7 @@ export default function App() {
     if (new URLSearchParams(window.location.search).get("event") === "1" && (!hash || hash.startsWith("access_token=") || hash.startsWith("error="))) return "simulator";
     return ["lineup", "skills", "simulator", "ranking", "news"].includes(hash) ? hash as Page : hash.startsWith("d=") ? "ranking" : "lineup";
   });
+  useSiteUsage(tab === "simulator" ? null : tab);
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "dark");
   const [modal, setModal] = useState<"inquiry" | "patch" | "guide" | "inbox" | null>(null);
   const [preview, setPreview] = useState<Deck | null>(null);

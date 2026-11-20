@@ -1,3 +1,4 @@
+import { useSiteUsage } from "../lib/siteUsage";
 import { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { PGlite } from "@electric-sql/pglite";
@@ -18,6 +19,7 @@ const ROLE_LABELS: Record<DemoRole, string> = {
   guest: "비참가자 화면",
 };
 function Demo() {
+  useSiteUsage("event-demo");
   const [db, setDb] = useState<PGlite>(),
     [error, setError] = useState(""),
     [role, setRole] = useState<DemoRole>(() =>

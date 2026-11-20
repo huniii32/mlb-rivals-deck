@@ -1,3 +1,4 @@
+import { useSiteUsage } from "../lib/siteUsage";
 import { lazy, Suspense, useState } from "react";
 import type { SkillTables, PlayerInput } from "../lib/engine";
 import type { RankRef } from "../lib/deckFile";
@@ -28,6 +29,7 @@ export default function Simulator({
       ? "event"
       : "home",
   );
+  useSiteUsage(screen === "home" ? "simulator" : `sim-${screen}`);
   return (
     <div className="simulator-hub">
       {screen === "home" ? (

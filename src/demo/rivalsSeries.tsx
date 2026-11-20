@@ -1,3 +1,4 @@
+import { useSiteUsage } from "../lib/siteUsage";
 import React, {useState, useEffect} from 'react';
 import {createRoot} from 'react-dom/client';
 import {teams, seriesData as baseline, summarize, targetFeasibility, editRequirement, type Selection, type Formation} from '../lib/rivalsSeries';
@@ -28,6 +29,7 @@ function ReleasePlanner({release,visible}: {release:OfficialRound;visible:boolea
 }
 
 function App() {
+  useSiteUsage("rivals-series");
   const [hash,setHash]=useState(()=>window.location.hash.slice(1));
   const [now,setNow]=useState(Date.now);
   const {pages,currentKey}=pickPages(releases,now);

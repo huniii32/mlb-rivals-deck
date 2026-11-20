@@ -1,3 +1,4 @@
+import { useSiteUsage } from "../../src/lib/siteUsage";
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import "../../src/components/renewal/styles/layout.css";
@@ -6,6 +7,7 @@ import { selectDeckScoreSide } from "../../src/lib/deckScoreTargets";
 import "./preview.css";
 
 function Preview() {
+  useSiteUsage("deck-score");
   const [night, setNight] = useState(() => matchMedia("(prefers-color-scheme: dark)").matches);
   const [team, setTeam] = useState("LAD");
   const [flags, setFlags] = useState<Record<string, boolean>>({ "10-team-L": true, "11-team-R": true, "14-team-L": true, "33-spec-R": true });
