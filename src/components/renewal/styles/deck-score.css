@@ -23,6 +23,13 @@
 .score-effects > :only-child { grid-column: 1 / -1; }
 .score-picker .score-effect { display: flex; align-items: flex-start; gap: 9px; text-align: left; white-space: normal; word-break: keep-all; overflow-wrap: anywhere; padding: 12px; color: var(--text); background: var(--paper); border: 1px solid var(--line); border-radius: 10px; box-shadow: none; font-weight: 500; line-height: 1.5; }
 .score-picker .score-effect:only-child { justify-self: center; width: min(100%, max(215px, calc((100% - 8px) / 2))); justify-content: center; text-align: center; }
+.score-picker .score-effect:not(:only-child) {
+  display: grid;
+  grid-template-columns: 17px minmax(0, 1fr) 17px;
+  align-items: center;
+  text-align: center;
+}
+.score-effect:not(:only-child) .score-marker { width: 17px; margin-top: 0; }
 .score-picker .score-effect:hover, .score-picker .score-effect:focus-visible { border-color: var(--blue); }
 .score-picker .score-effect[aria-pressed="true"] { background: var(--nav); border-color: var(--blue); box-shadow: inset 3px 0 var(--blue); }
 .score-effect strong, .score-year-effect strong { display: block; font-size: 15px; }
