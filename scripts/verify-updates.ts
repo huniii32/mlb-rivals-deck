@@ -9,8 +9,8 @@ const check=(name:string,ok:boolean)=>{if(ok)pass++;else{fail++;console.log("FAI
 const near=(a:number,b:number)=>Math.abs(a-b)<1e-8;
 const tables={overrides:{},customs:[]};
 const flags=Object.fromEntries(Object.keys(flagDefaults()).map(k=>[k,false]));
-const deck:Deck={id:"d",name:"검증 덱",updatedAt:1,players:LINEUP.map(l=>blankPlayer(l.row,l.kind,l.pos,l.order)),chem:{...DEFAULT_CHEM},flags,yearInputs:{}};
-deck.players[0]={...deck.players[0],name:"타자",card:"시그니처 블랙",year:2026,finalOv:[100,100,100]};
+const deck:Deck={id:"d",name:"검증 덱",preferredTeam:"LAD",updatedAt:1,players:LINEUP.map(l=>blankPlayer(l.row,l.kind,l.pos,l.order)),chem:{...DEFAULT_CHEM},flags,yearInputs:{}};
+deck.players[0]={...deck.players[0],name:"타자",team:"LAD",card:"시그니처 블랙",year:2026,finalOv:[100,100,100]};
 const edit=(field:Partial<Deck["players"][number]>)=>applyDeckUpdate(deck,{players:deck.players.map((p,i)=>i===0?{...p,...field}:p)},tables);
 check("training redistribution updates entered finals",edit({train:[3,-2,1]}).players[0].finalOv.join()==="103,98,101");
 check("enhancement table updates entered finals",edit({enhLv:1}).players[0].finalOv.join()==="100,101,100");

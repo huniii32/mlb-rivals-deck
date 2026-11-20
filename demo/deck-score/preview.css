@@ -1,0 +1,7 @@
+.score-demo > header { background: var(--paper); border-bottom: 1px solid var(--line); padding: 12px max(18px,calc((100% - 840px)/2)); display: flex; align-items: center; justify-content: space-between; }
+.score-demo > header b { font-size: 20px; letter-spacing: -1px; }
+.score-demo article { max-width: 876px; margin: auto; padding: 24px 18px 50px; }
+.score-demo article h1 { font-size: clamp(25px,4vw,34px); line-height: 1.25; }
+.score-demo article > p { margin: 7px 0 17px; font-size: 15px; }
+.score-demo .demo-sheet { background: var(--paper); padding: clamp(12px,3vw,28px); border-radius: 16px; border: 1px solid var(--line); }
+@media(max-width:500px){.score-demo article { padding-inline: 10px; }}

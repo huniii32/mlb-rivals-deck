@@ -301,7 +301,7 @@ console.log(
 );
 
 // The public exception is a build-time file manifest, not a path-prefix bypass.
-const publicPaths=['/rivals-series-demo/','/rivals-series-demo/index.html','/rivals-series-demo/assets/app.js','/rivals-series-demo/assets/worker.js'];
+const publicPaths=['/deck-score-demo/', '/deck-score-demo/index.html', '/deck-score-demo/assets/app.js', '/rivals-series-demo/','/rivals-series-demo/index.html','/rivals-series-demo/assets/app.js','/rivals-series-demo/assets/worker.js'];
 const seriesWorker=createPreviewWorker(undefined,{ownerKeyHash,sessionKey,assetKey,publicDemoPaths:publicPaths});
 const seriesEnv={ASSETS:{fetch:async()=>new Response(ciphertext,{headers:{'Content-Type':'text/html'}})}};
 for(const path of publicPaths) {
@@ -310,7 +310,8 @@ for(const path of publicPaths) {
  assert.equal(response.headers.get('X-Robots-Tag'),'noindex, nofollow, noarchive');
 }
 assert.equal((await seriesWorker.fetch(request('/rivals-series-demo'),seriesEnv)).headers.get('Location'),'/rivals-series-demo/');
-for(const path of ['/','/event-demo/','/event-control/','/assets/app.js','/rivals-series-demo/assets/unknown.js','/rivals-series-demo/../../event-demo/','/rivals-series-demo/%2e%2e/event-demo/','/rivals-series-demo/%252e%252e/event-demo/','/_worker.js'])
+assert.equal((await seriesWorker.fetch(request('/deck-score-demo'),seriesEnv)).headers.get('Location'),'/deck-score-demo/');
+for(const path of ['/','/event-demo/','/event-control/','/assets/app.js','/deck-score-demo/assets/unknown.js','/rivals-series-demo/assets/unknown.js','/rivals-series-demo/../../event-demo/','/rivals-series-demo/%2e%2e/event-demo/','/rivals-series-demo/%252e%252e/event-demo/','/_worker.js'])
  assert.equal((await seriesWorker.fetch(request(path),seriesEnv)).status,401,path);
 assert.equal((await seriesWorker.fetch(new Request('https://preview.example.test/rivals-series-demo/',{method:'POST'}),seriesEnv)).status,405);
 assert.equal((await seriesWorker.fetch(request('/rivals-series-demo/'),{...seriesEnv,EVENT_ACCESS_TEAM_DOMAIN:'broken'})).status,200);

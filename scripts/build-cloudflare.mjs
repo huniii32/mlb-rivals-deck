@@ -47,6 +47,9 @@ if(privatePreview){
   const demo=spawnSync(process.execPath,['scripts/build-event-web-demo.mjs'],{cwd:root,stdio:'inherit',env});
   if(demo.error)throw demo.error;
   if(demo.status!==0)process.exit(demo.status??1);
+  const deckScore=spawnSync(process.execPath,['scripts/build-deck-score-demo.mjs'],{cwd:root,stdio:'inherit',env});
+  if(deckScore.error)throw deckScore.error;
+  if(deckScore.status!==0)process.exit(deckScore.status??1);
   const series=spawnSync(process.execPath,['scripts/build-rivals-series-demo.mjs'],{cwd:root,stdio:'inherit',env});
   if(series.error)throw series.error;
   if(series.status!==0)process.exit(series.status??1);

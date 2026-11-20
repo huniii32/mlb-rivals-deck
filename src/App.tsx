@@ -13,7 +13,8 @@ import { selectDeckScoreSide, type DeckScoreRegion, type DeckScoreSide } from ".
 import { DeckSaveModal } from "./components/DeckSaveModal";
 import { passwordError, passwordResult, validDeckName, type PasswordCredential } from "./lib/deckPassword";
 import { getClientId, supabase } from "./lib/supabase";
-import { ChemPanel, DeckScorePanel } from "./components/DeckPanel";
+import { DeckScorePanel } from "./components/DeckScorePanel";
+import { ChemPanel } from "./components/DeckPanel";
 import { SkillPanel } from "./components/SkillPanel";
 import { TableEditor } from "./components/TableEditor";
 import { NewsTab } from "./components/NewsTab";
@@ -422,7 +423,8 @@ export default function App() {
 
       {setting && <RenewalDialog title={setting} close={() => setSetting(null)}>
         <div className="working-settings">
-          {setting === "덱스코어" ? <DeckScorePanel flags={flags} yearInputs={yearInputs}
+          {setting === "덱스코어" ? <DeckScorePanel preferredTeam={deck.preferredTeam ?? ""} setPreferredTeam={preferredTeam => patchDeck({ preferredTeam })}
+            flags={flags} yearInputs={yearInputs}
             toggleFlag={k => patchDeck({ flags: { ...flags, [k]: !flags[k] } })} setRowSide={pickRowSide}
             setYearInput={(r, v) => patchDeck({ yearInputs: { ...yearInputs, [r]: v } })} />
             : setting === "팀 버프" ? <ChemPanel chem={chem} setChem={chem => patchDeck({ chem })} />
