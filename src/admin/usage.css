@@ -1,0 +1,69 @@
+.usage-panel {
+  --ink:#162b44; --muted:#52677b; --stroke:#d6e0e8; --teal:#007b77;
+  color:var(--ink); font-family:inherit; font-variant-numeric:tabular-nums;
+  margin:26px auto; max-width:1280px;
+}
+.usage-panel h1,.usage-panel h2,.usage-panel p {margin:0}
+.usage-heading,.usage-toolbar,.usage-sync,.usage-card>header {display:flex;align-items:center;justify-content:space-between;gap:12px}
+.usage-heading {flex-wrap:wrap;margin-bottom:18px}
+.usage-heading h1 {font-size:clamp(25px,3vw,36px);line-height:1.22;letter-spacing:-.045em}
+.usage-sync {color:var(--muted);font-size:13px}
+.usage-panel select,.usage-sync button,.usage-step button {
+  background:#fff;color:var(--ink);border:1px solid var(--stroke);font:inherit;border-radius:8px;padding:7px 10px
+}
+.usage-panel select {max-width:100%;cursor:pointer}
+.usage-panel button:focus-visible,.usage-panel select:focus-visible,.usage-panel summary:focus-visible {outline:3px solid #227caf;outline-offset:2px}
+.usage-toolbar {flex-wrap:wrap;margin-bottom:16px}
+.usage-toolbar nav {display:flex;gap:3px;padding:4px;background:#e5ecf1;border-radius:11px}
+.usage-toolbar nav button {border:0;background:transparent;color:#455c71;padding:8px 14px;border-radius:8px;font-size:14px}
+.usage-toolbar nav button[aria-pressed=true] {color:#fff;background:#203b51;box-shadow:0 2px 4px #15324d20}
+.usage-toolbar label {color:var(--muted);font-size:14px}.usage-toolbar select {margin-left:5px}
+.usage-kpis {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.usage-kpis>div,.usage-card {min-width:0;border:1px solid var(--stroke);border-radius:14px;background:#fff;box-shadow:0 3px 10px #1b304607}
+.usage-kpis>div {display:grid;align-content:start;gap:5px;padding:18px 20px}
+.usage-kpis span {color:var(--muted);font-size:14px;font-weight:650}
+.usage-kpis strong {font-size:clamp(21px,2.6vw,35px);line-height:1.3;letter-spacing:-.04em;overflow-wrap:anywhere}
+.usage-kpis small {font-size:15px;margin-left:5px}
+.usage-kpis p,.usage-footnote {color:var(--muted);font-size:12px}
+.usage-kpis .usage-online {background:linear-gradient(112deg,#143749,#1d4956);border-color:#163e50;color:white}
+.usage-online span,.usage-online p {color:#d5e8eb}.usage-online i {display:inline-block;width:8px;height:8px;margin-right:7px;background:#65dfbd;border-radius:50%}
+.usage-charts {display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:16px;align-items:start}
+.usage-card {padding:clamp(14px,2vw,24px)}
+.usage-card h2 {font-size:clamp(17px,2vw,21px);line-height:1.4;letter-spacing:-.03em}
+.usage-card select {font-size:13px}
+.usage-plot {display:flex;gap:9px;margin:27px 0 33px;height:180px}
+.usage-axis {display:flex;flex-direction:column;justify-content:space-between;font-size:11px;text-align:right;color:var(--muted)}
+.usage-bars {display:flex;flex:1;min-width:0;align-items:stretch;border-bottom:1px solid #bacad4;
+  background:repeating-linear-gradient(to top,transparent 0,transparent calc(50% - 1px),#e8eef2 calc(50% - 1px),#e8eef2 50%)}
+.usage-bars button {display:flex;align-items:flex-end;justify-content:center;position:relative;min-width:0;flex:1;border:0;padding:0;border-radius:4px 4px 0 0;background:transparent}
+.usage-bars button[aria-pressed=true] {background:#0b7b7410;box-shadow:inset 0 -2px var(--teal)}
+.usage-bar-fill {display:block;width:70%;max-width:48px;background:#66aca9;border-radius:4px 4px 0 0;transition:height .25s ease}
+.usage-bars button[aria-pressed=true] .usage-bar-fill {background:var(--teal)}
+.usage-bars small {position:absolute;top:calc(100% + 5px);white-space:nowrap;color:var(--muted);font-size:11px;font-weight:500}
+.usage-bars button:first-child:not(:only-child) small {left:0}.usage-bars button:last-child:not(:only-child) small {right:0}
+.usage-day-readout {display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;padding:9px 12px;border-radius:8px;background:#eff6f6;font-size:13px}
+.usage-step {display:flex;gap:3px;margin-left:auto}.usage-step button {padding:0;width:32px;height:30px;font-size:22px;line-height:1}
+.usage-ranking ol {list-style:none;padding:0;margin:20px 0}
+.usage-ranking li {margin-bottom:15px}.usage-ranking li>div:first-child {display:flex;justify-content:space-between;gap:8px;font-size:14px}
+.usage-track {height:7px;background:#eef1f7;margin-top:5px;border-radius:6px;overflow:hidden}
+.usage-track i {display:block;height:100%;border-radius:6px;background:#5072b8;transition:width .25s ease}
+.usage-card summary {cursor:pointer;font-weight:650;font-size:14px}.usage-ranking summary {color:#405f83}
+.usage-panel table {width:100%;border-collapse:collapse;margin-top:14px;font-size:14px}
+.usage-panel th,.usage-panel td {padding:8px 4px;text-align:right;border-bottom:1px solid #e3eaf0}
+.usage-panel th:first-child {text-align:left}.usage-panel thead {color:var(--muted)}.usage-table {margin-top:16px}
+.usage-panel .usage-footnote,.usage-panel p[role=alert],.usage-panel .usage-empty {margin:12px 0}.usage-empty {color:var(--muted)}
+@media(max-width:850px){.usage-charts{grid-template-columns:1fr}.usage-kpis>div{padding:14px}}
+@media(max-width:600px){.usage-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.usage-heading,.usage-toolbar{gap:8px}.usage-toolbar nav button{padding:8px 10px}.usage-plot{height:150px}.usage-panel table{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.usage-bar-fill,.usage-track i{transition:none}}
+.operator-shell:has(>.usage-panel)>.operator-mail-tabs {
+  display:flex;align-items:center;gap:4px;margin:0 0 20px;border-bottom:1px solid #cfdce6
+}
+.operator-shell:has(>.usage-panel)>.operator-mail-tabs button {
+  padding:9px 12px;color:#516377;background:transparent;border:0;border-bottom:2px solid transparent;border-radius:0;font-size:14px
+}
+.operator-shell:has(>.usage-panel)>.operator-mail-tabs button[aria-pressed=true] {color:#17495a;border-bottom-color:#007b77}
+.operator-shell:has(>.usage-panel)>.operator-mail-tabs button:last-child {margin-left:auto}
+@media(max-width:420px){.operator-shell:has(>.usage-panel)>.operator-mail-tabs{gap:0}.operator-shell:has(>.usage-panel)>.operator-mail-tabs button{padding:8px 6px;font-size:13px}}
+.usage-site-count {padding:1px 5px;margin-left:4px;border-radius:5px;background:#526d8119;font-size:12px}
+.usage-toolbar button[aria-pressed=true] .usage-site-count {background:#ffffff25}
+@media(max-width:380px){.usage-toolbar nav button{padding:8px 7px;font-size:13px}}
