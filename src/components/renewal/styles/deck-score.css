@@ -18,22 +18,22 @@
 .score-picker .score-help, .score-picker .score-notes p { margin: 7px 0 14px; font-size: 14px; line-height: 1.5; color: var(--text); }
 .score-picker .score-line { display: grid; grid-template-columns: 52px 1fr; align-items: start; gap: 14px; padding: 13px 0; border-top: 1px solid var(--line); }
 .score-picker h4 { margin: 10px 0 0; font-size: 19px; font-variant-numeric: tabular-nums; line-height: 1.25; letter-spacing: -.5px; }
-.score-picker h4 small { margin-left: 2px; font-size: 12px; font-weight: 550; }
 .score-line-body, .score-effects > * { min-width: 0; }
 .score-effects { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .score-effects > :only-child { grid-column: 1 / -1; }
 .score-picker .score-effect { display: flex; align-items: flex-start; gap: 9px; text-align: left; white-space: normal; word-break: keep-all; overflow-wrap: anywhere; padding: 12px; color: var(--text); background: var(--paper); border: 1px solid var(--line); border-radius: 10px; box-shadow: none; font-weight: 500; line-height: 1.5; }
+.score-picker .score-effect:only-child { justify-self: center; width: min(100%, max(215px, calc((100% - 8px) / 2))); justify-content: center; text-align: center; }
 .score-picker .score-effect:hover, .score-picker .score-effect:focus-visible { border-color: var(--blue); }
 .score-picker .score-effect[aria-pressed="true"] { background: var(--nav); border-color: var(--blue); box-shadow: inset 3px 0 var(--blue); }
 .score-effect strong, .score-year-effect strong { display: block; font-size: 15px; }
 .score-effect strong + span, .score-year-effect { font-size: 14px; }
 .score-marker { display: grid; place-items: center; flex: 0 0 17px; height: 17px; border: 1px solid var(--muted); border-radius: 50%; margin-top: 3px; font: bold 12px/1 system-ui; }
 .score-effect[aria-pressed="true"] .score-marker { background: #315d9e; border-color: #315d9e; color: white; }
-.score-year-effect { padding: 8px 0; }
+.score-year-effect { padding: 8px 0; text-align: center; }
 .score-year-effect strong { display: inline; }
-.score-year { padding: 10px 0 0; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; }
-.score-year label { font-size: 13px; }
-.score-year input { width: 100px; margin-left: 6px; }
+.score-year { padding-top: 10px; display: grid; justify-items: center; gap: 6px; text-align: center; }
+.score-picker .score-year label { display: flex; flex-direction: row; align-items: center; gap: 8px; font-size: 13px; }
+.score-year input { width: 100px; text-align: center; }
 .score-picker .score-year p { flex-basis: auto; color: var(--text); font-size: 13px; margin: 0; }
 .score-notes { border-top: 1px solid var(--line); padding-top: 14px; font-size: 14px; }
 .score-notes summary { cursor: pointer; color: var(--blue); font-weight: 650; }

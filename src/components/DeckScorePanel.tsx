@@ -60,7 +60,7 @@ export function DeckScorePanel({ preferredTeam, setPreferredTeam, flags, toggleF
     {list.filter(g => !range || Math.floor(g.threshold / 100) * 100 === Number(range)).map(g => {
       const { yearRow, targetRow } = g;
       return <section key={g.region + g.row} aria-label={`${g.threshold}점 구간`} className="score-line">
-        <h4>{g.threshold}<small>점</small></h4>
+        <h4>{g.threshold}</h4>
         <div className="score-line-body">
           <div className="score-effects">
             {g.sides.map(side => {
