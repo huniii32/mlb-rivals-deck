@@ -69,4 +69,5 @@ checkFiles(dist);
 if(existsSync(resolve(dist,'downloads')))throw new Error('개인용 프로그램 다운로드 폴더를 배포할 수 없습니다.');
 copyFileSync(resolve(root,'deployment/cloudflare/_headers'),resolve(dist,'_headers'));
 if(privatePreview) await buildEventPreviewGuard(root);
+else writeFileSync(resolve(dist,"_routes.json"),JSON.stringify({version:1,include:["/api/usage"],exclude:[]}));
 console.log('Cloudflare Pages 준비 완료: dist/ · 루트 주소 · 공개 Supabase 키 · 개인용 프로그램 제외');

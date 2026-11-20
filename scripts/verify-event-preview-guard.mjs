@@ -317,3 +317,28 @@ assert.equal((await seriesWorker.fetch(new Request('https://preview.example.test
 assert.equal((await seriesWorker.fetch(request('/rivals-series-demo/'),{...seriesEnv,EVENT_ACCESS_TEAM_DOMAIN:'broken'})).status,200);
 assert.equal((await seriesWorker.fetch(request('/event-demo/'),{...seriesEnv,EVENT_ACCESS_TEAM_DOMAIN:'broken'})).status,503);
 console.log('Public series demo: enumerated HTML/JS/worker readable without key; other previews, unknown paths, traversal and write methods remain blocked.');
+
+// A demo heartbeat can only write to the telemetry RPC and never receives its response body.
+{
+  const {collectUsage}=await import('../deployment/cloudflare/usage.mjs');
+  const original=globalThis.fetch;
+  const writes=[];
+  globalThis.fetch=async(url,init)=>{
+    assert.equal(String(url),'https://example.supabase.co/rest/v1/rpc/record_site_usage');
+    writes.push(JSON.parse(init.body));
+    return new Response('database response must stay private');
+  };
+  try {
+    const config={...env,VITE_SUPABASE_URL:'https://example.supabase.co',VITE_SUPABASE_ANON_KEY:'test-public-key'};
+    const heartbeat=page=>new Request('https://preview.example.test/api/usage',{method:'POST',
+      headers:{Origin:'https://preview.example.test'},body:JSON.stringify({site:'admin',page,view:'test',browser:'test',seq:1,seconds:0,active:true})});
+    assert.equal((await worker.fetch(request('/api/usage'),config)).status,405);
+    assert.equal((await worker.fetch(new Request('https://preview.example.test/api/usage',{method:'POST'}),config)).status,403);
+    const response=await worker.fetch(heartbeat('rivals-series'),config);
+    assert.equal(response.status,204);
+    assert.equal(await response.text(),'');
+    assert.equal((await collectUsage(heartbeat('lineup'),config,false)).status,204);
+    assert.equal((await collectUsage(heartbeat('admin-event'),config,false)).status,204);
+    assert.deepEqual(writes.map(row=>row.p_site),['demo','service','admin']);
+  } finally {globalThis.fetch=original;}
+}

@@ -81,3 +81,11 @@ npm run preview -- --host 127.0.0.1 --port 4174
 - [빌드 설정](https://developers.cloudflare.com/pages/configuration/build-configuration/)
 - [헤더 설정](https://developers.cloudflare.com/pages/configuration/headers/)
 - [환경 변수](https://developers.cloudflare.com/pages/configuration/build-configuration/#environment-variables)
+
+## 운영자 이용 통계
+
+기존 관리자 DB에 `scripts/supabase_mig_site_usage.sql`을 한 번 적용한다. Production과 Preview의 Pages Functions에서 같은 Supabase 프로젝트의 기존 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`를 읽을 수 있어야 한다. 관리자 로그인 후 ‘이용 통계’에서 실제 서비스, 개발 데모, 관리자 사이트의 현재 접속·기간별 방문 브라우저·조회·열람 시간과 화면별 순위를 확인한다.
+
+Cloudflare 운영·미리보기 주소에서 수집한다. 관리자 로그인 및 관리 화면은 관리자 범주에 집계한다. 포커스가 있는 보이는 탭에서 최초 조회와 30초 간격의 활동 신호를 보낸다. 탭 종료 신호가 누락돼도 90초 뒤 현재 접속에서 제외한다. 한 브라우저의 여러 탭은 사이트별로 중복 제거하지만, 기기·브라우저·미리보기 도메인이 다르면 별도 방문자로 센다. 방문 시작일을 한국시간으로 집계하며 계측을 배포하고 SQL을 적용한 시점부터 기록된다.
+
+통계 테이블에는 브라우저에서 생성한 임의 ID, 조회 ID, 미리 정의된 화면 이름, 시각과 누적 초만 저장한다. 덱 이름·쪽지 내용·검색어·전체 URL은 수집 항목에서 제외한다. 새 조회가 들어오면 32일이 지난 조회를 정리한다. 통계 조회 RPC는 기존 운영자 세션을 검증한다.

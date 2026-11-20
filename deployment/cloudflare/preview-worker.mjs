@@ -1,4 +1,5 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
+import { collectUsage } from "./usage.mjs";
 import { OWNER_KEY_HASH } from "./owner-preview-key.mjs";
 import { ownerAccess, privateAsset } from "./owner-preview.mjs";
 
@@ -67,6 +68,7 @@ export function createPreviewWorker(
   return {
     async fetch(request, env) {
       const url = new URL(request.url);
+      if (url.pathname === "/api/usage") return collectUsage(request, env, true);
       if (publicFiles.has(url.pathname)) return serveAsset(request, env, assetKey);
       if (!url.pathname.endsWith('/') && publicFiles.has(url.pathname + '/'))
         return privateResponse(new Response(null, {status:307,headers:{Location:url.pathname+'/'+url.search}}));

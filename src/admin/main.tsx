@@ -6,6 +6,8 @@ import type { MessagePrize } from "../lib/privateMessages";
 import AdminMailbox from "../components/messages/AdminMailbox";
 import EventAdmin from "../components/events/EventAdmin";
 import "../components/EventPage.css";
+import UsagePanel from "./UsagePanel";
+import {useSiteUsage} from "../lib/siteUsage";
 import "./style.css";
 
 const SESSION_KEY = "rivals-event-operator-session";
@@ -32,7 +34,8 @@ function errorText(e: unknown) {
 function AdminApp() {
   const [login, setLogin] = useState<Login | null>(savedLogin);
   const [messagePrize, setMessagePrize] = useState<MessagePrize | undefined>();
-  const [view, setView] = useState<"event" | "messages">(() => location.hash === "#messages" ? "messages" : "event");
+  const [view, setView] = useState<"event" | "messages" | "usage">(() => location.hash === "#usage" ? "usage" : location.hash === "#messages" ? "messages" : "event");
+  useSiteUsage(login ? `admin-${view}` : "admin-login");
   const [password, setPassword] = useState("");
   const [state, setState] = useState<EventState | null>(null);
   const [busy, setBusy] = useState(false);
@@ -69,14 +72,14 @@ function AdminApp() {
   const refresh = useRef(request); refresh.current = request;
   useEffect(() => {
     if (!login) return;
-    void refresh.current();
+    if (view !== "usage") void refresh.current();
     const timer = setInterval(() => {
       if (Date.parse(login.expires_at) <= Date.now()) {
         clearLogin(); setError("로그인이 만료되었습니다. 다시 로그인해주세요.");
-      } else void refresh.current();
+      } else if (view !== "usage") void refresh.current();
     }, 15000);
     return () => { clearInterval(timer); ++version.current; };
-  }, [login]);
+  }, [login, view === "usage"]);
   async function signIn(e: React.FormEvent) {
     e.preventDefault();
     if (pending.current) return;
@@ -101,12 +104,14 @@ function AdminApp() {
   }
   return <main className="operator-shell">
     <header className="operator-header"><strong>Rivals Deck · 운영자 관리</strong><a href={`${import.meta.env.BASE_URL}?event=1#simulator`}>참가자 화면 보기 →</a></header>
-    {state && login ? <><nav className="operator-mail-tabs" aria-label="관리 메뉴">
+    {login && <nav className="operator-mail-tabs" aria-label="관리 메뉴">
       <button aria-pressed={view === "event"} onClick={() => setView("event")}>이벤트 관리</button>
       <button aria-pressed={view === "messages"} onClick={() => { setMessagePrize(undefined); setView("messages"); }}>개인 쪽지 보내기</button>
-      {view === "messages" && <button disabled={busy} onClick={() => void signOut()}>로그아웃</button>}
-    </nav>{view === "messages" ? <AdminMailbox key={login.token} session={login.token} state={state} initialPrize={messagePrize} /> : <EventAdmin state={state} busy={busy} error={error} message={message}
-      onMessage={prize => { setMessagePrize(prize); setView("messages"); }} onAction={request} onRefresh={() => void request()} onLogout={() => void signOut()} />}</> :
+      <button aria-pressed={view === "usage"} onClick={() => setView("usage")}>이용 통계</button>
+      {view !== "event" && <button disabled={busy} onClick={() => void signOut()}>로그아웃</button>}
+    </nav>}
+    {login && view === "usage" ? <UsagePanel session={login.token} onExpired={clearLogin}/> : login && state ? (view === "messages" ? <AdminMailbox key={login.token} session={login.token} state={state} initialPrize={messagePrize} /> : <EventAdmin state={state} busy={busy} error={error} message={message}
+      onMessage={prize => { setMessagePrize(prize); setView("messages"); }} onAction={request} onRefresh={() => void request()} onLogout={() => void signOut()} />) :
       <section className="operator-login event-panel">
         <div className="eyebrow">EVENT MANAGEMENT</div>
         <h1>{login ? "관리 화면 불러오기" : "관리자 로그인"}</h1>
