@@ -197,15 +197,15 @@ function candidateScore(lineup: Selection[]) {
   return (b.match==='exact'?10000:0)-distance*500-c.unknownGrade*200 + Math.min(c.pick,15)*8 + Math.min(c.s,20)*2 + Math.min(c.a,6)*2;
 }
 
-export function targetFeasibility() {
-  const picks=players.filter(p=>p.pick);
+export function targetFeasibility(roster = players) {
+  const picks=roster.filter(p=>p.pick);
   const batters=picks.filter(p=>p.positions.some(pos=>[...fieldPositions,'DH'].includes(pos)));
   const uniqueBatterClubs=new Set(batters.map(p=>p.team)).size===batters.length;
   const sp=picks.filter(p=>p.positions.includes('SP')).length;
   const rp=picks.filter(p=>p.positions.includes('RP')).length;
   if(uniqueBatterClubs && sp===0 && rp===1) return {
     possible:false as const,
-    reason:'현재 공지에는 구단별 Pick 타자 1명, 선발 Pick 0명, 중계 Pick 1명(AZ), 나머지 Pick 투수는 CP입니다. 19/4/5에는 8개 구단 각 3명 이상과 Pick 15명이 필요합니다. 26자리에서 이 구단 조건을 유지하면 최대 10개 구단을 쓸 수 있어 Pick 타자는 최대 10명, Pick 투수는 CP 2명과 RP 1명을 합쳐 최대 3명입니다. 합계 13명으로 Pick 15명에 미달합니다. 일반 S/A 카드를 자유롭게 채우거나 시즌 카드를 섞어도 Pick 인원 상한은 달라지지 않습니다.',
+    reason:'현재 공지에는 구단별 Pick 타자 1명, 선발 Pick 0명, 중계 Pick 1명, 나머지 Pick 투수는 CP입니다. 19/4/5에는 8개 구단 각 3명 이상과 Pick 15명이 필요합니다. 26자리에서 이 구단 조건을 유지하면 최대 10개 구단을 쓸 수 있어 Pick 타자는 최대 10명, Pick 투수는 CP 2명과 RP 1명을 합쳐 최대 3명입니다. 합계 13명으로 Pick 15명에 미달합니다. 일반 S/A 카드를 자유롭게 채우거나 시즌 카드를 섞어도 Pick 인원 상한은 달라지지 않습니다.',
   };
   return {possible:null,reason:'전체 조합의 가능 여부는 아직 증명하지 않았습니다.'};
 }

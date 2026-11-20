@@ -108,3 +108,16 @@ for (const batter of arizonaBatters) {
  }
 }
 console.log('20차 예상 카드 대조, AZ 동률 시나리오, 19/4/5 탐색 PASS');
+
+import {pickPages} from '../src/lib/rivalPickRounds';
+const official18={round:18,effectiveAt:'2026-11-19T11:00:00+09:00',version:'2026-11-19-live18'};
+const official20={round:20,effectiveAt:'2026-12-03T11:00:00+09:00',version:'2026-12-03-live20'};
+const rolloverTime=Date.parse(official20.effectiveAt);
+assert.ok(pickPages([official18],rolloverTime).pages[1].forecast);
+const before=pickPages([official20,official18],rolloverTime-1);
+assert.equal(before.currentKey,official18.version);
+assert.equal(before.pages[1].title,'다음 20차 라이벌픽');
+const after=pickPages([official18,official20],rolloverTime);
+assert.equal(after.currentKey,official20.version);
+assert.deepEqual(after.pages.map(p=>p.title),['이전 18차 라이벌픽','현재 20차 라이벌픽','다음 라이벌픽']);
+assert.equal(after.pages[2].key,'pending');

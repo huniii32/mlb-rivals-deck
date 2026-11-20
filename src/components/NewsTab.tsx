@@ -1,6 +1,17 @@
 import { useState } from "react";
 import noticesData from "../data/notices.json";
 
+import skillChanges from "../data/officialSkillChanges.json";
+
+interface SkillNotice {
+  date: string;
+  title: string;
+  url: string;
+  mentions: string[];
+  effects: {name:string; columns:string[]; rows:string[][]}[];
+}
+const skillNotices: SkillNotice[] = skillChanges;
+
 interface Notice {
   title: string;
   date: string;
@@ -15,6 +26,7 @@ const boardOf = (u: string) => u.match(/\/board\/(\d+)\//)?.[1] ?? "";
 const SECTIONS = [
   { id: "", label: "전체" },
   { id: "2", label: "공지사항" },
+  { id: "9", label: "버전 업데이트" },
   { id: "10", label: "Live 업데이트" },
   { id: "11", label: "개발자 노트" },
 ] as const;
@@ -45,7 +57,7 @@ function loadLinks(): LinkItem[] {
 
 /** 소식 탭: 공식 공지(빌드 시 수집) + 정보글(직접 등록) */
 export function NewsTab() {
-  const [sub, setSub] = useState<"official" | "info">("official");
+  const [sub, setSub] = useState<"official" | "skills" | "info">("official");
   const [q, setQ] = useState("");
   const [lang, setLang] = useState("");
   const [sec, setSec] = useState<string>("");
@@ -70,6 +82,7 @@ export function NewsTab() {
         <button className={sub === "official" ? "on" : ""} onClick={() => setSub("official")}>
           공식사이트
         </button>
+        <button className={sub === "skills" ? "on" : ""} onClick={() => setSub("skills")}>스킬 업데이트</button>
         <button className={sub === "info" ? "on" : ""} onClick={() => setSub("info")}>
           정보글 ({links.length})
         </button>
@@ -109,6 +122,20 @@ export function NewsTab() {
           </table>
           {filtered.length > 100 && <p className="muted">100건까지만 표시 — 검색으로 좁혀보세요.</p>}
         </div>
+      ) : sub === "skills" ? (
+        <section className="card">
+          <h2>공식 스킬 업데이트</h2>
+          <p>개발자 노트와 버전 업데이트에 공개된 스킬 내용입니다. 레벨별 조건과 점수 환산은 별도로 검토합니다.</p>
+          {!skillNotices.length && <p>수집된 스킬 변경 공지가 없습니다.</p>}
+          {skillNotices.map(n=><details key={n.url}>
+            <summary>{n.date.slice(0,10)} · {n.title}</summary>
+            {n.mentions.map((line,i)=><p key={i}>{line}</p>)}
+            {n.effects.map((e,i)=><details key={i}><summary>{e.name}</summary>
+              {e.rows.map((row,j)=><p key={j}>{row.map((v,k)=>e.columns[k]+' '+v).join(' · ')}</p>)}
+            </details>)}
+            <p><a href={n.url} target="_blank" rel="noreferrer">공식 원문 보기 ↗</a></p>
+          </details>)}
+        </section>
       ) : (
         <div className="card">
           <div className="row">
