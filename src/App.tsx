@@ -475,7 +475,7 @@ export default function App() {
         save={saveDeck} close={() => setSaveOpen(false)} />}
 
       {selPlayer && selRes && <RenewalDialog title="선수 편집" player close={() => setSelected(null)}>
-        <RenewalPlayerEditor player={selPlayer} result={selRes}
+        <RenewalPlayerEditor players={players} player={selPlayer} result={selRes}
           update={patch => update(selPlayer.excelRow, patch)} close={() => setSelected(null)}
           tables={tables} counts={bullpenCounts(players)} />
       </RenewalDialog>}

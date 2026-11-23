@@ -2,6 +2,8 @@ import { fmtScore, type PlayerInput, type SkillTables } from "../lib/engine";
 import { createScoreEvaluator, meetsScoreGoal, type ScoreChoices } from "../lib/simulatorScore";
 import { readSession, saveSession, object, counter, finite, strings } from '../lib/simulatorSession';
 import SimulationAnalysis from './SimulationAnalysis';
+import {SkillPercentileGuide} from './SkillPercentileGuide';
+import {SkillPercentile} from './SkillPercentile';
 import SkillStartingPanel from './SkillStartingPanel';
 import type { SkillPreset } from '../lib/simulatorPreset';
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -86,6 +88,7 @@ export default function SkillSimulator({ tables, players = [] }: { tables: Skill
     setBusy(true); setMessage("");
     const next: Stats = { ...stats, tiers: { ...stats.tiers }, recent: [...stats.recent] };
     let completed = 0, found = false;
+    let runBest: Trial | undefined;
     try {
       const draw = createSimulator(settings, browserRandom(), lockedFirst);
       while (completed < trials && !abort.signal.aborted && !found) {
@@ -98,7 +101,13 @@ export default function SkillSimulator({ tables, players = [] }: { tables: Skill
           next.total++;
           next.samples++;
           const record = { number: next.total, board, hit, score };
-          if(score!==null&&(next.best===null||score>next.best)){next.best=score;next.bestTrial=record;}
+          if (score !== null) {
+            if (!runBest || Math.round(score * 100) > Math.round(runBest.score! * 100)) runBest = record;
+            if (next.best === null || Math.round(score * 100) > Math.round(next.best * 100)) {
+              next.best = score;
+              next.bestTrial = record;
+            }
+          }
           if (hit) { next.hits++; next.firstHit ??= record; }
           for (const s of newlyDrawnSkills(board, lockedFirst)) next.tiers[s.tier] = (next.tiers[s.tier] ?? 0) + 1;
           next.recent = [record, ...next.recent].slice(0, 8);
@@ -107,11 +116,26 @@ export default function SkillSimulator({ tables, players = [] }: { tables: Skill
         found = result.stopped;
         if (mounted.current) {
           setStats({ ...next, tiers: { ...next.tiers }, recent: [...next.recent] });
-          setCurrentBoard(next.recent[0].board);
+          const selected = found && stopAtGoal ? next.recent[0] : runBest ?? next.recent[0];
+          setCurrentBoard(selected.board);
         }
         if (completed < trials && !found) await tick();
       }
-      if (mounted.current) setMessage(abort.signal.aborted ? `${nf.format(completed)}회 진행 후 중지했습니다.` : found ? `${stopAtGoal ? mode === "score" ? "점수 목표" : "목표 조합" : "전용 스킬"} 등장! 이번 실행 ${nf.format(completed)}장 사용 · 누적 ${nf.format(next.total)}장` : stopAtGoal ? `${nf.format(completed)}회 안에 목표를 달성하지 못했습니다.` : `${nf.format(completed)}회 시뮬레이션 완료`);
+      if (mounted.current) {
+        const last = next.recent[0];
+        const summary = [`이번 실행 ${nf.format(completed)}회`];
+        if (found && stopAtGoal) {
+          summary.push(mode === "score" ? "목표 점수 도달" : "목표 조합 획득");
+        } else {
+          if (found) summary.push("전용 스킬 등장: " + newlyDrawnSkills(last.board, lockedFirst)
+            .filter(skill => specialTiers.includes(skill.tier)).map(skill => skill.name).join(", "));
+          else if (abort.signal.aborted) summary.push("사용자 중지");
+          else if (stopAtGoal) summary.push("목표 미달");
+          if (runBest) summary.push(`${nf.format(runBest.number - stats.total)}회째 최고점 ${fmtScore(runBest.score!)}점 표시`);
+          else summary.push("평가 가능한 점수가 없어 마지막 조합 표시");
+        }
+        setMessage(summary.join(" · "));
+      }
     } catch (error) {
       if (mounted.current) setMessage(error instanceof Error ? error.message : "시뮬레이션을 실행하지 못했습니다.");
     } finally {
@@ -133,14 +157,15 @@ export default function SkillSimulator({ tables, players = [] }: { tables: Skill
     </div>
 
     <SkillStartingPanel settings={settings} tables={tables} players={players} disabled={busy} apply={usePreset}/>
-    <div className="sim-stats" aria-label="시뮬레이션 통계">
-      <div><span>사용한 변경권</span><strong>{nf.format(stats.total)}<small>장</small></strong></div>
-      <div><span>현재 {scorer.scoredSlots}개 합계{lockedFirst ? " · 잠금 제외" : ""}</span><strong>{evaluation.total === null ? "—" : fmtScore(evaluation.total)}<small>점</small></strong></div>
-      <div><span>최고 {scorer.scoredSlots}개 합계</span><strong>{stats.best === null ? "—" : fmtScore(stats.best)}<small>점</small></strong></div>
-      <div><span>목표 달성</span><strong>{hasGoal ? nf.format(stats.hits) : "—"}<small>회</small></strong></div>
-    </div>
-
     <div className="card sim-play">
+      <div className="sim-results-heading"><h3>변경 결과</h3><SkillPercentileGuide settings={settings} locked={lockedFirst}/></div>
+      <div className="sim-stats" aria-label="시뮬레이션 통계">
+        <div><span>사용한 변경권</span><strong>{nf.format(stats.total)}<small>장</small></strong></div>
+        <div><span>현재 {scorer.scoredSlots}개 합계{lockedFirst ? " · 잠금 제외" : ""}</span><strong>{evaluation.total === null ? "—" : fmtScore(evaluation.total)}<small>점</small></strong></div>
+        <div><span>누적 최고 {scorer.scoredSlots}개 합계</span><strong>{stats.best === null ? "—" : fmtScore(stats.best)}<small>점</small></strong></div>
+        <div><span>목표 달성</span><strong>{hasGoal ? nf.format(stats.hits) : "—"}<small>회</small></strong></div>
+      </div>
+
       <div className={`sim-board ${count === 4 ? "four" : ""}`} aria-label="변경 결과" aria-busy={busy}>
         {Array.from({ length: count }, (_, i) => {
           const skill = i === 0 && lockedFirst ? lockedFirst : currentBoard[i];
@@ -154,6 +179,10 @@ export default function SkillSimulator({ tables, players = [] }: { tables: Skill
           </article>;
         })}
       </div>
+      {!busy && evaluation.total !== null && <SkillPercentile settings={settings} locked={lockedFirst}
+        target={evaluation.total} scores={scorer.scores}/>}
+      {!busy && currentBoard.length === count && evaluation.total === null &&
+        <p className="muted">점수가 없는 스킬·레벨이 있어 현재 조합의 상위 비율을 계산할 수 없습니다.</p>}
       <div className="sim-actions">
         <div className="sim-target-row">
           <label>진행 방식 <select aria-label="시뮬레이션 목표 방식" disabled={busy} value={mode} onChange={e => { setMode(e.target.value as typeof mode); reset(); }}><option value="free">자유 변경</option><option value="skills">목표 스킬 조합</option><option value="score">스킬 점수 목표</option></select></label>
@@ -178,7 +207,7 @@ export default function SkillSimulator({ tables, players = [] }: { tables: Skill
         {mode === "score" && !possible && <p className="sim-error">{!scoreValid ? "목표 점수는 0보다 큰 숫자로 입력하세요." : `현재 평가 기준의 상한은 ${fmtScore(scorer.upperBound)}점입니다.`}</p>}
         {mode === "skills" && !possible && <p className="sim-error" role="alert">현재 카드·변경권·잠금 상태에서 달성할 수 없는 조합입니다.</p>}
         <p className="sim-small muted">{lockedFirst ? "첫 줄 잠금 · 2·3번째만 변경" : "전체 슬롯 변경"}{specialTiers.length > 0 ? " · 횟수 버튼은 새 전용 스킬 등장 시 중단" : ""}{mode !== "free" ? " · 목표 실행은 목표 달성 시 중단" : ""}</p>
-        <div className="sim-message" role="status">{busy ? `${nf.format(stats.total)}회 진행 중…` : message || "변경 버튼을 눌러 시작하세요."}</div>
+        <div className="sim-message" role="status">{busy ? `${nf.format(stats.total)}회 진행 중…` : message || "여러 번 변경하면 이번 실행에서 가장 높은 점수의 조합을 표시합니다."}</div>
       </div>
     </div>
 

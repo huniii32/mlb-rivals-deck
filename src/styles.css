@@ -733,3 +733,17 @@ button.dia-opt.on { border-color: #facc15; box-shadow: 0 0 14px rgba(250, 204, 2
 .ranking-roster-guide{border:1px solid var(--line,#dbe2ec);border-radius:10px;padding:14px;background:var(--soft,#f3f5f9);font-size:14px;line-height:1.6}
 .ranking-roster-guide p{margin:8px 0}.ranking-roster-guide small{font-size:13px;display:block}.ranking-roster-counts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.ranking-roster-counts span{padding:7px 9px;border:1px solid var(--line,#dbe2ec);border-radius:6px}.ranking-roster-counts b{white-space:nowrap}.ranking-roster-counts .is-missing{color:var(--danger,#b42318)}.ranking-roster-counts .is-complete{color:var(--blue,#315d9c)}.ranking-update-held{font-size:14px;line-height:1.7}
 .player-ranking-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.player-ranking-groups section{min-width:0}.player-ranking-groups table{width:100%;table-layout:fixed}.player-ranking-groups th,.player-ranking-groups td{overflow-wrap:anywhere}.player-ranking-groups th:first-child{width:36px}.player-ranking-groups th:nth-child(2){width:66px}.player-ranking-groups th:last-child{width:85px}@media(max-width:760px){.player-ranking-groups{grid-template-columns:1fr;gap:12px}}
+
+.skill-percentile {display:grid;gap:.25rem;padding:.75rem 1rem;margin:.6rem 0;background:var(--soft);border:1px solid var(--line);border-radius:10px}
+.skill-percentile p {font-weight:700;margin:0;color:var(--accent)}
+.skill-percentile small {color:var(--muted);overflow-wrap:anywhere}
+
+.skill-percentile-guide > button {font-size:.875rem}
+.skill-percentile-guide dialog {width:min(560px,calc(100% - 32px))}
+.skill-percentile-guide dialog h3 {margin:1.1rem 0 .25rem}
+.skill-percentile-guide dialog p,.skill-percentile-guide dialog ol {margin:.4rem 0;line-height:1.6}
+.skill-percentile-guide dialog ol {padding-inline-start:1.4rem}
+.skill-percentile-guide dialog li+li {margin-top:.35rem}
+
+.sim-results-heading {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.sim-results-heading h3 {margin:0}

@@ -1,3 +1,4 @@
+import {lazy, Suspense, useState} from "react";
 import { PlayerArt, gradeColor } from "../../components/CardArt";
 import { SkillSlot } from "../../components/SkillInput";
 import { cardDisplayName } from "../../lib/cardNames";
@@ -19,6 +20,7 @@ import {
   bullpenRole,
   type BullpenRole,
 } from "../../lib/bullpen";
+const PlayerSkillPercentile = lazy(() => import("../PlayerSkillPercentile"));
 type NumberValue = number | "";
 type StatField =
   | "base"
@@ -33,6 +35,7 @@ type StatField =
   | "finalOv";
 export function RenewalPlayerEditor({
   player: p,
+  players,
   result: r,
   update,
   counts,
@@ -41,11 +44,13 @@ export function RenewalPlayerEditor({
 }: {
   tables: SkillTables;
   player: PlayerInput;
+  players: PlayerInput[];
   result: PlayerResult;
   update: (patch: Partial<PlayerInput>) => void;
   counts: Record<BullpenRole, number>;
   close: () => void;
 }) {
+  const [showPercentile, setShowPercentile] = useState(false);
   const stats = p.kind === "batter" ? BATTER_STATS : PITCHER_STATS;
   const role = bullpenRole(p);
   const black = isSigBlackCard(p.card);
@@ -370,6 +375,12 @@ export function RenewalPlayerEditor({
             />
           ))}
         </div>
+        <details className="auto-breakdown" onToggle={e=>setShowPercentile(e.currentTarget.open)}>
+          <summary>등록 스킬 상위 비율</summary>
+          {showPercentile && <Suspense fallback={<p>스킬 기준 불러오는 중…</p>}>
+            <PlayerSkillPercentile key={p.excelRow} player={p} players={players} tables={tables}/>
+          </Suspense>}
+        </details>
         {p.skills.some(s => /WBC (키스톤|사령관|하모니)/.test(s)) && <p className="editor-hint">
           신규 WBC 스킬은 실제 카드·포지션으로 계산합니다. 하모니는 이름과 국가를 입력한 WBC 선수들을 타자·투수 전체에서 세며, 자신을 포함합니다. 스킬 비교의 조건 선택과 달리 덱에서는 라인업 변경에 따라 점수가 바뀝니다.
         </p>}

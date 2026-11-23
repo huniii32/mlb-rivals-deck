@@ -1,4 +1,4 @@
-import type {PlayerInput,SkillTables} from './engine';
+import {normalizeSkillKey,type PlayerInput,type SkillTables} from './engine';
 import {availableSkills,canLockFirst,momentSkills,skillId,slotCount,TICKETS,POSITIONS,type SimSettings,type DrawSkill,type Board,type SimCard,type SimPosition,type Level} from './skillSimulator';
 import {createScoreEvaluator,type ScoreChoices} from './simulatorScore';
 import {resolveWbcSkill} from './wbcSkills';
@@ -29,7 +29,7 @@ function playerCard(card:string):SimCard|null {
 }
 export function presetFromPlayer(player:PlayerInput,tables:SkillTables,ticket:SimSettings['ticket']='superior',players?:PlayerInput[]):SkillPreset {
   const card=playerCard(player.card);if(!card)throw new Error('선수의 카드 종류를 먼저 지정하세요.');
-  const rawPos=player.pos.replace(/\d+$/,'').toUpperCase();
+  const rawPos=player.pos.trim().replace(/\d+$/,'').toUpperCase();
   const position:SimPosition=player.kind==='pitcher'?(player.bullpenRole==='closer'||rawPos==='CP'?'CP':player.bullpenRole||rawPos==='RP'?'RP':'SP'):Object.prototype.hasOwnProperty.call(POSITIONS,rawPos)&&!['SP','RP','CP'].includes(rawPos)?rawPos as SimPosition:'DH';
   const moment=momentSkills(position).find(s=>player.skills.some(n=>nameKey(n)===nameKey(s.name)));
   const settings:SimSettings={card,position,ticket,protectS:true,momentSkill:moment?.name??momentSkills(position)[0]?.name??''};
@@ -45,7 +45,7 @@ export function presetFromPlayer(player:PlayerInput,tables:SkillTables,ticket:Si
     const resolved=resolveWbcSkill(player,source,players);
     if(resolved&&!resolved.name)throw new Error(resolved.note);
     const original=(resolved?.name??source).replace(/^\[S[0-4]?\]/,'[S0]');
-    const option=evaluator.options.get(id)?.find(o=>o.name===original);
+    const option=evaluator.options.get(id)?.find(o=>normalizeSkillKey(o.name)===normalizeSkillKey(original));
     if(option)choices[id]=option.name;
     return draw;
   });
