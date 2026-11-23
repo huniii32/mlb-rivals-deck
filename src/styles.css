@@ -744,3 +744,6 @@ button.dia-opt.on { border-color: #facc15; box-shadow: 0 0 14px rgba(250, 204, 2
 .skill-percentile-guide dialog p,.skill-percentile-guide dialog ol {margin:.4rem 0;line-height:1.6}
 .skill-percentile-guide dialog ol {padding-inline-start:1.4rem}
 .skill-percentile-guide dialog li+li {margin-top:.35rem}
+
+.sim-results-heading {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.sim-results-heading h3 {margin:0}
