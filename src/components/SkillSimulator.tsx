@@ -2,6 +2,7 @@ import { fmtScore, type PlayerInput, type SkillTables } from "../lib/engine";
 import { createScoreEvaluator, meetsScoreGoal, type ScoreChoices } from "../lib/simulatorScore";
 import { readSession, saveSession, object, counter, finite, strings } from '../lib/simulatorSession';
 import SimulationAnalysis from './SimulationAnalysis';
+import {SkillPercentileGuide} from './SkillPercentileGuide';
 import {SkillPercentile} from './SkillPercentile';
 import SkillStartingPanel from './SkillStartingPanel';
 import type { SkillPreset } from '../lib/simulatorPreset';
@@ -141,6 +142,7 @@ export default function SkillSimulator({ tables, players = [] }: { tables: Skill
       <div><span>목표 달성</span><strong>{hasGoal ? nf.format(stats.hits) : "—"}<small>회</small></strong></div>
     </div>
 
+    <SkillPercentileGuide settings={settings} locked={lockedFirst}/>
     {!busy && evaluation.total !== null && <SkillPercentile settings={settings} locked={lockedFirst}
       target={evaluation.total} scores={scorer.scores}/>}
     {!busy && currentBoard.length === count && evaluation.total === null &&
