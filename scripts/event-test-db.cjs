@@ -35,6 +35,7 @@ const RPC_ARGS = {
   event_claim: ["p_event", "p_mission", "p_ranking_id", "p_token"],
   event_admin: ["p_event", "p_action"],
   event_operator_login: ["p_password"],
+  event_operator_list: ["p_session"],
   event_operator_get: ["p_session", "p_event"],
   event_operator_action: ["p_session", "p_event", "p_action"],
   event_operator_logout: ["p_session"],
@@ -89,6 +90,7 @@ async function createEventTestDb(dataDir) {
   // Reapply additive event updates to an existing local pilot without losing records.
   if (initialized) await db.exec(sql("supabase_mig_events.sql"));
   await db.exec(sql("supabase_mig_event_operator.sql"));
+  await db.exec(sql("supabase_mig_event_catalog.sql"));
   await db.exec(sql("supabase_mig_private_messages.sql"));
   await db.exec(sql("supabase_mig_mailbox_sent_history.sql"));
   const users = {};
