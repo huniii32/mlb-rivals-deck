@@ -1,13 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { supabase, isMissingRpc, errMessage } from "../lib/supabase";
-import { EVENT_ID, eventError, type EventState } from "../lib/events";
+import { operatorRpc, operatorError } from "./operator";
+import { EventList, EventWorkspace } from "./OperatorEvents";
+import { EVENT_ID } from "../lib/events";
 import type { MessagePrize } from "../lib/privateMessages";
-import AdminMailbox from "../components/messages/AdminMailbox";
-import EventAdmin from "../components/events/EventAdmin";
 import "../components/EventPage.css";
 import UsagePanel from "./UsagePanel";
-import {useSiteUsage} from "../lib/siteUsage";
+import { useSiteUsage } from "../lib/siteUsage";
 import "./style.css";
 
 const SESSION_KEY = "rivals-event-operator-session";
@@ -16,115 +15,157 @@ function savedLogin(): Login | null {
   try {
     const s = JSON.parse(sessionStorage.getItem(SESSION_KEY) || "null");
     return s && typeof s.token === "string" && Date.parse(s.expires_at) > Date.now() ? s : null;
-  } catch { return null; }
-}
-async function rpc(name: string, args: Record<string, unknown>) {
-  if (!supabase) throw Error("operator_server_missing");
-  const { data, error } = await supabase.rpc(`event_operator_${name}`, args);
-  if (error) throw error;
-  return data;
-}
-function errorText(e: unknown) {
-  if (isMissingRpc(e) || errMessage(e).includes("operator_server_missing"))
-    return "관리자 서버 설정이 아직 적용되지 않았습니다. 전달받은 이벤트 설치 SQL을 Supabase SQL Editor에서 실행해주세요.";
-  if (errMessage(e).includes("event_invalid_credentials")) return "비밀번호가 올바르지 않습니다.";
-  if (errMessage(e).includes("event_operator_session_expired")) return "로그인이 만료되었습니다. 다시 로그인해주세요.";
-  return eventError(e);
+  } catch {
+    return null;
+  }
 }
 function AdminApp() {
   const [login, setLogin] = useState<Login | null>(savedLogin);
   const [messagePrize, setMessagePrize] = useState<MessagePrize | undefined>();
-  const [view, setView] = useState<"event" | "messages" | "usage">(() => location.hash === "#usage" ? "usage" : location.hash === "#messages" ? "messages" : "event");
+  const [hash, setHash] = useState(() => location.hash);
+  useEffect(() => {
+    const change = () => setHash(location.hash);
+    window.addEventListener("hashchange", change);
+    return () => window.removeEventListener("hashchange", change);
+  }, []);
+  const [section, encodedId] = hash.slice(1).split("/");
+  const view = section === "messages" ? "messages" : section === "event" ? "event" : "usage";
+  let selectedId = "";
+  try {
+    selectedId = decodeURIComponent(encodedId || "");
+  } catch {
+    /* Show the list for an invalid URL. */
+  }
   useSiteUsage(login ? `admin-${view}` : "admin-login");
   const [password, setPassword] = useState("");
-  const [state, setState] = useState<EventState | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
-  const version = useRef(0), pending = useRef(false);
-  function clearLogin() {
-    ++version.current;
+  const pending = useRef(false);
+  const clearLogin = useCallback(() => {
     sessionStorage.removeItem(SESSION_KEY);
     setLogin(null);
-    setState(null);
     setPassword("");
-  }
-  async function request(action = "get", args: Record<string, unknown> = {}, success = "") {
-    if (!login || pending.current) return;
-    pending.current = true;
-    setBusy(true);
-    const id = ++version.current;
-    try {
-      const next = await rpc(action === "admin" ? "action" : "get", {
-        p_session: login.token, p_event: EVENT_ID, ...args,
-      });
-      if (!next?.is_admin || !next?.event) throw Error("event_admin_required");
-      if (id !== version.current) return;
-      setState(next); setError(""); setMessage(success);
-      return next as EventState;
-    } catch (e) {
-      if (id !== version.current) return;
-      setState(null);
-      if (errMessage(e).includes("event_operator_session_expired")) clearLogin();
-      setError(errorText(e));
-    } finally { pending.current = false; setBusy(false); }
-  }
-  const refresh = useRef(request); refresh.current = request;
+    setMessagePrize(undefined);
+  }, []);
+  const expire = useCallback(() => {
+    clearLogin();
+    setError("로그인이 만료되었습니다. 다시 로그인해주세요.");
+  }, [clearLogin]);
   useEffect(() => {
     if (!login) return;
-    if (view !== "usage") void refresh.current();
     const timer = setInterval(() => {
-      if (Date.parse(login.expires_at) <= Date.now()) {
-        clearLogin(); setError("로그인이 만료되었습니다. 다시 로그인해주세요.");
-      } else if (view !== "usage") void refresh.current();
+      if (Date.parse(login.expires_at) <= Date.now()) expire();
     }, 15000);
-    return () => { clearInterval(timer); ++version.current; };
-  }, [login, view === "usage"]);
+    return () => clearInterval(timer);
+  }, [login, expire]);
   async function signIn(e: React.FormEvent) {
     e.preventDefault();
     if (pending.current) return;
-    pending.current = true; setBusy(true); setError("");
+    pending.current = true;
+    setBusy(true);
+    setError("");
     try {
-      const next: Login = await rpc("login", { p_password: password.trim() });
+      const next: Login = await operatorRpc("login", { p_password: password.trim() });
       if (!next?.token || !next?.expires_at) throw Error("invalid_login_response");
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(next));
-      setPassword(""); setLogin(next);
-    } catch (e) { setError(errorText(e)); }
-    finally { pending.current = false; setBusy(false); }
+      location.replace("#usage");
+      setHash("#usage");
+      setPassword("");
+      setLogin(next);
+    } catch (e) {
+      setError(operatorError(e));
+    } finally {
+      pending.current = false;
+      setBusy(false);
+    }
   }
   async function signOut() {
     if (pending.current || !login) return;
-    pending.current = true; setBusy(true);
+    pending.current = true;
+    setBusy(true);
     try {
-      await rpc("logout", { p_session: login.token });
-      clearLogin(); setError(""); setMessage("");
+      await operatorRpc("logout", { p_session: login.token });
+      clearLogin();
+      setError("");
     } catch {
       setError("서버 로그아웃에 실패했습니다. 연결을 확인하고 다시 눌러주세요.");
-    } finally { pending.current = false; setBusy(false); }
+    } finally {
+      pending.current = false;
+      setBusy(false);
+    }
   }
-  return <main className="operator-shell">
-    <header className="operator-header"><strong>Rivals Deck · 운영자 관리</strong><a href={`${import.meta.env.BASE_URL}?event=1#simulator`}>참가자 화면 보기 →</a></header>
-    {login && <nav className="operator-mail-tabs" aria-label="관리 메뉴">
-      <button aria-pressed={view === "event"} onClick={() => setView("event")}>이벤트 관리</button>
-      <button aria-pressed={view === "messages"} onClick={() => { setMessagePrize(undefined); setView("messages"); }}>개인 쪽지 보내기</button>
-      <button aria-pressed={view === "usage"} onClick={() => setView("usage")}>이용 통계</button>
-      {view !== "event" && <button disabled={busy} onClick={() => void signOut()}>로그아웃</button>}
-    </nav>}
-    {login && view === "usage" ? <UsagePanel session={login.token} onExpired={clearLogin}/> : login && state ? (view === "messages" ? <AdminMailbox key={login.token} session={login.token} state={state} initialPrize={messagePrize} /> : <EventAdmin state={state} busy={busy} error={error} message={message}
-      onMessage={prize => { setMessagePrize(prize); setView("messages"); }} onAction={request} onRefresh={() => void request()} onLogout={() => void signOut()} />) :
-      <section className="operator-login event-panel">
-        <div className="eyebrow">EVENT MANAGEMENT</div>
-        <h1>{login ? "관리 화면 불러오기" : "관리자 로그인"}</h1>
-        <p>이벤트 당첨자 확인, 안내 쪽지와 기프티콘 이미지 발송, 읽음 여부와 지급 상태를 관리합니다.</p>
-        {error && <p className="event-error" role="alert">{error}</p>}
-        {login ? <div className="operator-buttons"><button disabled={busy} onClick={() => void request()}>다시 확인</button><button disabled={busy} onClick={() => void signOut()}>로그아웃</button></div> :
+  return (
+    <main className="operator-shell">
+      <header className="operator-header">
+        <strong>Rivals Deck · 관리자 페이지</strong>
+      </header>
+      {login ? (
+        <>
+          <nav className="operator-mail-tabs" aria-label="관리 메뉴">
+            <button aria-pressed={view === "usage"} onClick={() => (location.hash = "usage")}>
+              이용 통계
+            </button>
+            <button aria-pressed={view === "event"} onClick={() => (location.hash = "event")}>
+              이벤트 관리
+            </button>
+            <button
+              aria-pressed={view === "messages"}
+              onClick={() => {
+                setMessagePrize(undefined);
+                location.hash = "messages";
+              }}
+            >
+              개인 쪽지 보내기
+            </button>
+            <button disabled={busy} onClick={() => void signOut()}>
+              로그아웃
+            </button>
+          </nav>
+          {error && <p role="alert">{error}</p>}
+          {view === "usage" ? (
+            <UsagePanel session={login.token} onExpired={expire} />
+          ) : view === "event" && !selectedId ? (
+            <EventList session={login.token} onExpired={expire} />
+          ) : (
+            <EventWorkspace
+              key={JSON.stringify([login.token, selectedId, view])}
+              session={login.token}
+              eventId={selectedId || EVENT_ID}
+              mailbox={view === "messages"}
+              initialPrize={messagePrize}
+              onExpired={expire}
+              onMessage={(prize) => {
+                setMessagePrize(prize);
+                location.hash = "messages/" + encodeURIComponent(selectedId);
+              }}
+            />
+          )}
+        </>
+      ) : (
+        <section className="operator-login event-panel">
+          <h1>관리자 로그인</h1>
+          <p>사이트 이용 통계, 이벤트, 개인 쪽지를 관리합니다.</p>
+          {error && (
+            <p className="event-error" role="alert">
+              {error}
+            </p>
+          )}
           <form onSubmit={signIn}>
             <label htmlFor="operator-password">관리자 비밀번호</label>
-            <input id="operator-password" type="password" required autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} />
+            <input
+              id="operator-password"
+              type="password"
+              required
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
             <button disabled={busy || !password.trim()}>{busy ? "확인 중…" : "로그인"}</button>
             <small>로그인은 1시간 동안 유지됩니다. 공용 컴퓨터에서는 사용 후 로그아웃해주세요.</small>
-          </form>}
-      </section>}
-  </main>;
+          </form>
+        </section>
+      )}
+    </main>
+  );
 }
 createRoot(document.getElementById("root")!).render(<AdminApp />);

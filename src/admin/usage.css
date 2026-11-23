@@ -55,15 +55,19 @@
 @media(max-width:850px){.usage-charts{grid-template-columns:1fr}.usage-kpis>div{padding:14px}}
 @media(max-width:600px){.usage-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.usage-heading,.usage-toolbar{gap:8px}.usage-toolbar nav button{padding:8px 10px}.usage-plot{height:150px}.usage-panel table{font-size:12px}}
 @media(prefers-reduced-motion:reduce){.usage-bar-fill,.usage-track i{transition:none}}
-.operator-shell:has(>.usage-panel)>.operator-mail-tabs {
+.operator-shell>.operator-mail-tabs {
   display:flex;align-items:center;gap:4px;margin:0 0 20px;border-bottom:1px solid #cfdce6
 }
-.operator-shell:has(>.usage-panel)>.operator-mail-tabs button {
+.operator-shell>.operator-mail-tabs button {
   padding:9px 12px;color:#516377;background:transparent;border:0;border-bottom:2px solid transparent;border-radius:0;font-size:14px
 }
-.operator-shell:has(>.usage-panel)>.operator-mail-tabs button[aria-pressed=true] {color:#17495a;border-bottom-color:#007b77}
-.operator-shell:has(>.usage-panel)>.operator-mail-tabs button:last-child {margin-left:auto}
-@media(max-width:420px){.operator-shell:has(>.usage-panel)>.operator-mail-tabs{gap:0}.operator-shell:has(>.usage-panel)>.operator-mail-tabs button{padding:8px 6px;font-size:13px}}
+.operator-shell>.operator-mail-tabs button[aria-pressed=true] {color:#17495a;border-bottom-color:#007b77}
+.operator-shell>.operator-mail-tabs button:last-child {margin-left:auto}
+@media(max-width:420px){.operator-shell>.operator-mail-tabs{gap:0}.operator-shell>.operator-mail-tabs button{padding:8px 6px;font-size:13px}}
 .usage-site-count {padding:1px 5px;margin-left:4px;border-radius:5px;background:#526d8119;font-size:12px}
 .usage-toolbar button[aria-pressed=true] .usage-site-count {background:#ffffff25}
 @media(max-width:380px){.usage-toolbar nav button{padding:8px 7px;font-size:13px}}
+
+.usage-mode {display:inline-flex;gap:2px;margin-top:12px;padding:3px;background:#edf2f5;border-radius:8px}
+.usage-mode button {padding:5px 10px;background:transparent;border:0;color:var(--muted);font-size:13px}
+.usage-mode button[aria-pressed=true] {background:#fff;color:var(--ink);box-shadow:0 1px 3px #172b4520}

@@ -1,20 +1,22 @@
 import {useEffect,useRef,useState} from 'react';
 import {errMessage,isMissingRpc,supabase} from '../lib/supabase';
-import {DailyChart,PageChart,duration,number,type Counts,type Daily,type PageStats} from './UsageCharts';
+import {TrendChart,PageChart,duration,number,type Counts,type Daily,type Hourly,type PageStats} from './UsageCharts';
 import './usage.css';
 
 const sites={service:'실제 서비스',demo:'개발 데모',admin:'관리자 사이트'} as const;
 type Site=keyof typeof sites;
 interface Report {
   as_of:string;
-  sites:(Counts & {site:Site;online:number})[];
+  sites:(Counts & {site:Site;online:number;returning_browsers?:number})[];
   pages:(PageStats & {site:Site})[];
+  hourly?:(Hourly & {site:Site})[];
   daily:(Daily & {site:Site})[];
 }
 export default function UsagePanel({session,onExpired}:{session:string;onExpired:()=>void}) {
   const expired=useRef(onExpired); expired.current=onExpired;
   const refreshNow=useRef<()=>void>(()=>{});
   const [site,setSite]=useState<Site>('service');
+  const [byHour,setByHour]=useState(false);
   const [days,setDays]=useState(7);
   const [report,setReport]=useState<Report|null>(null);
   const [busy,setBusy]=useState(false);
@@ -58,13 +60,14 @@ export default function UsagePanel({session,onExpired}:{session:string;onExpired
     {error && <p role="alert">{error}</p>}
     {report && totals ? <>
       <div className="usage-kpis" aria-label={sites[site]+' 주요 지표'}>
-        <div className="usage-online"><span><i/>현재 접속</span><strong>{number(totals.online)}<small>명</small></strong><p>최근 90초 활성 브라우저</p></div>
-        <div><span>순방문 브라우저</span><strong>{number(totals.visitors)}<small>개</small></strong><p>선택 기간 중 중복 제외</p></div>
-        <div><span>페이지 조회</span><strong>{number(totals.views)}<small>회</small></strong><p>화면을 열어 본 횟수</p></div>
+        <div className="usage-online"><span><i/>현재 접속</span><strong>{number(totals.online)}<small>개</small></strong><p>최근 90초 활성 브라우저</p></div>
+        <div><span>순방문 브라우저</span><strong>{number(totals.visitors)}<small>개</small></strong><p>선택 기간 중 중복 제외</p>
+          {days>1 && totals.returning_browsers!==undefined && <p title="선택 기간 중 서로 다른 날짜에 2일 이상 방문한 브라우저">2일 이상 재방문 {number(totals.returning_browsers)}개{totals.visitors>0 && ` (${Math.round(100*totals.returning_browsers/totals.visitors)}%)`}</p>}</div>
+        <div><span>페이지 조회</span><strong>{number(totals.views)}<small>회</small></strong><p>{totals.visitors ? '브라우저당 '+(totals.views/totals.visitors).toLocaleString('ko-KR',{maximumFractionDigits:1})+'회' : '화면을 열어 본 횟수'}</p></div>
         <div><span>조회당 평균 열람</span><strong>{totals.views?duration(totals.seconds/totals.views):'—'}</strong><p>총 열람 {duration(totals.seconds)}</p></div>
       </div>
       <div className="usage-charts">
-        <DailyChart key={site+'-'+days} rows={daily} days={days} asOf={report.as_of}/>
+        <TrendChart key={site+'-'+days} daily={daily} hourly={report.hourly?.filter(row=>row.site===site)} days={days} asOf={report.as_of} byHour={byHour} onMode={setByHour}/>
         <PageChart rows={report.pages.filter(row=>row.site===site)}/>
       </div>
       <details className="usage-card usage-table"><summary>날짜별 상세 기록</summary>

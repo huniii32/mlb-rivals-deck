@@ -1,4 +1,4 @@
--- Requires supabase_mig_event_operator.sql. Run once in Supabase SQL Editor.
+-- Requires supabase_mig_event_operator.sql. Re-run in Supabase SQL Editor to update the reports.
 begin;
 create table if not exists public.site_usage_views (
   view_id uuid primary key,
@@ -43,11 +43,16 @@ begin
   perform public._event_operator_auth(p_session);
   if p_days is null or p_days not in (1,7,30) then raise exception 'invalid_usage_period'; end if;
   with period_views as (
-    select site,page,browser_id,seconds,(opened_at at time zone 'Asia/Seoul')::date as day
+    select site,page,browser_id,seconds,(opened_at at time zone 'Asia/Seoul')::date as day,
+      extract(hour from opened_at at time zone 'Asia/Seoul')::integer as hour
     from public.site_usage_views
     where opened_at >= (((now() at time zone 'Asia/Seoul')::date-(p_days-1))::timestamp at time zone 'Asia/Seoul')
+  ), browsers as (
+    select site,browser_id,count(distinct day) as visit_days,count(*) as views,sum(seconds) as seconds
+    from period_views group by site,browser_id
   ), totals as (
-    select site,count(distinct browser_id) as visitors,count(*) as views,sum(seconds) as seconds from period_views group by site
+    select site,count(*) as visitors,count(*) filter(where visit_days>=2) as returning_browsers,
+      sum(views) as views,sum(seconds) as seconds from browsers group by site
   ), online as (
     select site,count(distinct browser_id) as online from public.site_usage_views
     where active and last_seen>=now()-interval '90 seconds' group by site
@@ -57,13 +62,17 @@ begin
   ), daily as (
     select day,site,count(*) as views,count(distinct browser_id) as visitors,sum(seconds) as seconds
     from period_views group by site,day
+  ), hourly as (
+    select site,hour,count(*) as views,count(distinct browser_id) as visitors,sum(seconds) as seconds
+    from period_views group by site,hour
   )
   select jsonb_build_object('as_of',now(),'sites',(
     select jsonb_agg(jsonb_build_object('site',k.site,'online',coalesce(o.online,0),
-      'visitors',coalesce(t.visitors,0),'views',coalesce(t.views,0),'seconds',coalesce(t.seconds,0)))
+      'returning_browsers',coalesce(t.returning_browsers,0),'visitors',coalesce(t.visitors,0),'views',coalesce(t.views,0),'seconds',coalesce(t.seconds,0)))
     from (values ('service'),('demo'),('admin')) k(site)
     left join totals t using(site) left join online o using(site)),
     'pages',coalesce((select jsonb_agg(to_jsonb(p) order by p.views desc,p.page) from pages p),'[]'::jsonb),
+    'hourly',coalesce((select jsonb_agg(to_jsonb(h) order by h.site,h.hour) from hourly h),'[]'::jsonb),
     'daily',coalesce((select jsonb_agg(to_jsonb(d) order by d.day desc,d.site) from daily d),'[]'::jsonb)) into result;
   return result;
 end $$;
