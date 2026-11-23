@@ -75,7 +75,8 @@ export function createScoreEvaluator(settings: SimSettings, tables: SkillTables,
   const changingPool = pool.filter(s => skillId(s) !== locked?.id);
   const rest = changingPool.map(s => selected.get(skillId(s))?.score).filter((s): s is number => s !== undefined).sort((a,b)=>b-a).slice(0,scoredSlots);
   const upperBound = rest.length < scoredSlots ? 0 : rest.reduce((a,b)=>a+b,0);
-  return { options, selected, evaluate, board, scoredSlots, upperBound: Math.round(upperBound*100)/100, missing: changingPool.filter(s => !selected.has(skillId(s))) };
+  const scores = Object.fromEntries([...selected].map(([id, row]) => [id, row.score]));
+  return { options, selected, scores, evaluate, board, scoredSlots, upperBound: Math.round(upperBound*100)/100, missing: changingPool.filter(s => !selected.has(skillId(s))) };
 }
 
 export function meetsScoreGoal(score: number | null, target: number): boolean {

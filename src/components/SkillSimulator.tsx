@@ -2,6 +2,7 @@ import { fmtScore, type PlayerInput, type SkillTables } from "../lib/engine";
 import { createScoreEvaluator, meetsScoreGoal, type ScoreChoices } from "../lib/simulatorScore";
 import { readSession, saveSession, object, counter, finite, strings } from '../lib/simulatorSession';
 import SimulationAnalysis from './SimulationAnalysis';
+import {SkillPercentile} from './SkillPercentile';
 import SkillStartingPanel from './SkillStartingPanel';
 import type { SkillPreset } from '../lib/simulatorPreset';
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -140,6 +141,10 @@ export default function SkillSimulator({ tables, players = [] }: { tables: Skill
       <div><span>목표 달성</span><strong>{hasGoal ? nf.format(stats.hits) : "—"}<small>회</small></strong></div>
     </div>
 
+    {!busy && evaluation.total !== null && <SkillPercentile settings={settings} locked={lockedFirst}
+      target={evaluation.total} scores={scorer.scores}/>}
+    {!busy && currentBoard.length === count && evaluation.total === null &&
+      <p className="muted">점수가 없는 스킬·레벨이 있어 현재 조합의 상위 비율을 계산할 수 없습니다.</p>}
     <div className="card sim-play">
       <div className={`sim-board ${count === 4 ? "four" : ""}`} aria-label="변경 결과" aria-busy={busy}>
         {Array.from({ length: count }, (_, i) => {

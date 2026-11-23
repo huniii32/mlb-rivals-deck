@@ -106,12 +106,11 @@ export function availableSkills(settings: SimSettings, lockedFirst: DrawSkill | 
   if (lockedFirst) result.set(lockedFirst.id, { ...lockedFirst, rates: LEVELS.map(l => l === lockedFirst.level ? 100 : 0) });
   return [...result.values()].sort((a, b) => a.name.localeCompare(b.name, "ko"));
 }
-export function createSimulator(settings: SimSettings, random: Random = browserRandom(), lockedFirst: DrawSkill | null = null): () => Board {
+export function createDrawPlan(settings: SimSettings, lockedFirst: DrawSkill | null) {
   if (!(settings.card in CARD_TYPES) || !(settings.position in POSITIONS)) throw new Error("카드 종류와 포지션을 확인하세요.");
   const ticket = settings.ticket ?? "superior";
   if (!(ticket in TICKETS)) throw new Error("변경권 종류를 확인하세요.");
   if (lockedFirst && !canLockFirst(settings, lockedFirst)) throw new Error("이 카드에서 잠글 수 없는 첫 번째 스킬입니다.");
-  const locked = lockedFirst ? { ...lockedFirst } : null;
   if (settings.card === "moment" && ticket === "superior" && !momentSkills(settings.position).some(s => s.name === settings.momentSkill)) throw new Error("카드의 전용 모먼트 스킬을 선택하세요.");
   const prepare = (rule: Rule) => ({
     tiers: Object.keys(rule.tiers) as Tier[], weights: Object.values(rule.tiers) as number[],
@@ -119,6 +118,12 @@ export function createSimulator(settings: SimSettings, random: Random = browserR
   });
   const variants = blackSlots(settings).map(blackSlot => slotRules(settings, blackSlot).map(prepare));
   const afterBlack = prepare(settings.card === "wbcBlack" ? wbcAdvanced : basic);
+  return {variants, afterBlack};
+}
+export function createSimulator(settings: SimSettings, random: Random = browserRandom(), lockedFirst: DrawSkill | null = null): () => Board {
+  const {variants, afterBlack} = createDrawPlan(settings, lockedFirst);
+  const ticket = settings.ticket ?? "superior";
+  const locked = lockedFirst ? { ...lockedFirst } : null;
   return () => {
     const rules = variants[variants.length > 1 ? Math.floor(unit(random) * variants.length) : 0];
     const used = new Set<string>(locked ? [locked.name] : []);
