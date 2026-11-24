@@ -1,14 +1,6 @@
 import type { Chem } from "../lib/engine";
 import { LOOKUP } from "../lib/engine";
-const CHEM_LABELS: [keyof Chem, string][] = [
-  ["commander", "커맨더"],
-  ["catcher", "포수리드"],
-  ["pitchChem", "투수케미스트리"],
-  ["batChem", "타자케미스트리"],
-  ["wbcP", "WBC에이스(투수)"],
-  ["wbcB", "WBC에이스(타자)"],
-  ["lockdown", "락다운(CP 배치)"],
-];
+import { CHEM_LABELS } from "../lib/teamBuffs";
 
 export function ChemPanel({ chem, setChem }: {
   chem: Chem;

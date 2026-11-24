@@ -464,3 +464,20 @@
     max-width: calc(100vw - 24px);
   }
 }
+.renewal .deck-experiment { grid-column: 1 / -1; padding: 16px 20px; border-inline-start: 4px solid var(--blue); }
+.deck-experiment h3, .deck-experiment p { margin: 0 0 8px; }
+.experiment-tools { display: flex; flex-wrap: wrap; gap: 6px; margin-block: 12px; }
+.experiment-tools select { max-width: 100%; }
+.experiment-scores { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 145px), 1fr)); gap: 8px; }
+.experiment-scores > div { display: grid; gap: 3px; padding: 10px; background: var(--soft); border-radius: 8px; }
+.experiment-scores small, .experiment-changes dd > span { color: var(--muted); }
+.deck-experiment h4 { margin: 16px 0 6px; }
+.experiment-player { padding: 8px 0; border-top: 1px solid var(--line); }
+.experiment-player header { display: flex; align-items: baseline; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; }
+.experiment-changes { margin: 6px 0; font-size: 14px; }
+.experiment-changes > div { display: grid; grid-template-columns: minmax(65px, 0.28fr) 1fr; gap: 8px; padding: 3px 0; }
+.experiment-changes dd { margin: 0; overflow-wrap: anywhere; }
+.deck-experiment > p { margin: 12px 0 8px; }
+.experiment-loss { color: var(--danger); }
+.experiment-gain { color: var(--blue); }
+.renewal .lineup-live-score { display: flex; flex-wrap: wrap; gap: 4px 16px; background: var(--soft); padding: 10px 14px; border-radius: 8px; margin: 8px 0; font-size: 14px; font-variant-numeric: tabular-nums; }

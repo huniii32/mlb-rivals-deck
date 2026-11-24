@@ -1,5 +1,15 @@
 import type { Chem, PlayerInput } from "./engine";
 
+export const CHEM_LABELS: [keyof Chem, string][] = [
+  ["commander", "커맨더"],
+  ["catcher", "포수리드"],
+  ["pitchChem", "투수케미스트리"],
+  ["batChem", "타자케미스트리"],
+  ["wbcP", "WBC에이스(투수)"],
+  ["wbcB", "WBC에이스(타자)"],
+  ["lockdown", "락다운(CP 배치)"],
+];
+
 /** 랭킹대전 공격 기준. 기존 개인 스킬표에 포함된 값과 팀 효과를 중복 합산하지 않는다. */
 export function additionalTeamScore(p: PlayerInput, chem: Chem): number {
   // 컴백 플래그는 중계 등판·점수 상황에 따른 효과다. 이전 덱의 선택값도
