@@ -434,7 +434,7 @@ export default function App() {
 
       }
       {tab === "lineup" && <>
-        {experiment && <DeckExperiment original={original} working={experiment} results={results} tables={tables}
+        {experiment && <DeckExperiment onPlayer={setSelected} onSetting={setSetting} original={original} working={experiment} results={results} tables={tables}
           onDiscard={discardExperiment} onApply={() => {
             setDecks(current => current.map(d => d.id === original.id ? { ...experiment, updatedAt: Date.now() } : d));
             setExperiment(null);
