@@ -24,3 +24,10 @@ equal.players[0].skills[0] = "스킬 B";
 const [player] = compare(equal);
 assert.equal(player.diff, 0);
 assert.deepEqual(player.changes, [{ label: "스킬 1", before: "스킬 A (10점)", after: "스킬 B (10점)" }]);
+
+const unnamed = structuredClone(original);
+unnamed.players[1].train[0] = 5;
+const [draft] = compare(unnamed);
+assert.equal(draft.row, unnamed.players[1].excelRow);
+assert.equal(draft.diff, 0);
+assert.deepEqual(draft.changes, [{ label: "훈련 파워", before: "—", after: "5" }]);

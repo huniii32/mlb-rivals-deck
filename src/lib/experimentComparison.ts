@@ -2,7 +2,7 @@ import { CHEM_LABELS } from "./teamBuffs";
 import type { Deck } from "./deck";
 import { BULLPEN_ROLES, ROLE_LABELS, bullpenCounts, bullpenRole, normalizeTactics } from "./bullpen";
 import { BATTER_STATS, PITCHER_STATS, DECK_SCORE_OPTIONS, selectedEffect } from "./deckScoreOptions";
-import type { PlayerInput, PlayerResult } from "./engine";
+import { deckTotals, type PlayerInput, type PlayerResult } from "./engine";
 
 export const formatPoints = (n: number) => n.toLocaleString("ko-KR", { maximumFractionDigits: 2 });
 type Value = string | number | null | undefined;
@@ -52,8 +52,14 @@ export function playerChanges(original: Deck, working: Deck, previous: PlayerRes
     const i = original.players.findIndex(p => p.excelRow === row), j = working.players.findIndex(p => p.excelRow === row);
     const old = original.players[i], next = working.players[j];
     const from = old?.name.trim() ? previous[i] : undefined, to = next?.name.trim() ? results[j] : undefined;
-    if (!from && !to) return [];
     const stats = (next ?? old).kind === "pitcher" ? PITCHER_STATS : BATTER_STATS;
+    const inputs = old && next ? inputChanges(old, next, stats) : [];
+    if (!from && !to) {
+      if (!old || !next) return [];
+      stats.forEach((stat, k) => compare(inputs, "최종 입력 " + stat, old.finalOv[k], next.finalOv[k]));
+      old.skills.forEach((skill, k) => compare(inputs, "스킬 " + (k + 1), skill, next.skills[k]));
+      if (!inputs.length) return [];
+    }
     const effects: Change[] = [];
     stats.forEach((stat, k) => {
       compare(effects, stat, from?.final[k], to?.final[k]);
@@ -72,10 +78,18 @@ export function playerChanges(original: Deck, working: Deck, previous: PlayerRes
     }
     compare(effects, "능력치 점수", from?.ability, to?.ability);
     compare(effects, "스킬 합계", from && (from.skill ?? "점수 미확인"), to && (to.skill ?? "점수 미확인"));
-    const inputs = from && to ? inputChanges(old, next, stats) : [];
     const diff = (to?.total ?? 0) - (from?.total ?? 0);
     if (!effects.length && !skills.length && !inputs.length && old?.name === next?.name && !diff) return [];
-    const title = old?.name === next?.name ? next.name : (old?.name || "빈 슬롯") + " → " + (next?.name || "빈 슬롯");
+    const title = old?.name === next?.name ? next.name || "이름 미입력" : (old?.name || "빈 슬롯") + " → " + (next?.name || "빈 슬롯");
     return [{ row, title, pos: (next ?? old).pos, before: from?.total, after: to?.total, diff, changes: [...inputs, ...skills, ...effects] }];
   }).sort((a,b) => Math.abs(b.diff) - Math.abs(a.diff));
 }
+
+export function compareLineups(original: Deck, working: Deck, previous: PlayerResult[], results: PlayerResult[]) {
+  return {
+    before: deckTotals(original.players, previous), after: deckTotals(working.players, results),
+    players: playerChanges(original, working, previous, results), settings: settingChanges(original, working),
+    edited: working !== original,
+  };
+}
+export type LineupComparison = ReturnType<typeof compareLineups>;

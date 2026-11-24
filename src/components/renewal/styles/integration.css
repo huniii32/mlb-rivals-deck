@@ -480,3 +480,4 @@
 .deck-experiment > p { margin: 12px 0 8px; }
 .experiment-loss { color: var(--danger); }
 .experiment-gain { color: var(--blue); }
+.renewal .lineup-live-score { display: flex; flex-wrap: wrap; gap: 4px 16px; background: var(--soft); padding: 10px 14px; border-radius: 8px; margin: 8px 0; font-size: 14px; font-variant-numeric: tabular-nums; }

@@ -14,7 +14,8 @@ import { selectDeckScoreSide, type DeckScoreRegion, type DeckScoreSide } from ".
 import { DeckSaveModal } from "./components/DeckSaveModal";
 import { passwordError, passwordResult, validDeckName, type PasswordCredential } from "./lib/deckPassword";
 import { getClientId, supabase } from "./lib/supabase";
-import { DeckExperiment } from "./components/DeckExperiment";
+import { LineupChanges, changeLabel } from "./components/LineupChanges";
+import { compareLineups, formatPoints } from "./lib/experimentComparison";
 import { DeckScorePanel } from "./components/DeckScorePanel";
 import { ChemPanel } from "./components/DeckPanel";
 import { SkillPanel } from "./components/SkillPanel";
@@ -134,6 +135,20 @@ export default function App() {
   const [toolsOpen, setToolsOpen] = useState(false);
 
   const [experiment, setExperiment] = useState<Deck | null>(null);
+  const [editStart, setEditStart] = useState<Deck | null>(null);
+  const [lastEdits, setLastEdits] = useState<Deck[]>(() => {
+    try {
+      const stored = sessionStorage.getItem("rivals-lineup-before-edit");
+      return stored ? readStoredDecks(stored).decks : [];
+    } catch { return []; }
+  });
+  useEffect(() => {
+    try { sessionStorage.setItem("rivals-lineup-before-edit", JSON.stringify({ decks: lastEdits })); }
+    catch { /* 저장 공간이 부족해도 현재 화면의 비교는 유지한다. */ }
+  }, [lastEdits]);
+  const rememberEdit = (before: Deck) => setLastEdits(previous =>
+    previous.includes(before) ? previous : [...previous.filter(d => d.id !== before.id), before]);
+  const forgetEdit = (id: string) => setLastEdits(previous => previous.filter(d => d.id !== id));
   const original = decks.find((d) => d.id === activeId) ?? decks[0];
   const deck = experiment ?? original;
   const { players, chem, flags, yearInputs } = deck;
@@ -178,11 +193,26 @@ export default function App() {
 
   const results = useMemo(() => deckPlayerResults(deck, tables), [deck, tables]);
 
+  const openPlayer = (row: number) => { setEditStart(deck); setSelected(row); };
+  const openSetting = (value: Setting) => { setEditStart(deck); setSetting(value); };
+  const editing = selected !== null || setting !== null;
+  const before = experiment ? original : editing && editStart?.id === deck.id ? editStart : lastEdits.find(d => d.id === deck.id) ?? deck;
+  const baseline = before === deck ? null : before;
+  const previousResults = useMemo(() => tab === "lineup" && baseline ? deckPlayerResults(baseline, tables) : null, [baseline, tables, tab]);
+  const report = useMemo(() => tab === "lineup" ? compareLineups(before, deck, previousResults ?? results, results) : undefined,
+    [before, deck, previousResults, results, tab]);
+  const editorPlayer = report?.players.find(p => p.row === selected);
+  const liveScore = editing && report && <p className="lineup-live-score" role="status">
+    {editorPlayer && <span>선수 점수 <b>{changeLabel(editorPlayer.diff)}</b></span>}
+    <span>덱 총점 {formatPoints(report.before.total)} → {formatPoints(report.after.total)} <b>({changeLabel(report.after.total - report.before.total)})</b></span>
+  </p>;
+
   const patchDeck = (patch: Partial<Deck>) => {
     if (experiment) {
       setExperiment(current => current && applyDeckUpdate(current, patch, tables));
       return;
     }
+    rememberEdit(editStart?.id === deck.id ? editStart : deck);
     setDecks((prev) => prev.map((d) => (d.id === deck.id ? { ...applyDeckUpdate(d, patch, tables), updatedAt: Date.now() } : d)));
   };
 
@@ -246,6 +276,7 @@ export default function App() {
     if (!confirm(`'${deck.name || "이름 없는 덱"}'을 이 기기에서 삭제할까요? 공개 랭킹은 유지됩니다.`)) return;
     const rest = decks.filter(d => d.id !== deck.id);
     if (!rest.length) rest.push(blankDeck(""));
+    forgetEdit(deck.id);
     setDecks(rest);
     setActiveId(rest[0].id);
     setSelected(null);
@@ -340,6 +371,7 @@ export default function App() {
     const nd = buildDeck(d, "불러온 덱");
     const currentId = links[rowId]?.deckId;
     if (currentId && decks.some((x) => x.id === currentId)) nd.id = currentId;
+    forgetEdit(nd.id);
     setDecks((prev) => prev.some((x) => x.id === nd.id) ? prev.map((x) => x.id === nd.id ? nd : x) : [...prev, nd]);
     setActiveId(nd.id);
     setLinks((prev) => ({ ...prev, [rowId]: { deckId: nd.id, ...credential, sig: deckSig(rankArgs(nd, tables).args) } }));
@@ -434,16 +466,19 @@ export default function App() {
 
       }
       {tab === "lineup" && <>
-        {experiment && <DeckExperiment onPlayer={setSelected} onSetting={setSetting} original={original} working={experiment} results={results} tables={tables}
-          onDiscard={discardExperiment} onApply={() => {
+        <LineupChanges key={deck.id + (experiment ? "-experiment" : "-live")} report={report} experiment={experiment ? {
+          deck: experiment, onPlayer: openPlayer, onSetting: openSetting, onDiscard: discardExperiment, onApply: () => {
+            rememberEdit(original);
             setDecks(current => current.map(d => d.id === original.id ? { ...experiment, updatedAt: Date.now() } : d));
             setExperiment(null);
-          }}/>}
-        <RenewalLineup deck={deck} results={results} onSelect={setSelected} openSettings={setSetting} openGuide={() => setModal("guide")} />
+          },
+        } : undefined}/>
+        <RenewalLineup deck={deck} results={results} onSelect={openPlayer} openSettings={openSetting} openGuide={() => setModal("guide")} />
         <details className="card lineup-details"><summary>선수별 점수와 덱코 상세 보기</summary><ResultPanel players={players} results={results} /></details>
       </>}
 
       {setting && <RenewalDialog title={setting} close={() => setSetting(null)}>
+        {liveScore}
         <div className="working-settings">
           {setting === "덱스코어" ? <DeckScorePanel players={players} preferredTeam={deck.preferredTeam ?? ""} setPreferredTeam={preferredTeam => patchDeck({ preferredTeam })}
             flags={flags} yearInputs={yearInputs}
@@ -495,6 +530,7 @@ export default function App() {
         save={saveDeck} close={() => setSaveOpen(false)} />}
 
       {selPlayer && selRes && <RenewalDialog title="선수 편집" player close={() => setSelected(null)}>
+        {liveScore}
         <RenewalPlayerEditor players={players} player={selPlayer} result={selRes}
           update={patch => update(selPlayer.excelRow, patch)} close={() => setSelected(null)}
           tables={tables} counts={bullpenCounts(players)} />
