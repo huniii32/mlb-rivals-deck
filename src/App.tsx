@@ -14,6 +14,7 @@ import { selectDeckScoreSide, type DeckScoreRegion, type DeckScoreSide } from ".
 import { DeckSaveModal } from "./components/DeckSaveModal";
 import { passwordError, passwordResult, validDeckName, type PasswordCredential } from "./lib/deckPassword";
 import { getClientId, supabase } from "./lib/supabase";
+import { DeckExperiment } from "./components/DeckExperiment";
 import { DeckScorePanel } from "./components/DeckScorePanel";
 import { ChemPanel } from "./components/DeckPanel";
 import { SkillPanel } from "./components/SkillPanel";
@@ -51,7 +52,7 @@ function blankDeck(name: string, legacyDefaults = false): Deck {
   return {
     id: newId(),
     name,
-    updatedAt: Date.now(),
+    updatedAt: 0, // 첫 수정 시각부터 기기 초안으로 보관한다.
     players: LINEUP.map((l) => blankPlayer(l.row, l.kind, l.pos, l.order)),
     chem: legacyDefaults ? { ...DEFAULT_CHEM } : { commander: "X", catcher: "X", pitchChem: "X", batChem: "X", wbcP: "X", wbcB: "X" },
     flags: legacyDefaults ? flagDefaults() : {},
@@ -132,7 +133,9 @@ export default function App() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [toolsOpen, setToolsOpen] = useState(false);
 
-  const deck = decks.find((d) => d.id === activeId) ?? decks[0];
+  const [experiment, setExperiment] = useState<Deck | null>(null);
+  const original = decks.find((d) => d.id === activeId) ?? decks[0];
+  const deck = experiment ?? original;
   const { players, chem, flags, yearInputs } = deck;
   const activeMailbox = withRank(deck, links).rank;
   const activeLink = Object.values(links).some((l) => l.deckId === deck.id);
@@ -146,7 +149,7 @@ export default function App() {
     try {
       // 백업에 실패하면 현재 저장본을 덮어쓰지 않는다.
       if (recovery !== null) localStorage.setItem(RECOVERY_KEY, recovery);
-      localStorage.setItem(DECKS_KEY, JSON.stringify({ decks: decks.filter((d) => validDeckName(d.name)), activeId }));
+      localStorage.setItem(DECKS_KEY, JSON.stringify({ decks: decks.filter((d) => validDeckName(d.name) || d.updatedAt > 0), activeId }));
       setStorageError("");
     } catch {
       setStorageError("기기 저장 공간에 기록하지 못했습니다. 덱 파일을 내보내 변경 내용을 보관하세요.");
@@ -175,8 +178,13 @@ export default function App() {
 
   const results = useMemo(() => deckPlayerResults(deck, tables), [deck, tables]);
 
-  const patchDeck = (patch: Partial<Deck>) =>
+  const patchDeck = (patch: Partial<Deck>) => {
+    if (experiment) {
+      setExperiment(current => current && applyDeckUpdate(current, patch, tables));
+      return;
+    }
     setDecks((prev) => prev.map((d) => (d.id === deck.id ? { ...applyDeckUpdate(d, patch, tables), updatedAt: Date.now() } : d)));
+  };
 
   const pickRowSide = (region: DeckScoreRegion, row: number, side: DeckScoreSide) =>
     patchDeck({ flags: selectDeckScoreSide(deck.flags, region, row, side) });
@@ -348,7 +356,13 @@ export default function App() {
     setSelected(null);
   };
 
+  const discardExperiment = () => {
+    if (experiment !== original && !confirm("실험 중인 변경 사항을 버릴까요?")) return false;
+    setExperiment(null);
+    return true;
+  };
   const navigate = (page: Page) => {
+    if (experiment && page !== "lineup" && !discardExperiment()) return;
     setTab(page);
     setSelected(null);
     setSetting(null);
@@ -378,23 +392,24 @@ export default function App() {
           try { localStorage.removeItem(RECOVERY_KEY); setRecovery(null); } catch { setStorageError("백업을 삭제하지 못했습니다."); }
         }}>백업 삭제</button></div>
       </div>}
-      {activeLink && !rankingEligibility(players).eligible && <p className="card ranking-update-held" role="status">{rankingEligibility(players).message} 공개 랭킹은 마지막 등록 상태로 유지되며, 현재 수정 내용은 이 기기에 저장됩니다.</p>}
+      {!experiment && activeLink && !rankingEligibility(players).eligible && <p className="card ranking-update-held" role="status">{rankingEligibility(players).message} 공개 랭킹은 마지막 등록 상태로 유지되며, 현재 수정 내용은 이 기기에 저장됩니다.</p>}
       {storageError && <p className="bad" role="alert">{storageError}</p>}
-      {tab !== "simulator" && <div className="card toolbar">
+      {tab !== "simulator" && !experiment && <div className="card toolbar">
         <div className="row toolbar-main">
           <label>내 덱{" "}
             <select value={deck.id} onChange={(e) => { setActiveId(e.target.value); setSelected(null); }}>
-              {decks.map((d) => <option key={d.id} value={d.id}>{d.name || "이름 없는 덱 · 저장 전"}</option>)}
+              {decks.map((d) => <option key={d.id} value={d.id}>{d.name || (d.updatedAt ? "이름 없는 덱 · 임시저장" : "이름 없는 덱")}</option>)}
             </select>
           </label>
           <button onClick={newDeck}>+ 새 덱</button>
           {tab !== "ranking" && <button className="primary" title="덱 이름·랭킹 연결 설정" onClick={() => setSaveOpen(true)}>덱 저장</button>}
+          {tab === "lineup" && <button onClick={() => { setToolsOpen(false); setExperiment(original); }}>내 덱으로 실험</button>}
           <button aria-expanded={toolsOpen} aria-controls="deck-tools" onClick={() => setToolsOpen(!toolsOpen)}>덱 도구 <span aria-hidden="true">{toolsOpen ? "⌃" : "⌄"}</span></button>
           {activeLink && <span className={`pill ${status === "error" ? "bad-pill" : status === "ok" ? "" : "pill-idle"}`}>
             🏆 랭킹 연동{!rankingEligibility(players).eligible ? " · 선수 입력 필요" : status === "blocked" ? " · 다른 덱 업데이트 보류" : status === "syncing" ? " · 반영 중…" : status === "ok" ? " · 방금 반영됨" : status === "error" ? " · 반영 실패(다음 수정 때 재시도)" : ""}
           </span>}
         </div>
-        <p className="muted toolbar-status">{validDeckName(deck.name) ? "변경사항은 자동 저장됩니다." : "이름을 정해 저장하세요. 이름 없는 덱은 새로고침하면 사라집니다."}</p>
+        <p className="muted toolbar-status">{validDeckName(deck.name) ? "변경사항은 자동 저장됩니다." : deck.updatedAt ? "이 기기에 임시저장됐습니다. 덱 저장에서 이름을 정할 수 있습니다." : "선수나 설정을 입력하면 이 기기에 임시저장됩니다."}</p>
         {toolsOpen && <div id="deck-tools" className="deck-tools" role="region" aria-label="덱 도구">
           <section><h4>파일 백업</h4><div className="row">
             <button onClick={exportDeck} disabled={!validDeckName(deck.name)}>현재 덱 백업</button>
@@ -419,20 +434,25 @@ export default function App() {
 
       }
       {tab === "lineup" && <>
+        {experiment && <DeckExperiment original={original} working={experiment} results={results} tables={tables}
+          onDiscard={discardExperiment} onApply={() => {
+            setDecks(current => current.map(d => d.id === original.id ? { ...experiment, updatedAt: Date.now() } : d));
+            setExperiment(null);
+          }}/>}
         <RenewalLineup deck={deck} results={results} onSelect={setSelected} openSettings={setSetting} openGuide={() => setModal("guide")} />
         <details className="card lineup-details"><summary>선수별 점수와 덱코 상세 보기</summary><ResultPanel players={players} results={results} /></details>
       </>}
 
       {setting && <RenewalDialog title={setting} close={() => setSetting(null)}>
         <div className="working-settings">
-          {setting === "덱스코어" ? <DeckScorePanel preferredTeam={deck.preferredTeam ?? ""} setPreferredTeam={preferredTeam => patchDeck({ preferredTeam })}
+          {setting === "덱스코어" ? <DeckScorePanel players={players} preferredTeam={deck.preferredTeam ?? ""} setPreferredTeam={preferredTeam => patchDeck({ preferredTeam })}
             flags={flags} yearInputs={yearInputs}
             toggleFlag={k => patchDeck({ flags: { ...flags, [k]: !flags[k] } })} setRowSide={pickRowSide}
             setYearInput={(r, v) => patchDeck({ yearInputs: { ...yearInputs, [r]: v } })} />
             : setting === "팀 버프" ? <ChemPanel chem={chem} setChem={chem => patchDeck({ chem })} />
             : <BullpenControls players={players} tactics={deck.bullpenTactics} setCount={setBullpenCount}
                 setTactics={bullpenTactics => patchDeck({ bullpenTactics })} />}
-          <p className="settings-note">변경 즉시 현재 덱과 선수 점수에 반영됩니다. 빈 슬롯은 선수 이름을 입력하면 전술 인원에 포함됩니다.</p>
+          <p className="settings-note">{experiment ? "변경 즉시 실험 덱에 반영됩니다." : "변경 즉시 현재 덱과 선수 점수에 반영됩니다."} 빈 슬롯은 선수 이름을 입력하면 전술 인원에 포함됩니다.</p>
           <button className="primary" onClick={() => setSetting(null)}>설정 완료</button>
         </div>
       </RenewalDialog>}

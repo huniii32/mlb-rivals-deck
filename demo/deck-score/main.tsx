@@ -2,9 +2,15 @@ import { useSiteUsage } from "../../src/lib/siteUsage";
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import "../../src/components/renewal/styles/layout.css";
+import { blankPlayer } from "../../src/lib/deck";
 import { DeckScorePanel } from "../../src/components/DeckScorePanel";
 import { selectDeckScoreSide } from "../../src/lib/deckScoreTargets";
 import "./preview.css";
+
+const players = [
+  { ...blankPlayer(22, "pitcher", "SP1", ""), name: "예시 선발", team: "LAD", card: "시그니처", year: 2024 },
+  { ...blankPlayer(11, "batter", "C", 9), name: "예시 포수", team: "NYY", card: "라이브/시즌", year: 2025 },
+];
 
 function Preview() {
   useSiteUsage("deck-score");
@@ -15,7 +21,7 @@ function Preview() {
   return <main className={`renewal score-demo${night ? " night" : ""}`}>
     <header><b>Rivals Deck</b><button onClick={() => setNight(!night)}>{night ? "라이트 모드" : "다크 모드"}</button></header>
     <article><h1>덱스코어 설정</h1><p>개발 미리보기 · 예시 덱으로 효과를 선택해 보세요.</p>
-      <div className="demo-sheet"><DeckScorePanel preferredTeam={team} setPreferredTeam={setTeam} flags={flags} yearInputs={years}
+      <div className="demo-sheet"><DeckScorePanel players={players} preferredTeam={team} setPreferredTeam={setTeam} flags={flags} yearInputs={years}
         toggleFlag={key => setFlags(old => ({...old, [key]: !old[key]}))}
         setRowSide={(region, row, side) => setFlags(old => selectDeckScoreSide(old, region, row, side))}
         setYearInput={(row, year) => setYears(old => ({...old, [row]: year}))}/></div>

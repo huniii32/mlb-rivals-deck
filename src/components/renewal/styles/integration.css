@@ -464,3 +464,11 @@
     max-width: calc(100vw - 24px);
   }
 }
+.renewal .deck-experiment { grid-column: 1 / -1; padding: 16px 20px; border-inline-start: 4px solid var(--blue); }
+.deck-experiment h3, .deck-experiment p { margin: 0 0 8px; }
+.deck-experiment .experiment-score { font-variant-numeric: tabular-nums; font-weight: 650; }
+.deck-experiment .experiment-score strong { color: var(--blue); }
+.deck-experiment details { padding: 4px 0 12px; }
+.deck-experiment summary { cursor: pointer; }
+.deck-experiment ul { padding: 0; list-style: none; }
+.deck-experiment li { display: flex; gap: 12px; flex-wrap: wrap; }

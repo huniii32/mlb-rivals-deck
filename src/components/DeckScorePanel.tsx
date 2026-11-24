@@ -1,21 +1,44 @@
 import { useState } from "react";
 import { TEAMS } from "../lib/mlbTeams";
-import { DECK_SCORE_OPTIONS } from "../lib/deckScoreOptions";
+import type { PlayerInput } from "../lib/engine";
+import { BATTER_STATS, PITCHER_STATS, DECK_SCORE_OPTIONS, selectedEffect, rowPlayers } from "../lib/deckScoreOptions";
 import { decadeStatus, decadeTarget, type DeckScoreRegion, type DeckScoreSide } from "../lib/deckScoreTargets";
 import "./renewal/styles/deck-score.css";
 
 type ScoreRow = typeof DECK_SCORE_OPTIONS.team[number];
-function statLabel(effect: ScoreRow["left"]) {
+function statLabel(effect: ScoreRow["left"], kind?: PlayerInput["kind"]) {
   const groups = new Map<number, string[]>();
   for (const [stat, value] of Object.entries(effect.bonuses)) {
+    if (kind && (kind === "pitcher" ? BATTER_STATS : PITCHER_STATS).some(s => s === stat)) continue;
     if (stat === "전체") return `모든 능력치 +${value}`;
     groups.set(value, [...(groups.get(value) ?? []), stat]);
   }
   return [...groups].map(([value, stats]) => `${stats.join("·")} +${value}`).join(" / ") || "평가 능력치 가산 없음";
 }
 
-export function DeckScorePanel({ preferredTeam, setPreferredTeam, flags, toggleFlag, setRowSide, yearInputs, setYearInput,
+function AppliedPlayers({ rule, choice, players, yearInputs, preferredTeam }: {
+  rule: ScoreRow; choice: ScoreRow["left"]; players: PlayerInput[];
+  yearInputs: Record<number, number | "">; preferredTeam: string;
+}) {
+  const rows = rowPlayers(rule, choice, players, yearInputs, preferredTeam);
+  const applied = rows.filter(r => r.state === "applied");
+  return <details className="score-applied">
+    <summary>적용 선수 {applied.length}명</summary>
+    {!rows.length && <p>라인업에 선수를 입력하면 이 구간의 효과를 확인할 수 있습니다.</p>}
+    {(["applied", "unknown", "excluded"] as const).map(state => {
+      const group = state === "applied" ? applied : rows.filter(r => r.state === state);
+      if (!group.length) return null;
+      return <div key={state}><strong>{{ applied: "이 구간의 효과", unknown: "확인 필요", excluded: "조건 미충족" }[state]}</strong>
+        <ul>{group.map(({ player, reason }) => <li key={player.excelRow}>
+          <span>{player.pos} · {player.name}</span><span>{reason || statLabel(choice, player.kind)}</span>
+        </li>)}</ul></div>;
+    })}
+  </details>;
+}
+
+export function DeckScorePanel({ players, preferredTeam, setPreferredTeam, flags, toggleFlag, setRowSide, yearInputs, setYearInput,
 }: {
+  players: PlayerInput[];
   preferredTeam: string;
   setPreferredTeam: (team: string) => void;
   flags: Record<string, boolean>;
@@ -59,6 +82,7 @@ export function DeckScorePanel({ preferredTeam, setPreferredTeam, flags, toggleF
     <p className="score-help">한 구간에 효과 하나를 선택하세요. 선택한 효과를 다시 누르면 해제됩니다.</p>
     {list.filter(g => !range || Math.floor(g.threshold / 100) * 100 === Number(range)).map(g => {
       const { yearRow, targetRow } = g;
+      const choice = selectedEffect(g, flags);
       return <section key={g.region + g.row} aria-label={`${g.threshold}점 구간`} className="score-line">
         <h4>{g.threshold}</h4>
         <div className="score-line-body">
@@ -84,6 +108,8 @@ export function DeckScorePanel({ preferredTeam, setPreferredTeam, flags, toggleF
               ? decadeStatus(g.threshold, decadeTarget(flags, targetRow), yearInputs[yearRow])
               : typeof yearInputs[yearRow] === "number" ? `${yearInputs[yearRow]}~${Number(yearInputs[yearRow]) + 9}년` : "연도를 입력하면 적용됩니다."}</p>
           </div>}
+          {choice && (g.sides.length > 0 || typeof yearInputs[yearRow!] === "number") &&
+            <AppliedPlayers rule={g} choice={choice} players={players} yearInputs={yearInputs} preferredTeam={preferredTeam}/>}
         </div>
       </section>;
     })}
