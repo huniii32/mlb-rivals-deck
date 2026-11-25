@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { WBC_CLUB_BONUS } from "../lib/wbcSkills";
 import { TEAMS } from "../lib/mlbTeams";
 import { DECK_SCORE_OPTIONS } from "../lib/deckScoreOptions";
 import { decadeStatus, decadeTarget, type DeckScoreRegion, type DeckScoreSide } from "../lib/deckScoreTargets";
@@ -14,8 +15,9 @@ function statLabel(effect: ScoreRow["left"]) {
   return [...groups].map(([value, stats]) => `${stats.join("·")} +${value}`).join(" / ") || "평가 능력치 가산 없음";
 }
 
-export function DeckScorePanel({ preferredTeam, setPreferredTeam, flags, toggleFlag, setRowSide, yearInputs, setYearInput,
+export function DeckScorePanel({ wbcCount = 0, preferredTeam, setPreferredTeam, flags, toggleFlag, setRowSide, yearInputs, setYearInput,
 }: {
+  wbcCount?: number;
   preferredTeam: string;
   setPreferredTeam: (team: string) => void;
   flags: Record<string, boolean>;
@@ -51,6 +53,7 @@ export function DeckScorePanel({ preferredTeam, setPreferredTeam, flags, toggleF
         {TEAMS.map(t => <option key={t.id} value={t.id}>{t.name} ({t.id})</option>)}
       </select></label>
     </div>
+    {wbcCount > 0 && <p className="score-help" role="status">WBC 자팀 장착 {wbcCount}명 · 장착 덱스코어 +{wbcCount * WBC_CLUB_BONUS.deckScore}. 게임에서 달성한 구간을 아래에서 선택하세요.</p>}
     <div className="score-list-head"><h3>구간별 효과</h3>
       <select aria-label="점수 구간" value={range} onChange={e => setRange(e.target.value)}>
         <option value="">전체 구간</option>{ranges.map(n => <option key={n} value={n}>{n}점대</option>)}
@@ -89,6 +92,7 @@ export function DeckScorePanel({ preferredTeam, setPreferredTeam, flags, toggleF
     })}
     <details className="score-notes"><summary>카드·연대 적용 기준</summary>
       <p>선호 구단 효과는 선수의 팀이 일치할 때 적용됩니다. FA·WBC·명예의 전당 카드는 모든 구단에서 선호 구단 효과를 받습니다.</p>
+      <p>WBC 카드의 MLB 소속 구단과 선호 구단이 일치하면 해당 카드에 OVR +2와 덱스코어 +3이 추가됩니다. 이 사이트는 OVR 효과를 평가 능력치별 +2로 계산합니다.</p>
       <p>스페셜 440점은 선수 편집에 입력한 OVR이 80 이상일 때 적용됩니다. 연대 효과는 입력한 연도부터 10년간의 카드에 적용되며, 명예의 전당·모먼트 계열은 제외됩니다.</p>
     </details>
   </section>;

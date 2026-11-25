@@ -103,6 +103,7 @@ export function RenewalPlayerEditor({
     ["덱스코어", r.deck],
     ["투수 전술", r.tactics],
   ];
+  if (isWbcCard(p.card)) autoRows.push(["WBC 자팀 장착", stats.map(() => r.wbcClubOvr)]);
   return (
     <div
       className={`renewal-player-editor ${stats.length === 2 ? "pitcher-editor" : ""}`}
