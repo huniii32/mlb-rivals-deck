@@ -1,5 +1,5 @@
 import { NEW_SKILLS } from "./skillUpdates";
-import { WBC_SKILLS, resolveWbcSkill } from "./wbcSkills";
+import { WBC_CLUB_BONUS, WBC_SKILLS, hasWbcClubBonus, resolveWbcSkill } from "./wbcSkills";
 import lookup from "../data/lookup.json";
 import { flags as workbookFlags } from "../data/deckrules.json";
 import { ROLE_PROFILES, bullpenRole, tacticBonuses } from "./bullpen";
@@ -262,6 +262,7 @@ export interface PlayerResult {
   enh: (number | null)[];
   poh: (number | null)[];
   deck: number[];
+  wbcClubOvr: number;
   deckHits: { threshold: number | null; region: string; stat: string; pts: number }[];
   ability: number; // J
   skill: number | null; // O
@@ -285,6 +286,7 @@ export function calcPlayer(
   const poh: (number | null)[] = [];
   const role = bullpenRole(p);
   const profile = role ? ROLE_PROFILES[role] : { row: p.excelRow, pos: p.pos };
+  const wbcClubOvr = hasWbcClubBonus(p, ctx.preferredTeam) ? WBC_CLUB_BONUS.ovr : 0;
   const { sums: deckSums, hits } = officialDeckBonus(p, ctx.flags, ctx.yearInputs, ctx.preferredTeam);
   const tactic = p.kind === "pitcher" ? ctx.tacticsByRow?.[p.excelRow] ?? 0 : 0;
   const tactics = [tactic, tactic, 0];
@@ -314,7 +316,7 @@ export function calcPlayer(
     const a =
       num(p.base[i]) + num(p.train[i]) + num(p.spec[i]) +
       (t ?? 0) + (e ?? 0) + (h ?? 0) + num(p.extra[i]) + num(p.synergy[i]) + num(p.locker[i]) +
-      (isSigBlackCard(p.card) ? num(p.blackPos?.[i]) + num(p.blackBoost?.[i]) : 0) + num(p.leaderBonus?.[i]) + ar + (deckSums[i] ?? 0);
+      (isSigBlackCard(p.card) ? num(p.blackPos?.[i]) + num(p.blackBoost?.[i]) : 0) + num(p.leaderBonus?.[i]) + ar + (deckSums[i] ?? 0) + (i < n ? wbcClubOvr : 0);
     auto.push(Math.round((a + tactics[i]) * 100) / 100);
     const ov = p.finalOv[i];
     manual.push(ov !== "");
@@ -385,7 +387,7 @@ export function calcPlayer(
   return {
     auto, final, manual, trans, enh, poh, tactics, team, skillDetails,
     deck: [deckSums[0] ?? 0, deckSums[1] ?? 0, deckSums[2] ?? 0],
-    deckHits: hits, ability, skill, total, warnings,
+    wbcClubOvr, deckHits: hits, ability, skill, total, warnings,
   };
 }
 

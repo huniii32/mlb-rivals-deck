@@ -1,3 +1,4 @@
+import { findTeam } from "./mlbTeams";
 import type { Kind, PlayerInput } from "./engine";
 
 export const WBC_SOURCE = "https://community.withhive.com/MLB9IRIVALS/ko/board/9/18420";
@@ -8,6 +9,13 @@ export const WBC_COUNTRIES: Record<string, string> = {
   DOM: "도미니카 공화국", VEN: "베네수엘라", NED: "네덜란드", ISR: "이스라엘", NCA: "니카라과",
 };
 export const isWbcCard = (card: string) => /WBC|WORLD\s*BASEBALL\s*CLASSIC/i.test(card);
+// v3.10.00, 4) 선호 구단 장착 효과. 일반 선호 구단 덱스코어 자격과 별도로 판정한다.
+export const WBC_CLUB_BONUS = { ovr: 2, deckScore: 3 } as const;
+export function hasWbcClubBonus(player: PlayerInput, preferredTeam?: string) {
+  if (!player.name.trim() || !isWbcCard(player.card)) return false;
+  const club = findTeam(player.team);
+  return !!club && club.id === findTeam(preferredTeam)?.id;
+}
 const skillKey = (name: string) => name.normalize("NFKC").replace(/[\s\u200B-\u200D\uFEFF]/g, "").toLowerCase();
 const country = (p: PlayerInput) => WBC_COUNTRIES[p.wbcCountry ?? ""] ? p.wbcCountry : undefined;
 export const WBC_SKILLS: { kind: Kind; name: string; score: number }[] = [];

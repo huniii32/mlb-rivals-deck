@@ -425,7 +425,7 @@ export default function App() {
 
       {setting && <RenewalDialog title={setting} close={() => setSetting(null)}>
         <div className="working-settings">
-          {setting === "덱스코어" ? <DeckScorePanel preferredTeam={deck.preferredTeam ?? ""} setPreferredTeam={preferredTeam => patchDeck({ preferredTeam })}
+          {setting === "덱스코어" ? <DeckScorePanel wbcCount={results.filter(r => r.wbcClubOvr > 0).length} preferredTeam={deck.preferredTeam ?? ""} setPreferredTeam={preferredTeam => patchDeck({ preferredTeam })}
             flags={flags} yearInputs={yearInputs}
             toggleFlag={k => patchDeck({ flags: { ...flags, [k]: !flags[k] } })} setRowSide={pickRowSide}
             setYearInput={(r, v) => patchDeck({ yearInputs: { ...yearInputs, [r]: v } })} />
